@@ -8,39 +8,37 @@ const main = () => {
     }
 
     const options = {
-        agents: 10
-    }
-
-    const inputs = [
-        {
-            type: "number" as const,
-            name: 'gravity',
-            label: 'Gravity',
-            default: 2,
-        }
-    ]
+        agents: 100000
+    };
 
     const AGENT_DSL = `
-       moveUp(1);
-       moveDown(gravity);
+       // Variable gravity comes from the input
+       // We also get width & height as default inputs
+       moveRight(2)
+       moveDown(inputs.gravity)
     `
     
     const simulation = new Simulation({
         canvas,
         options,
-        inputs,
         agentScript: AGENT_DSL
     });
-    
-    setInterval(() => {
-        const inputValues = [
-            {
-                gravity: 2
-            }
-        ];
 
-        simulation.runFrame("JavaScript", inputValues);
-    }, 1000 / 1); // 1 FPS
+    const FPS = .5;
+    
+    const run = setInterval(() => {
+        const inputValues = {
+            gravity: Math.random() * 30
+        };
+
+        void simulation.runFrame("WebWorkers", inputValues);
+    }, 1000 / FPS);
+
+    document.addEventListener('keydown', (event) => {
+        if (event.code === 'Space') {
+            clearInterval(run);
+        }
+    });
 };
 
 document.addEventListener('DOMContentLoaded', main);

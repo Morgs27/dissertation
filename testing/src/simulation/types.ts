@@ -1,22 +1,15 @@
 export type SimulationConstructor = {
     canvas: HTMLCanvasElement;
     options: SimulationOptions;
-    inputs: Input[];
     agentScript: string;
 }
 
 export type SimulationOptions = {
     agents: number;
+    workers?: number;
 }
 
-export type Input = {
-    type: 'number' | 'text' | 'boolean';
-    name: string;
-    label: string;
-    default: number | string | boolean;
-}
-
-export type InputValue = {
+export type InputValues = {
     [key: string]: number | string | boolean;
 }
 
