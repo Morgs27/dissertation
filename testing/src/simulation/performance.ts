@@ -1,5 +1,4 @@
 import Logger from "./logger";
-import type { Agent } from "./types";
 
 // should track 
 

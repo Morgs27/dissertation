@@ -3,7 +3,7 @@ import type { Agent } from "./types";
 
 const BACKGROUND_COLOR = 'blue';
 const AGENT_COLOR = 'red';
-const AGENT_RADIUS = 5;
+const AGENT_RADIUS = 1;
 
 export class Renderer {
     canvas: HTMLCanvasElement;

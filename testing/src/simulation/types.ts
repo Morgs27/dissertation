@@ -10,11 +10,12 @@ export type SimulationOptions = {
 }
 
 export type InputValues = {
-    [key: string]: number | string | boolean;
+    [key: string]: number;
 }
 
-export type CompiledAgentCode = {
-    glslCode: string;
+export type CompilationResult = {
+    requiredInputs: string[];
+    wgslCode: string;
     jsCode: string;
     WASMCode: string;
 }

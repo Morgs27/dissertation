@@ -3,7 +3,7 @@ import { ComputeEngine } from "./compute/compute";
 import Logger from "./logger";
 import { PerformanceMonitor } from "./performance";
 import { Renderer } from "./renderer";
-import type { SimulationConstructor, Method, InputValues, Agent } from "./types";
+import type { SimulationConstructor, Method, InputValues, Agent, CompilationResult } from "./types";
 
 export class Simulation {
     private readonly Renderer: Renderer;
@@ -14,16 +14,18 @@ export class Simulation {
 
     private frameInProgress = false;
     public agents: Agent[] = [];
+    public compilationResult: CompilationResult | null = null;
 
     constructor({canvas, options, agentScript}: SimulationConstructor) {
         this.Logger = new Logger('Simulation');
         this.PerformanceMonitor = new PerformanceMonitor();
 
         this.Compiler = new Compiler();
-        const compiledCode = this.Compiler.compileAgentCode(agentScript);
-        
+        const compilationResult = this.Compiler.compileAgentCode(agentScript);
+        this.compilationResult = compilationResult;
+
         this.Renderer = new Renderer(canvas);
-        this.ComputeEngine = new ComputeEngine(compiledCode, this.PerformanceMonitor);
+        this.ComputeEngine = new ComputeEngine(compilationResult, this.PerformanceMonitor);
 
         this.Renderer.renderBackground();
 
@@ -42,6 +44,16 @@ export class Simulation {
             this.PerformanceMonitor.logMissingFrame();
             
             return;
+        }
+
+        if (
+            this.compilationResult?.requiredInputs.some(input => !(input in inputValues))
+        ) {
+            const missingInputs = this.compilationResult.requiredInputs.filter(input => !(input in inputValues));
+            
+            const message = `Missing required input values: ${missingInputs.join(', ')}`;
+            this.Logger.error(message);
+            throw new Error(message);
         }
 
         this.frameInProgress = true;
