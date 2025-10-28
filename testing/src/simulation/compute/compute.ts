@@ -1,26 +1,30 @@
 import Logger from "../logger";
 import type { AgentPerformance, PerformanceMonitor } from "../performance";
-import type { CompiledAgentCode, Method, InputValues, Agent, SimulationOptions } from "../types";
+import type { CompilationResult, Method, InputValues, Agent } from "../types";
+import { WebGPU } from "./webGPU";
 import WebWorkers from "./webWorkers";
 
 export type AgentFunction = (agent: Agent, inputs: InputValues) => Agent;
 
 
 export class ComputeEngine {
-    private readonly compiledCode: CompiledAgentCode;
     private readonly Logger: Logger;
-    private WebWorkers: WebWorkers;
     private PerformanceMonitor: PerformanceMonitor;
-
+    
+    private WebWorkers: WebWorkers;
+    private WebGPU: WebGPU;
+    
+    private readonly compilationResult: CompilationResult;
     private agentFunction: AgentFunction;
 
-    constructor(compiledCode: CompiledAgentCode, performanceMonitor: PerformanceMonitor) {
-        this.compiledCode = compiledCode;
+    constructor(compilationResult: CompilationResult, performanceMonitor: PerformanceMonitor) {
+        this.compilationResult = compilationResult;
         this.PerformanceMonitor = performanceMonitor;
 
         this.agentFunction = this.buildAgentFunction();
 
         this.WebWorkers = new WebWorkers(this.agentFunction);
+        this.WebGPU = new WebGPU(this.compilationResult.wgslCode, this.compilationResult.requiredInputs);
 
         this.Logger = new Logger('ComputeEngine');
     }
@@ -31,9 +35,30 @@ export class ComputeEngine {
         switch (method) {
             case "WebWorkers":
                 return this.runOnWebWorkers(agents, inputValues);
+            case "WebGPU":
+                return this.runOnWebGPU(agents, inputValues);
             default:
                 return this.runOnMainThread(agents, inputValues);
         }
+    }
+
+    private async runOnWebGPU(agents: Agent[], inputs: InputValues): Promise<Agent[]> {
+        const totalStart = performance.now();
+
+        const updatedAgents = await this.WebGPU.compute(agents, inputs);
+        
+        const totalEnd = performance.now();
+        const totalExecutionTime = totalEnd - totalStart;
+
+        this.PerformanceMonitor.logFrame({
+            method: "WebGPU",
+            agentCount: agents.length,
+            agentPerformance: [],
+            totalExecutionTime: totalExecutionTime, 
+            frameTimestamp: Date.now(),
+        });
+
+        return updatedAgents;
     }
 
     private async runOnWebWorkers(agents: Agent[], inputs: InputValues): Promise<Agent[]> {
@@ -47,7 +72,7 @@ export class ComputeEngine {
         this.PerformanceMonitor.logFrame({
             method: "WebWorkers",
             agentCount: agents.length,
-            agentPerformance: [], // TODO: add per agent performance
+            agentPerformance: [],
             totalExecutionTime: totalExecutionTime, 
             frameTimestamp: Date.now(),
         });
@@ -91,6 +116,6 @@ export class ComputeEngine {
     }
 
     private buildAgentFunction(): AgentFunction {
-        return new Function(`return ${this.compiledCode.jsCode}`)() as AgentFunction;
+        return new Function(`return ${this.compilationResult.jsCode}`)() as AgentFunction;
     }
 }

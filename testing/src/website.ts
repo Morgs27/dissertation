@@ -8,14 +8,13 @@ const main = () => {
     }
 
     const options = {
-        agents: 100000
+        agents: 1000000
     };
 
     const AGENT_DSL = `
-       // Variable gravity comes from the input
-       // We also get width & height as default inputs
-       moveRight(2)
+       moveRight(4)
        moveDown(inputs.gravity)
+       moveUp(inputs.random)
     `
     
     const simulation = new Simulation({
@@ -28,10 +27,11 @@ const main = () => {
     
     const run = setInterval(() => {
         const inputValues = {
-            gravity: Math.random() * 30
+            gravity: 9.8,
+            random: Math.random() * 10
         };
 
-        void simulation.runFrame("WebWorkers", inputValues);
+        void simulation.runFrame("JavaScript", inputValues);
     }, 1000 / FPS);
 
     document.addEventListener('keydown', (event) => {

@@ -21,8 +21,10 @@ const COMMANDS = [
     },
 ]
 
-export const compileDSLTtoJS = (dsl: string, logger: Logger): string => {
+export const compileDSLTtoJS = (dsl: string, logger: Logger): [string, string[]] => {
     logger.log('Compiling agent code: \n      ', dsl);
+
+    const inputsExpected: string[] = [];
 
     const lines = dsl
         .split('\n')
@@ -34,13 +36,20 @@ export const compileDSLTtoJS = (dsl: string, logger: Logger): string => {
     for (const line of lines) {
         const parsed = parseLine(line);
         if (parsed) {
+            if (line.includes('inputs.')) {
+                const inputMatch = line.match(/inputs\.([a-zA-Z_]\w*)/);
+                if (inputMatch && !inputsExpected.includes(inputMatch[1])) {
+                    inputsExpected.push(inputMatch[1]);
+                }
+            }
+
             statements.push(parsed);
         }
     }
 
     const identityFunction = `(agent) => ({ ...agent })`;
 
-    if (statements.length < 1) return identityFunction;
+    if (statements.length < 1) return [identityFunction, []];
 
     const agentFunction = `(agent, inputs) => {
         const result = { ...agent };
@@ -48,7 +57,7 @@ export const compileDSLTtoJS = (dsl: string, logger: Logger): string => {
         return result;
     }`;
 
-    return agentFunction;
+    return [agentFunction, inputsExpected];
 }
 
 

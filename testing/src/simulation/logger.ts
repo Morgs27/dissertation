@@ -1,6 +1,6 @@
 type Verbosity = 'Verbose' | 'Silent';
 
-const visible: Verbosity = 'Silent';
+const visible: Verbosity = 'Verbose';
 
 export default class Logger {
     private context: string;
