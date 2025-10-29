@@ -1,9 +1,10 @@
-import Logger from "../logger";
+import Logger from "../helpers/logger";
 import type { AgentPerformance, PerformanceMonitor } from "../performance";
-import type { CompilationResult, Method, InputValues, Agent } from "../types";
-import { WebGPU } from "./webGPU";
+import type { CompilationResult, Method, InputValues, Agent, RenderMode } from "../types";
 import WebWorkers from "./webWorkers";
 import WebAssembly from "./webAssembly";
+import type { WebGPURenderResources } from "./webGPU";
+import WebGPU from "./webGPU";
 
 export type AgentFunction = (agent: Agent, inputs: InputValues) => Agent;
 
@@ -19,6 +20,8 @@ export class ComputeEngine {
     private readonly compilationResult: CompilationResult;
     private agentFunction: AgentFunction;
 
+    public gpuRenderState: WebGPURenderResources | undefined = undefined;
+
     constructor(compilationResult: CompilationResult, performanceMonitor: PerformanceMonitor) {
         this.compilationResult = compilationResult;
         this.PerformanceMonitor = performanceMonitor;
@@ -32,14 +35,14 @@ export class ComputeEngine {
         this.Logger = new Logger('ComputeEngine');
     }
 
-    async runFrame(method: Method, agents: Agent[], inputValues: InputValues): Promise<Agent[]> {
+    async runFrame(method: Method, agents: Agent[], inputValues: InputValues, renderMode: RenderMode): Promise<Agent[]> {
         this.Logger.info(`Running Compute:`, method, agents, inputValues);
 
         switch (method) {
             case "WebWorkers":
                 return this.runOnWebWorkers(agents, inputValues);
             case "WebGPU":
-                return this.runOnWebGPU(agents, inputValues);
+                return this.runOnWebGPU(agents, inputValues, renderMode);
             case "WebAssembly":
                 return this.runOnWASM(agents, inputValues);
             default:
@@ -68,40 +71,29 @@ export class ComputeEngine {
         return updatedAgents;
     }
 
-    private async runOnWebGPU(agents: Agent[], inputs: InputValues): Promise<Agent[]> {
+    private async runOnWebGPU(agents: Agent[], inputs: InputValues, renderMode: RenderMode): Promise<Agent[]> {
         const totalStart = performance.now();
-
-        const updatedAgents = await this.WebGPU.compute(agents, inputs);
+        
+        const shouldReadback = renderMode !== "gpu";
+        const { updatedAgents, renderResources } = await this.WebGPU.compute(agents, inputs, shouldReadback);
+        const nextAgents = updatedAgents ?? agents;
         
         const totalEnd = performance.now();
         const totalExecutionTime = totalEnd - totalStart;
 
         this.PerformanceMonitor.logFrame({
             method: "WebGPU",
-            agentCount: agents.length,
+            agentCount: nextAgents.length,
             agentPerformance: [],
             totalExecutionTime: totalExecutionTime, 
             frameTimestamp: Date.now(),
         });
 
-        return updatedAgents;
-    }
+        if (renderResources) {
+            this.gpuRenderState = renderResources;
+        }
 
-    async runOnWebGPUWithRendering(canvas: HTMLCanvasElement, agents: Agent[], inputs: InputValues): Promise<void> {
-        const totalStart = performance.now();
-
-        await this.WebGPU.computeAndRender(canvas, agents, inputs);
-
-        const totalEnd = performance.now();
-        const totalExecutionTime = totalEnd - totalStart;
-
-        this.PerformanceMonitor.logFrame({
-            method: "WebGPU (GPU Render)",
-            agentCount: agents.length,
-            agentPerformance: [],
-            totalExecutionTime,
-            frameTimestamp: Date.now(),
-        });
+        return nextAgents;
     }
 
     private async runOnWebWorkers(agents: Agent[], inputs: InputValues): Promise<Agent[]> {
@@ -150,7 +142,7 @@ export class ComputeEngine {
         this.PerformanceMonitor.logFrame({
             method: "JavaScript",
             agentCount: agents.length,
-            agentPerformance: agentTimings,
+            agentPerformance: [],
             totalExecutionTime,
             frameTimestamp: Date.now(),
         });

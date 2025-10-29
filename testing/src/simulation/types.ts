@@ -27,3 +27,5 @@ export type Agent = {
 }
 
 export type Method = "WebGL" | "WebAssembly" | "JavaScript" | "WebWorkers" | "WebGPU"
+
+export type RenderMode = "cpu" | "gpu";

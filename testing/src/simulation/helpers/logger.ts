@@ -42,10 +42,10 @@ export default class Logger {
                 console.log(`%c[${this.context}] CODE: ${label}\n${await this.formatJS(code)}`, 'color: blue;');
                 break;
             case 'wgsl':
-                console.log(`%c[${this.context}] CODE: ${label}\n${this.formatWGSL(code)}`, 'color: blue;');
+                console.log(`%c[${this.context}] CODE: ${label}\n${this.formatGeneral(code)}`, 'color: blue;');
                 break;
             case 'wasm':
-                console.log(`%c[${this.context}] CODE: ${label}\n${this.formatWASM(code)}`, 'color: blue;');
+                console.log(`%c[${this.context}] CODE: ${label}\n${this.formatGeneral(code)}`, 'color: blue;');
                 break;
             default:
                 console.log(`[${this.context}] CODE: ${label}\n${code}`);
@@ -62,7 +62,7 @@ export default class Logger {
         });
     }
 
-    private formatWGSL(code: string): string {
+    private formatGeneral(code: string): string {
         const lines = code
             .split(/\r?\n/)
             .map(line => {
@@ -76,6 +76,7 @@ export default class Logger {
         let indentLevel = 0;
         const indentSize = 2;
         const out: string[] = [];
+
         for (const raw of lines) {
             const trimmed = raw.trim();
 
@@ -92,9 +93,5 @@ export default class Logger {
         }
 
         return out.join("\n") + "\n";
-    }
-
-    private formatWASM(code: string): string {
-        return this.formatWGSL(code);
     }
 }

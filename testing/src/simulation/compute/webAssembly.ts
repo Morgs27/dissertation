@@ -1,4 +1,4 @@
-import Logger from "../logger.js";
+import Logger from "../helpers/logger.js";
 import type { Agent, InputValues } from "../types.js";
 import wabt from "wabt";
 

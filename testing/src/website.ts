@@ -15,7 +15,7 @@ const main = () => {
        moveRight(4)
        moveDown(inputs.gravity)
     `
-    
+
     const simulation = new Simulation({
         canvas,
         options,
@@ -23,13 +23,13 @@ const main = () => {
     });
 
     const FPS = .5;
-    
+
     const run = setInterval(() => {
         const inputValues = {
             gravity: 9.8,
         };
 
-        void simulation.runFrameWithGPURender(inputValues);
+        void simulation.runFrame("WebGPU", inputValues, "cpu");
     }, 1000 / FPS);
 
     document.addEventListener('keydown', (event) => {

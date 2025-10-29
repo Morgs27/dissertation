@@ -1,4 +1,4 @@
-import type Logger from "../logger";
+import type Logger from "../helpers/logger";
 import type { CommandMap } from "./compiler";
 import { AVAILABLE_COMMANDS_LIST } from "./compiler";
 
