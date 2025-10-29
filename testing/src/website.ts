@@ -29,7 +29,7 @@ const main = () => {
             gravity: 9.8,
         };
 
-        void simulation.runFrame("WebAssembly", inputValues);
+        void simulation.runFrameWithGPURender(inputValues);
     }, 1000 / FPS);
 
     document.addEventListener('keydown', (event) => {

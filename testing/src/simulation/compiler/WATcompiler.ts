@@ -1,5 +1,4 @@
 import type Logger from "../logger";
-import type { CommandMap } from "./compiler";
 
 const COMMANDS: Record<string, { target: "x" | "y"; op: "add" | "sub" }> = {
   moveUp:    { target: "y", op: "sub" },

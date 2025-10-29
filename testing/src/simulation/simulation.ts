@@ -27,8 +27,6 @@ export class Simulation {
         this.Renderer = new Renderer(canvas);
         this.ComputeEngine = new ComputeEngine(compilationResult, this.PerformanceMonitor);
 
-        this.Renderer.renderBackground();
-
         this.agents = Array.from({ length: options.agents }, (_, i) => ({
             id: i,
             x: Math.random() * canvas.width,
@@ -79,6 +77,42 @@ export class Simulation {
             
             this.Logger.error(`Failed to run simulation frame: ${message}`);
        
+        } finally {
+            this.frameInProgress = false;
+        }
+    }
+
+    public async runFrameWithGPURender(inputValues: InputValues) {
+        if (this.frameInProgress) {
+            this.Logger.warn('Skipped frame because a previous frame is still processing.');
+            this.PerformanceMonitor.logMissingFrame();
+            return;
+        }
+
+        const inputs = {
+            width: this.Renderer.canvas.width,
+            height: this.Renderer.canvas.height,
+            ...inputValues
+        };
+
+        if (
+            this.compilationResult?.requiredInputs.some(input => !(input in inputs))
+        ) {
+            const missingInputs = this.compilationResult.requiredInputs.filter(input => !(input in inputs));
+
+            const message = `Missing required input values: ${missingInputs.join(', ')}`;
+            this.Logger.error(message);
+            throw new Error(message);
+        }
+
+        this.frameInProgress = true;
+        this.Logger.info('Simulation running on GPU (compute + render)');
+
+        try {
+            await this.ComputeEngine.runOnWebGPUWithRendering(this.Renderer.canvas, this.agents, inputs);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            this.Logger.error(`Failed to run GPU rendered simulation frame: ${message}`);
         } finally {
             this.frameInProgress = false;
         }

@@ -10,7 +10,7 @@ const COMMANDS: CommandMap =
     moveRight: 'result.x += {arg};',
 }
 
-export const compileDSLtoJS = (lines: string[], inputs: string[], logger: Logger): string => {
+export const compileDSLtoJS = (lines: string[], _inputs: string[], _logger: Logger): string => {
     const statements: string[] = [];
 
     for (const line of lines) {
