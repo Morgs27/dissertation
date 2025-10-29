@@ -26,7 +26,7 @@ export class Compiler {
     Logger: Logger;
 
     constructor() {
-        this.Logger = new Logger('Compiler');
+        this.Logger = new Logger('Compiler', 'orange');
     }
 
     private preprocessDSL(dsl: string): { lines: string[]; inputs: string[] } {
@@ -53,7 +53,7 @@ export class Compiler {
 
         this.Logger.code('Generated JS Code', jsCode, 'js');
         this.Logger.code('Generated WGSL Code', wgslCode, 'wgsl');
-        this.Logger.code('Generated WASM Code', wasmCode, 'wgsl');
+        this.Logger.code('Generated WASM Code', wasmCode, 'wasm');
         this.Logger.log('Expected Inputs', inputs);
 
         return {

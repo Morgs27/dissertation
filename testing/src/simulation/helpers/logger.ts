@@ -2,54 +2,60 @@ import prettier from "prettier/standalone";
 import babelPlugin from "prettier/plugins/babel";
 import estreePlugin from "prettier/plugins/estree";
 
-type Verbosity = 'Verbose' | 'Silent';
+type LogLevel = 'Error' | 'Warning' | 'Info' | 'Verbose';
 
 type Language = 'js' | 'wgsl' | 'wasm';
 
-const visible: Verbosity = 'Verbose';
+const LogLevel: LogLevel = 'Verbose';
 
 export default class Logger {
     private context: string;
+    private color: string;
 
-    constructor(context: string) {
+    constructor(context: string, color: string = 'black') {
         this.context = context;
+        this.color = color;
     }
 
     log(message: string, ...args: any[]) {
-        if (visible === 'Verbose')
-            console.log(`[${this.context}] : ${message}`, ...args);
-    }
-
-    warn(message: string, ...args: any[]) {
-        console.warn(`[${this.context}] WARNING: ${message}`, ...args);
-    }
-
-    error(message: string, ...args: any[]) {
-        console.error(`[${this.context}] ERROR: ${message}`, ...args);
+        if (LogLevel === 'Verbose')
+            console.log(`%c[${this.context}] : ${message}`, `color: ${this.color}`, ...args);
     }
 
     info(message: string, ...args: any[]) {
-        console.info(`[${this.context}] INFO: ${message}`, ...args);
+        if (LogLevel === 'Info' || LogLevel === 'Verbose')
+            console.info(`[${this.context}] INFO: ${message}`, ...args);
     }
 
-    success(message: string, ...args: any[]) {
-        console.log(`%c[${this.context}] SUCCESS: ${message}`, 'color: green; font-weight: bold;', ...args);
+    warn(message: string, ...args: any[]) {
+        if (LogLevel === 'Warning' || LogLevel === 'Info' || LogLevel === 'Verbose')
+            console.warn(`[${this.context}] WARNING: ${message}`, ...args);
+    }
+
+    error(message: string, ...args: any[]) {
+        if (LogLevel === 'Error' || LogLevel === 'Warning' || LogLevel === 'Info' || LogLevel === 'Verbose')
+            console.error(`[${this.context}] ERROR: ${message}`, ...args);
     }
 
     async code(label: string, code: string, language: Language) {
+
+        let formattedCode: string;
+
         switch (language) {
             case 'js':
-                console.log(`%c[${this.context}] CODE: ${label}\n${await this.formatJS(code)}`, 'color: blue;');
+                formattedCode = await this.formatJS(code);
                 break;
             case 'wgsl':
-                console.log(`%c[${this.context}] CODE: ${label}\n${this.formatGeneral(code)}`, 'color: blue;');
+                formattedCode = this.formatGeneralCode(code);
                 break;
             case 'wasm':
-                console.log(`%c[${this.context}] CODE: ${label}\n${this.formatGeneral(code)}`, 'color: blue;');
+                formattedCode = this.formatGeneralCode(code);
                 break;
             default:
-                console.log(`[${this.context}] CODE: ${label}\n${code}`);
+                formattedCode = code;
         }
+
+        console.log(`%c[${this.context}] ${label}:\n%c${formattedCode}`, `color: ${this.color}; font-weight: bold;`, 'color: gray; font-family: monospace;');
     }
 
     private async formatJS(code: string) {
@@ -62,7 +68,7 @@ export default class Logger {
         });
     }
 
-    private formatGeneral(code: string): string {
+    private formatGeneralCode(code: string): string {
         const lines = code
             .split(/\r?\n/)
             .map(line => {

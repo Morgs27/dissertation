@@ -8,15 +8,14 @@ import WebGPU from "./webGPU";
 
 export type AgentFunction = (agent: Agent, inputs: InputValues) => Agent;
 
-
 export class ComputeEngine {
     private readonly Logger: Logger;
     private PerformanceMonitor: PerformanceMonitor;
-    
+
     private WebWorkers: WebWorkers;
     private WebGPU: WebGPU;
     private WebAssembly: WebAssembly;
-    
+
     private readonly compilationResult: CompilationResult;
     private agentFunction: AgentFunction;
 
@@ -32,11 +31,11 @@ export class ComputeEngine {
         this.WebGPU = new WebGPU(this.compilationResult.wgslCode, this.compilationResult.requiredInputs);
         this.WebAssembly = new WebAssembly(this.compilationResult.WASMCode);
 
-        this.Logger = new Logger('ComputeEngine');
+        this.Logger = new Logger('ComputeEngine', 'purple');
     }
 
     async runFrame(method: Method, agents: Agent[], inputValues: InputValues, renderMode: RenderMode): Promise<Agent[]> {
-        this.Logger.info(`Running Compute:`, method, agents, inputValues);
+        this.Logger.log(`Running Compute:`, method);
 
         switch (method) {
             case "WebWorkers":
@@ -73,11 +72,11 @@ export class ComputeEngine {
 
     private async runOnWebGPU(agents: Agent[], inputs: InputValues, renderMode: RenderMode): Promise<Agent[]> {
         const totalStart = performance.now();
-        
+
         const shouldReadback = renderMode !== "gpu";
         const { updatedAgents, renderResources } = await this.WebGPU.compute(agents, inputs, shouldReadback);
         const nextAgents = updatedAgents ?? agents;
-        
+
         const totalEnd = performance.now();
         const totalExecutionTime = totalEnd - totalStart;
 
@@ -85,13 +84,15 @@ export class ComputeEngine {
             method: "WebGPU",
             agentCount: nextAgents.length,
             agentPerformance: [],
-            totalExecutionTime: totalExecutionTime, 
+            totalExecutionTime: totalExecutionTime,
             frameTimestamp: Date.now(),
         });
 
         if (renderResources) {
             this.gpuRenderState = renderResources;
         }
+
+        this.Logger.log(`WebGPU compute completed. Agents updated: ${nextAgents[0].x.toFixed(2)}, ${nextAgents[0].y.toFixed(2)}`);
 
         return nextAgents;
     }
@@ -100,7 +101,7 @@ export class ComputeEngine {
         const totalStart = performance.now();
 
         const updatedAgents = await this.WebWorkers.compute(agents, inputs);
-        
+
         const totalEnd = performance.now();
         const totalExecutionTime = totalEnd - totalStart;
 
@@ -108,7 +109,7 @@ export class ComputeEngine {
             method: "WebWorkers",
             agentCount: agents.length,
             agentPerformance: [],
-            totalExecutionTime: totalExecutionTime, 
+            totalExecutionTime: totalExecutionTime,
             frameTimestamp: Date.now(),
         });
 

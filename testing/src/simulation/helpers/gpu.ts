@@ -1,7 +1,4 @@
-// src/compute/GPU.ts
 import Logger from "./logger";
-
-// export type GPUBufferUsageFlags = GPUBufferUsageFlags;
 
 export default class GPU {
     private Logger: Logger;
@@ -63,15 +60,27 @@ export default class GPU {
         });
     }
 
+    /**
+     * Creates a GPU buffer optionally initialized with data.
+     * Automatically aligns size to 4 bytes and optionally to 256 bytes for uniform buffers.
+     */
     createBuffer(
         device: GPUDevice,
         data: Float32Array | null,
         usage: GPUBufferUsageFlags,
-        sizeOverride?: number
+        sizeOverride?: number,
+        label?: string
     ): GPUBuffer {
         const byteLength = data?.byteLength ?? 0;
-        const size = Math.max(sizeOverride ?? byteLength, byteLength, 4);
+        let size = Math.max(sizeOverride ?? byteLength, byteLength, 4);
+
+        // Align to 256 bytes if this is a UNIFORM buffer (best practice)
+        if (usage & GPUBufferUsage.UNIFORM) {
+            size = Math.ceil(size / 256) * 256;
+        }
+
         const buffer = device.createBuffer({
+            label,
             size,
             usage,
             mappedAtCreation: !!data,
@@ -84,6 +93,23 @@ export default class GPU {
         }
 
         return buffer;
+    }
+
+    /**
+     * Creates an empty (unmapped) GPU buffer of a given size and usage.
+     */
+    createEmptyBuffer(
+        device: GPUDevice,
+        size: number,
+        usage: GPUBufferUsageFlags,
+        label?: string
+    ): GPUBuffer {
+        const aligned = Math.ceil(size / 4) * 4; // 4-byte alignment
+        return device.createBuffer({
+            label,
+            size: aligned,
+            usage,
+        });
     }
 
     writeBuffer(device: GPUDevice, buffer: GPUBuffer, data: Float32Array) {
