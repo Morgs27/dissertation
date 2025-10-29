@@ -14,7 +14,6 @@ const main = () => {
     const AGENT_DSL = `
        moveRight(4)
        moveDown(inputs.gravity)
-       moveUp(inputs.random)
     `
     
     const simulation = new Simulation({
@@ -28,10 +27,9 @@ const main = () => {
     const run = setInterval(() => {
         const inputValues = {
             gravity: 9.8,
-            random: Math.random() * 10
         };
 
-        void simulation.runFrame("JavaScript", inputValues);
+        void simulation.runFrame("WebAssembly", inputValues);
     }, 1000 / FPS);
 
     document.addEventListener('keydown', (event) => {

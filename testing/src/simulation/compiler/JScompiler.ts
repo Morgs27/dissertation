@@ -1,55 +1,28 @@
 import type Logger from "../logger";
+import type { CommandMap } from "./compiler";
+import { AVAILABLE_COMMANDS_LIST } from "./compiler";
 
-const COMMENT_CHARACTERS = ['//', '#'];
+const COMMANDS: CommandMap = 
+{
+    moveUp: 'result.y -= {arg};',
+    moveDown: 'result.y += {arg};',
+    moveLeft: 'result.x -= {arg};',
+    moveRight: 'result.x += {arg};',
+}
 
-const COMMANDS = [
-    {
-        'name': 'moveUp',
-        'template': 'result.y -= {arg};'
-    },
-    {
-        'name': 'moveDown',
-        'template': 'result.y += {arg};'
-    },
-    {
-        'name': 'moveLeft',
-        'template': 'result.x -= {arg};'
-    },
-    {
-        'name': 'moveRight',
-        'template': 'result.x += {arg};'
-    },
-]
-
-export const compileDSLTtoJS = (dsl: string, logger: Logger): [string, string[]] => {
-    logger.log('Compiling agent code: \n      ', dsl);
-
-    const inputsExpected: string[] = [];
-
-    const lines = dsl
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line.length > 0);
-
+export const compileDSLtoJS = (lines: string[], inputs: string[], logger: Logger): string => {
     const statements: string[] = [];
 
     for (const line of lines) {
         const parsed = parseLine(line);
         if (parsed) {
-            if (line.includes('inputs.')) {
-                const inputMatch = line.match(/inputs\.([a-zA-Z_]\w*)/);
-                if (inputMatch && !inputsExpected.includes(inputMatch[1])) {
-                    inputsExpected.push(inputMatch[1]);
-                }
-            }
-
             statements.push(parsed);
         }
     }
 
     const identityFunction = `(agent) => ({ ...agent })`;
 
-    if (statements.length < 1) return [identityFunction, []];
+    if (statements.length < 1) return identityFunction;
 
     const agentFunction = `(agent, inputs) => {
         const result = { ...agent };
@@ -57,22 +30,18 @@ export const compileDSLTtoJS = (dsl: string, logger: Logger): [string, string[]]
         return result;
     }`;
 
-    return [agentFunction, inputsExpected];
+    return agentFunction;
 }
 
 
 function parseLine(line: string): string | null {
-    // Ignore comments
-    if (COMMENT_CHARACTERS.some(comment => line.startsWith(comment))) {
-        return null;
-    }
-
     // Ignore anything that isn't a command for now
     if (!line.includes('(') || !line.includes(')')) {
         return null;
     }
 
-    const commandMatch = COMMANDS.find(command => line.startsWith(command.name + '('));
+    const commandMatch = COMMANDS[AVAILABLE_COMMANDS_LIST.find(cmd => line.startsWith(cmd) )!];
+    
     if (!commandMatch) {
         return null;
     }
@@ -81,7 +50,7 @@ function parseLine(line: string): string | null {
     const argEnd = line.indexOf(')');
     const argument = line.substring(argStart, argEnd).trim();
 
-    const command = commandMatch.template.replace('{arg}', argument);
+    const command = commandMatch.replace('{arg}', argument);
 
     return command;
 }

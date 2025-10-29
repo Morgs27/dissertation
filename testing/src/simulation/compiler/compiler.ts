@@ -1,7 +1,26 @@
 import Logger from "../logger";
 import type { CompilationResult } from "../types";
+import { compileDSLtoJS } from "./JScompiler";
+import { compileDSLtoWAT } from "./WATcompiler";
 import { compileDSLtoWGSL } from "./WGSLcompiler";
-import { compileDSLTtoJS } from "./JScompiler";
+
+export const COMMENT_CHARACTERS = ['//', '#'];
+
+export type AVAILABLE_COMMANDS =
+    | 'moveUp'
+    | 'moveDown'
+    | 'moveLeft'
+    | 'moveRight';
+
+export const AVAILABLE_COMMANDS_LIST: AVAILABLE_COMMANDS[] = [
+    'moveUp',
+    'moveDown',
+    'moveLeft',
+    'moveRight',
+];
+
+export type CommandMap = Record<AVAILABLE_COMMANDS, string>;
+
 
 export class Compiler {
     Logger: Logger;
@@ -10,24 +29,38 @@ export class Compiler {
         this.Logger = new Logger('Compiler');
     }
 
+    private preprocessDSL(dsl: string): { lines: string[]; inputs: string[] } {
+        const lines = dsl
+            .split('\n')
+            .map(l => l.trim())
+            .filter(l => l.length > 0 && !COMMENT_CHARACTERS.some(c => l.startsWith(c)));
+
+        const inputMatches = Array.from(dsl.matchAll(/inputs\.([a-zA-Z_]\w*)/g));
+        const inputs = [...new Set(inputMatches.map(m => m[1]))];
+
+        return { lines, inputs };
+    }
+
     compileAgentCode(agentCode?: string): CompilationResult {
         const script = agentCode?.trim() ?? '';
-
         this.Logger.info('Compiling agent code: \n      ', script);
 
-        const [jsCode, jsInputsExpected] = compileDSLTtoJS(script, this.Logger);
-        const [wgslCode, wgslInputsExpected] = compileDSLtoWGSL(script, this.Logger);
+        const { lines, inputs } = this.preprocessDSL(script);
 
-        this.Logger.info('Generated WGSL Code: \n      ', wgslCode);
-        this.Logger.info('Generated JS Code: \n      ', jsCode);
-        this.Logger.info('Expected Inputs: \n      ', wgslInputsExpected);
-        this.Logger.info('Expected Inputs: \n      ', jsInputsExpected);
+        const jsCode = compileDSLtoJS(lines, inputs, this.Logger);
+        const wgslCode = compileDSLtoWGSL(lines, inputs, this.Logger);
+        const wasmCode = compileDSLtoWAT(lines, inputs, this.Logger);
+
+        this.Logger.code('Generated JS Code', jsCode, 'js');
+        this.Logger.code('Generated WGSL Code', wgslCode, 'wgsl');
+        this.Logger.code('Generated WASM Code', wasmCode, 'wgsl');
+        this.Logger.log('Expected Inputs', inputs);
 
         return {
-            requiredInputs: wgslInputsExpected,
+            requiredInputs: inputs,
             wgslCode,
             jsCode,
-            WASMCode: '// WASM code generation not implemented yet.',
+            WASMCode: wasmCode,
         };
     }
 }

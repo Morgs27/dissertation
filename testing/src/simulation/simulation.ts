@@ -46,11 +46,17 @@ export class Simulation {
             return;
         }
 
+        const inputs = {
+            width: this.Renderer.canvas.width,
+            height: this.Renderer.canvas.height,
+            ...inputValues
+        };
+
         if (
-            this.compilationResult?.requiredInputs.some(input => !(input in inputValues))
+            this.compilationResult?.requiredInputs.some(input => !(input in inputs))
         ) {
-            const missingInputs = this.compilationResult.requiredInputs.filter(input => !(input in inputValues));
-            
+            const missingInputs = this.compilationResult.requiredInputs.filter(input => !(input in inputs));
+
             const message = `Missing required input values: ${missingInputs.join(', ')}`;
             this.Logger.error(message);
             throw new Error(message);
@@ -59,13 +65,6 @@ export class Simulation {
         this.frameInProgress = true;
 
         this.Logger.info('Simulation running');
-
-        // Add default inputs
-        const inputs = {
-            width: this.Renderer.canvas.width,
-            height: this.Renderer.canvas.height,
-            ...inputValues
-        };
 
         try {
             const agentPositions = await this.ComputeEngine.runFrame(method, this.agents, inputs);
