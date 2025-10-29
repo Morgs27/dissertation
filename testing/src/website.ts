@@ -22,14 +22,14 @@ const main = () => {
         agentScript: AGENT_DSL
     });
 
-    const FPS = .5;
+    const FPS = 100;
 
     const run = setInterval(() => {
         const inputValues = {
             gravity: 9.8,
         };
 
-        void simulation.runFrame("WebGPU", inputValues, "cpu");
+        void simulation.runFrame("JavaScript", inputValues, "gpu");
     }, 1000 / FPS);
 
     document.addEventListener('keydown', (event) => {

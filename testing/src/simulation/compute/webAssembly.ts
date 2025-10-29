@@ -9,12 +9,9 @@ export class WebAssemblyCompute {
   constructor(wasmCode: string) {
     this.Logger = new Logger("WebAssemblyCompute");
     this.wasmCode = wasmCode;
-    this.Logger.info("WebAssembly module initialized with code:", wasmCode);
   }
 
   async compute(agents: Agent[], inputs: InputValues): Promise<Agent[]> {
-    this.Logger.info("Running computation using WebAssembly code.");
-
     // 1) WAT -> WASM
     const wabtModule = await wabt();
     const parsed = wabtModule.parseWat("dsl_module.wat", this.wasmCode);
@@ -66,7 +63,6 @@ export class WebAssemblyCompute {
       out[i] = { id: f32[o + 0], x: f32[o + 1], y: f32[o + 2] };
     }
 
-    this.Logger.info("Computation complete (batch).", { count: agents.length });
     return out;
   }
 }

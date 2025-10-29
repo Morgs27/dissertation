@@ -5,6 +5,8 @@ import { PerformanceMonitor } from "./performance";
 import { Renderer } from "./renderer";
 import type { SimulationConstructor, Method, InputValues, Agent, CompilationResult, RenderMode } from "./types";
 
+export const MAX_AGENTS = 10_000_000;
+
 export class Simulation {
     private readonly Renderer: Renderer;
     private readonly ComputeEngine: ComputeEngine;
@@ -16,8 +18,15 @@ export class Simulation {
     public agents: Agent[] = [];
     public compilationResult: CompilationResult | null = null;
 
-    constructor({canvas, options, agentScript}: SimulationConstructor) {
-        this.Logger = new Logger('Simulation');
+    constructor({ canvas, options, agentScript }: SimulationConstructor) {
+        this.Logger = new Logger('Simulation', 'blue');
+
+        if (options.agents > MAX_AGENTS) {
+            const message = `Number of agents exceeds maximum limit of ${MAX_AGENTS}.`;
+            this.Logger.error(message);
+            throw new Error(message);
+        }
+
         this.PerformanceMonitor = new PerformanceMonitor();
 
         this.Compiler = new Compiler();
@@ -37,10 +46,7 @@ export class Simulation {
     public async runFrame(method: Method, inputValues: InputValues, renderMode: RenderMode = "cpu") {
 
         if (this.frameInProgress) {
-            this.Logger.warn('Skipped frame because a previous frame is still processing.');
-            
             this.PerformanceMonitor.logMissingFrame();
-            
             return;
         }
 
@@ -62,25 +68,25 @@ export class Simulation {
 
         this.frameInProgress = true;
 
-        this.Logger.info(`Simulation running (${method}) with ${renderMode.toUpperCase()} render`);
+        this.Logger.log(`Simulation running (${method}) with ${renderMode.toUpperCase()} render`);
 
         try {
             const agentPositions = await this.ComputeEngine.runFrame(method, this.agents, inputs, renderMode);
 
             this.agents = agentPositions;
-            
+
             if (renderMode === "gpu") {
                 await this.Renderer.renderAgentsGPU(agentPositions, this.ComputeEngine.gpuRenderState);
-                
-            } else {                
+
+            } else {
                 this.Renderer.renderAgents(agentPositions);
             }
         } catch (error) {
 
             const message = error instanceof Error ? error.message : String(error);
-            
+
             this.Logger.error(`Failed to run simulation frame: ${message}`);
-       
+
         } finally {
             this.frameInProgress = false;
         }
