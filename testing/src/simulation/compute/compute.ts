@@ -87,6 +87,23 @@ export class ComputeEngine {
         return updatedAgents;
     }
 
+    async runOnWebGPUWithRendering(canvas: HTMLCanvasElement, agents: Agent[], inputs: InputValues): Promise<void> {
+        const totalStart = performance.now();
+
+        await this.WebGPU.computeAndRender(canvas, agents, inputs);
+
+        const totalEnd = performance.now();
+        const totalExecutionTime = totalEnd - totalStart;
+
+        this.PerformanceMonitor.logFrame({
+            method: "WebGPU (GPU Render)",
+            agentCount: agents.length,
+            agentPerformance: [],
+            totalExecutionTime,
+            frameTimestamp: Date.now(),
+        });
+    }
+
     private async runOnWebWorkers(agents: Agent[], inputs: InputValues): Promise<Agent[]> {
         const totalStart = performance.now();
 
