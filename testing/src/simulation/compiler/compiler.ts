@@ -1,4 +1,4 @@
-import Logger from "../logger";
+import Logger from "../helpers/logger";
 import type { CompilationResult } from "../types";
 import { compileDSLtoJS } from "./JScompiler";
 import { compileDSLtoWAT } from "./WATcompiler";

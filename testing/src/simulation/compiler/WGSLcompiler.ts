@@ -1,7 +1,7 @@
 import type { CommandMap } from "./compiler";
 import { AVAILABLE_COMMANDS_LIST } from "./compiler";
 
-export const WORKGROUP_SIZE = 32;
+export const WORKGROUP_SIZE = 64;
 
 const COMMANDS: CommandMap = {
     moveUp: 'agent.y -= {arg};',
@@ -48,9 +48,17 @@ export const compileDSLtoWGSL = (lines: string[], inputs: string[], logger: any)
     const mainBody = statements.length > 0 ? statements.join('\n    ') : '// no-op';
 
     const computeFn = `
-        @compute @workgroup_size(${WORKGROUP_SIZE})
-        fn main(@builtin(global_invocation_id) global_id : vec3<u32>) {
-            let i = global_id.x;
+        @compute @workgroup_size(${WORKGROUP_SIZE}, 1, 1)
+        fn main(
+            @builtin(global_invocation_id) global_id : vec3<u32>,
+            @builtin(workgroup_id) workgroup_id : vec3<u32>,
+            @builtin(local_invocation_id) local_id : vec3<u32>,
+            @builtin(num_workgroups) num_workgroups : vec3<u32>
+        ) {
+            let group_index = workgroup_id.x
+                + workgroup_id.y * num_workgroups.x
+                + workgroup_id.z * num_workgroups.x * num_workgroups.y;
+            let i = group_index * ${WORKGROUP_SIZE}u + local_id.x;
             if (i < arrayLength(&agents)) {
                 var agent = agents[i];
                 ${mainBody}

@@ -1,9 +1,9 @@
 import { Compiler } from "./compiler/compiler";
 import { ComputeEngine } from "./compute/compute";
-import Logger from "./logger";
+import Logger from "./helpers/logger";
 import { PerformanceMonitor } from "./performance";
 import { Renderer } from "./renderer";
-import type { SimulationConstructor, Method, InputValues, Agent, CompilationResult } from "./types";
+import type { SimulationConstructor, Method, InputValues, Agent, CompilationResult, RenderMode } from "./types";
 
 export class Simulation {
     private readonly Renderer: Renderer;
@@ -34,7 +34,7 @@ export class Simulation {
         }));
     }
 
-    public async runFrame(method: Method, inputValues: InputValues) {
+    public async runFrame(method: Method, inputValues: InputValues, renderMode: RenderMode = "cpu") {
 
         if (this.frameInProgress) {
             this.Logger.warn('Skipped frame because a previous frame is still processing.');
@@ -62,57 +62,25 @@ export class Simulation {
 
         this.frameInProgress = true;
 
-        this.Logger.info('Simulation running');
+        this.Logger.info(`Simulation running (${method}) with ${renderMode.toUpperCase()} render`);
 
         try {
-            const agentPositions = await this.ComputeEngine.runFrame(method, this.agents, inputs);
+            const agentPositions = await this.ComputeEngine.runFrame(method, this.agents, inputs, renderMode);
 
             this.agents = agentPositions;
             
-            this.Renderer.renderAgents(agentPositions);
-
+            if (renderMode === "gpu") {
+                await this.Renderer.renderAgentsGPU(agentPositions, this.ComputeEngine.gpuRenderState);
+                
+            } else {                
+                this.Renderer.renderAgents(agentPositions);
+            }
         } catch (error) {
 
             const message = error instanceof Error ? error.message : String(error);
             
             this.Logger.error(`Failed to run simulation frame: ${message}`);
        
-        } finally {
-            this.frameInProgress = false;
-        }
-    }
-
-    public async runFrameWithGPURender(inputValues: InputValues) {
-        if (this.frameInProgress) {
-            this.Logger.warn('Skipped frame because a previous frame is still processing.');
-            this.PerformanceMonitor.logMissingFrame();
-            return;
-        }
-
-        const inputs = {
-            width: this.Renderer.canvas.width,
-            height: this.Renderer.canvas.height,
-            ...inputValues
-        };
-
-        if (
-            this.compilationResult?.requiredInputs.some(input => !(input in inputs))
-        ) {
-            const missingInputs = this.compilationResult.requiredInputs.filter(input => !(input in inputs));
-
-            const message = `Missing required input values: ${missingInputs.join(', ')}`;
-            this.Logger.error(message);
-            throw new Error(message);
-        }
-
-        this.frameInProgress = true;
-        this.Logger.info('Simulation running on GPU (compute + render)');
-
-        try {
-            await this.ComputeEngine.runOnWebGPUWithRendering(this.Renderer.canvas, this.agents, inputs);
-        } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            this.Logger.error(`Failed to run GPU rendered simulation frame: ${message}`);
         } finally {
             this.frameInProgress = false;
         }

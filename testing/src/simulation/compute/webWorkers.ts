@@ -1,6 +1,6 @@
 import type { Agent, InputValues } from "../types";
 import type { AgentFunction } from "./compute";
-import Logger from "../logger";
+import Logger from "../helpers/logger";
 
 const WorkerScript = `
     self.onmessage = function(event) {

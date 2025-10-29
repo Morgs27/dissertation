@@ -1,0 +1,11 @@
+Phase 1
+[] Standardise some compiler code
+[x] Cleanup WebGPU code
+[] Track more metrics about each method
+[] Track rendering times
+
+Phase 2
+[] Pass/store agent positions from previous frame
+[] Implement boids with simple instructions
+[] Develop compilers to handle new instructions
+[] Graphs from performance on boids
