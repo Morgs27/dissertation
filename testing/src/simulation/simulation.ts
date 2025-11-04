@@ -1,5 +1,6 @@
 import { Compiler } from "./compiler/compiler";
 import { ComputeEngine } from "./compute/compute";
+import { Grapher } from "./helpers/grapher";
 import Logger from "./helpers/logger";
 import { PerformanceMonitor } from "./performance";
 import { Renderer } from "./renderer";
@@ -13,6 +14,7 @@ export class Simulation {
     private readonly PerformanceMonitor: PerformanceMonitor;
     private readonly Compiler: Compiler;
     private readonly Logger: Logger;
+    private readonly Grapher: Grapher;
 
     private frameInProgress = false;
     public agents: Agent[] = [];
@@ -34,6 +36,8 @@ export class Simulation {
         this.compilationResult = compilationResult;
 
         this.Renderer = new Renderer(canvas);
+        this.Grapher = new Grapher(canvas);
+
         this.ComputeEngine = new ComputeEngine(compilationResult, this.PerformanceMonitor);
 
         this.agents = Array.from({ length: options.agents }, (_, i) => ({
@@ -90,5 +94,9 @@ export class Simulation {
         } finally {
             this.frameInProgress = false;
         }
+    }
+
+    public renderFrameGraph() {
+        this.Grapher.render(this.PerformanceMonitor.frames);
     }
 }

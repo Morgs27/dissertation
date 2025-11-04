@@ -1,8 +1,11 @@
 Phase 1
+[x] Compile WASM code & run
 [] Standardise some compiler code
 [x] Cleanup WebGPU code
+[x] Organise logging
 [] Track more metrics about each method
 [] Track rendering times
+[] Web interface for running, code editing, logging & inputs
 
 Phase 2
 [] Pass/store agent positions from previous frame

@@ -1,42 +1,37 @@
 import Simulation from "./simulation";
 
-const main = () => {
-    const canvas = document.querySelector('#simulationCanvas');
+var simulationInterval: any = null;
 
-    if (!(canvas instanceof HTMLCanvasElement)) {
-        throw new Error('Canvas element not found');
-    }
+const options = {
+    agents: 100000
+};
 
-    const options = {
-        agents: 1000000
-    };
-
-    const AGENT_DSL = `
-       moveRight(4)
+const AGENT_DSL = `
        moveDown(inputs.gravity)
     `
 
-    const simulation = new Simulation({
-        canvas,
-        options,
-        agentScript: AGENT_DSL
-    });
+const FPS = 1;
 
-    const FPS = 100;
+const simulation = new Simulation({
+    canvas: document.querySelector('#simulationCanvas') as HTMLCanvasElement,
+    options,
+    agentScript: AGENT_DSL
+});
 
-    const run = setInterval(() => {
+document.getElementById('startButton')?.addEventListener('click', () => {
+    if (simulationInterval) return;
+
+    simulationInterval = setInterval(() => {
         const inputValues = {
             gravity: 9.8,
         };
 
-        void simulation.runFrame("JavaScript", inputValues, "gpu");
+        void simulation.runFrame("JavaScript", inputValues, "cpu");
     }, 1000 / FPS);
+});
 
-    document.addEventListener('keydown', (event) => {
-        if (event.code === 'Space') {
-            clearInterval(run);
-        }
-    });
-};
+document.getElementById('stopButton')?.addEventListener('click', () => {
+    clearInterval(simulationInterval!);
 
-document.addEventListener('DOMContentLoaded', main);
+    simulation.renderFrameGraph();
+});

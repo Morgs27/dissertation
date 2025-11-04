@@ -30,7 +30,7 @@ export class Renderer {
     private gpuAgentBuffer: GPUBuffer | null = null;
     private gpuAgentBufferSize = 0;
     private gpuPipelineDevice: GPUDevice | null = null;
-    
+
     private Logger: Logger;
 
     constructor(canvas: HTMLCanvasElement) {
