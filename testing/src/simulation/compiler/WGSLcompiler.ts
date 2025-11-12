@@ -1,5 +1,4 @@
-import type { CommandMap } from "./compiler";
-import { AVAILABLE_COMMANDS_LIST } from "./compiler";
+import { Compiler, type CommandMap } from "./compiler";
 
 export const WORKGROUP_SIZE = 64;
 
@@ -8,14 +7,25 @@ const COMMANDS: CommandMap = {
     moveDown: 'agent.y += {arg};',
     moveLeft: 'agent.x -= {arg};',
     moveRight: 'agent.x += {arg};',
+};
+
+/**
+ * Normalizes arguments for WGSL (ensures inputs.* references are preserved)
+ */
+function normalizeWGSLArgument(arg: string): string {
+    return arg.replace(/inputs\.([a-zA-Z_]\w*)/g, 'inputs.$1');
 }
 
 export const compileDSLtoWGSL = (lines: string[], inputs: string[], logger: any): string => {
     const statements: string[] = [];
 
     for (const line of lines) {
-        const s = parseLine(line);
-        if (s) statements.push(s);
+        const parsed = Compiler.parseCommandLine(line);
+        if (parsed) {
+            const normalizedArg = normalizeWGSLArgument(parsed.argument);
+            const statement = Compiler.applyCommandTemplate(COMMANDS[parsed.command], normalizedArg);
+            statements.push(statement);
+        }
     }
 
     if (statements.length === 0) {
@@ -71,20 +81,3 @@ export const compileDSLtoWGSL = (lines: string[], inputs: string[], logger: any)
 
     return wgslCode;
 };
-
-function parseLine(line: string): string | null {
-    // Only handle commands for now
-    if (!line.includes('(') || !line.includes(')')) return null;
-
-    const cmd = COMMANDS[AVAILABLE_COMMANDS_LIST.find(c => line.startsWith(c + '('))!];
-    if (!cmd) return null;
-
-    const argStart = line.indexOf('(') + 1;
-    const argEnd = line.indexOf(')');
-    const arg = line.substring(argStart, argEnd).trim();
-
-    const wgslArg = arg
-        .replace(/inputs\.([a-zA-Z_]\w*)/g, 'inputs.$1');
-
-    return cmd.replace('{arg}', wgslArg);
-}
