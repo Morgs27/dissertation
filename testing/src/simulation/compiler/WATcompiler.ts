@@ -1,11 +1,27 @@
 import type Logger from "../helpers/logger";
+import { Compiler, type AVAILABLE_COMMANDS } from "./compiler";
 
-const COMMANDS: Record<string, { target: "x" | "y"; op: "add" | "sub" }> = {
+const COMMANDS: Record<AVAILABLE_COMMANDS, { target: "x" | "y"; op: "add" | "sub" }> = {
   moveUp: { target: "y", op: "sub" },
   moveDown: { target: "y", op: "add" },
   moveLeft: { target: "x", op: "sub" },
   moveRight: { target: "x", op: "add" },
 };
+
+/**
+ * Normalizes expressions for WASM (converts to S-expressions)
+ */
+function normalizeWASMExpression(expr: string): string {
+  let r = expr.trim();
+
+  // Replace inputs.* with global references
+  r = r.replace(/inputs\.([a-zA-Z_]\w*)/g, "(global.get $inputs_$1)");
+
+  // Wrap numeric literals in f32.const
+  if (/^-?\d+(\.\d+)?$/.test(r)) return `(f32.const ${r})`;
+
+  return r;
+}
 
 export const compileDSLtoWAT = (
   lines: string[],
@@ -15,8 +31,15 @@ export const compileDSLtoWAT = (
   const statements: string[] = [];
 
   for (const line of lines) {
-    const s = parseLine(line);
-    if (s) statements.push(s);
+    const parsed = Compiler.parseCommandLine(line);
+    if (parsed) {
+      const { target, op } = COMMANDS[parsed.command];
+      const argExpr = normalizeWASMExpression(parsed.argument);
+      const opInstr = op === "add" ? "f32.add" : "f32.sub";
+      
+      const statement = `(local.set $${target} (${opInstr} (local.get $${target}) ${argExpr}))`;
+      statements.push(statement);
+    }
   }
 
   if (statements.length === 0) {
@@ -91,34 +114,3 @@ export const compileDSLtoWAT = (
 
   return wasm;
 };
-
-function parseLine(line: string): string | null {
-  if (!line.includes("(") || !line.includes(")")) return null;
-
-  const cmdKey = Object.keys(COMMANDS).find(c => line.startsWith(c + "("));
-  if (!cmdKey) return null;
-
-
-  const { target, op } = COMMANDS[cmdKey];
-
-  const argStart = line.indexOf("(") + 1;
-  const argEnd = line.indexOf(")");
-
-  const argRaw = line.substring(argStart, argEnd).trim();
-
-  const argExpr = normalizeExpression(argRaw);
-
-  const opInstr = op === "add" ? "f32.add" : "f32.sub";
-
-  return `(local.set $${target} (${opInstr} (local.get $${target}) ${argExpr}))`;
-}
-
-function normalizeExpression(expr: string): string {
-  let r = expr.trim();
-
-  r = r.replace(/inputs\.([a-zA-Z_]\w*)/g, "(global.get $inputs_$1)");
-
-  if (/^-?\d+(\.\d+)?$/.test(r)) return `(f32.const ${r})`;
-
-  return r;
-}
