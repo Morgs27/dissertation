@@ -3,8 +3,8 @@ Phase 1
 [] Standardise some compiler code
 [x] Cleanup WebGPU code
 [x] Organise logging
-[] Track more metrics about each method
-[] Track rendering times
+[] Create benchmarker & grapher
+[] Track rendering times & more individual components of each method
 [] Web interface for running, code editing, logging & inputs
 
 Phase 2
