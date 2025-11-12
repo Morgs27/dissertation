@@ -12,6 +12,8 @@ export class WebAssemblyCompute {
   }
 
   async compute(agents: Agent[], inputs: InputValues): Promise<Agent[]> {
+    this.Logger.log("Computing with WebAssembly");
+
     // 1) WAT -> WASM
     const wabtModule = await wabt();
     const parsed = wabtModule.parseWat("dsl_module.wat", this.wasmCode);

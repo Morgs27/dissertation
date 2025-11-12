@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "chart.js": "^4.5.1",
+    "chartjs-chart-error-bars": "^4.4.5",
     "cli-highlight": "^2.1.11",
     "prettier": "^3.6.2",
     "prettier-plugin-glsl": "^0.2.2",

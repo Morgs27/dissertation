@@ -99,4 +99,8 @@ export class Simulation {
     public renderFrameGraph() {
         this.Grapher.render(this.PerformanceMonitor.frames);
     }
+
+    public getPerformanceMonitor() {
+        return this.PerformanceMonitor;
+    }
 }

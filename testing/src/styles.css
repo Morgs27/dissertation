@@ -2,3 +2,9 @@ body{
     background: black;
     color: white;
 }
+
+label textarea{
+    width: 100%;
+    min-height: 4rem;
+    resize: vertical;
+}

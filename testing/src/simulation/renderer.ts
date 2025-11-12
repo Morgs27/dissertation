@@ -46,6 +46,7 @@ export class Renderer {
     }
 
     renderAgents(agents: Agent[]) {
+        this.Logger.log("Rendering agents with CPU");
         const ctx = this.ensureContext();
         ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.renderBackground();
