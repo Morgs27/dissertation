@@ -1,0 +1,507 @@
+Generated boids-style JavaScript function
+
+=== Generated JavaScript Code ===
+
+(agent, inputs) => {
+        // Destructure agent properties for direct access
+        let { id, x, y, vx, vy } = agent;
+        
+        // Get agents array
+        const agents = inputs.agents || [];
+        
+        // Helper function: calculate mean of an array or array property
+        const _mean = (arr, prop) => {
+            if (!Array.isArray(arr)) return 0;
+            if (arr.length === 0) return 0;
+            if (prop) {
+                // Extract property from each element
+                const values = arr.map(item => item[prop] || 0);
+                return values.reduce((sum, val) => sum + val, 0) / values.length;
+            }
+            return arr.reduce((sum, val) => sum + val, 0) / arr.length;
+        };
+        
+        // Helper function: find nearby neighbors
+        const _neighbors = (radius) => {
+            return agents.filter(a => {
+                if (a.id === id) return false;
+                const dx = x - a.x;
+                const dy = y - a.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                return dist < radius;
+            });
+        };
+        
+        // Execute DSL code
+        let nearbyAgents = _neighbors(inputs.perceptionRadius);
+        if (nearbyAgents.length > 0) {
+        let avgVx = _mean(nearbyAgents, 'vx');
+        let avgVy = _mean(nearbyAgents, 'vy');
+        vx = vx + (avgVx - vx) * inputs.alignmentFactor;
+        vy = vy + (avgVy - vy) * inputs.alignmentFactor;
+        }
+        if (nearbyAgents.length > 0) {
+        let avgX = _mean(nearbyAgents, 'x');
+        let avgY = _mean(nearbyAgents, 'y');
+        vx = vx + (avgX - x) * inputs.cohesionFactor;
+        vy = vy + (avgY - y) * inputs.cohesionFactor;
+        }
+        let separationX = 0;
+        let separationY = 0;
+        for (let i = 0; i < nearbyAgents.length; i++) {
+        let neighbor_x = nearbyAgents[i].x;
+        let neighbor_y = nearbyAgents[i].y;
+        let dx = x - neighbor_x;
+        let dy = y - neighbor_y;
+        let dist2 = dx*dx + dy*dy;
+        if (dist2 < inputs.separationDist**2 && dist2 > 0) {
+        separationX = separationX + dx / dist2;
+        separationY = separationY + dy / dist2;
+        vx = vx + separationX * inputs.separationFactor;
+        vy = vy + separationY * inputs.separationFactor;
+        }
+        }
+        const __speed2 = vx*vx + vy*vy; if (__speed2 > inputs.maxSpeed**2) { const __scale = Math.sqrt(inputs.maxSpeed**2 / __speed2); vx *= __scale; vy *= __scale; };
+        let _boundary_width = inputs.width;
+        let _boundary_height = inputs.height;
+        if (x < 0) x += inputs.width; if (x > inputs.width) x -= inputs.width; if (y < 0) y += inputs.height; if (y > inputs.height) y -= inputs.height;
+        x += vx * inputs.dt; y += vy * inputs.dt;
+        
+        // Return updated agent
+        return { id, x, y, vx, vy };
+    }
+
+=== Generated WGSL Code ===
+
+struct Agent {
+            id : f32,
+            x  : f32,
+            y  : f32,
+            vx : f32,
+            vy : f32,
+        };
+
+        @group(0) @binding(0) var<storage, read_write> agents : array<Agent>;
+
+struct Inputs {
+            perceptionRadius: f32,
+  alignmentFactor: f32,
+  cohesionFactor: f32,
+  separationDist: f32,
+  separationFactor: f32,
+  maxSpeed: f32,
+  width: f32,
+  height: f32,
+  dt: f32,
+        };
+
+        @group(0) @binding(1) var<uniform> inputs: Inputs;
+
+@compute @workgroup_size(64, 1, 1)
+        fn main(
+            @builtin(global_invocation_id) global_id : vec3<u32>,
+            @builtin(workgroup_id) workgroup_id : vec3<u32>,
+            @builtin(local_invocation_id) local_id : vec3<u32>,
+            @builtin(num_workgroups) num_workgroups : vec3<u32>
+        ) {
+            let group_index = workgroup_id.x
+                + workgroup_id.y * num_workgroups.x
+                + workgroup_id.z * num_workgroups.x * num_workgroups.y;
+            let i = group_index * 64u + local_id.x;
+            if (i < arrayLength(&agents)) {
+                var agent = agents[i];
+                let __speed2 = agent.vx*agent.vx + agent.vy*agent.vy; if (__speed2 > inputs.maxSpeed*inputs.maxSpeed) { let __scale = sqrt(inputs.maxSpeed*inputs.maxSpeed / __speed2); agent.vx *= __scale; agent.vy *= __scale; }
+    if (agent.x < 0) { agent.x += inputs.width; } if (agent.x > inputs.width) { agent.x -= inputs.width; } if (agent.y < 0) { agent.y += inputs.height; } if (agent.y > inputs.height) { agent.y -= inputs.height; }
+    agent.x += agent.vx * inputs.dt; agent.y += agent.vy * inputs.dt;
+                agents[i] = agent;
+            }
+        }
+
+=== Generated WASM Code ===
+
+(module
+    ;; Shared memory is provided by JS
+    (import "env" "memory" (memory 1))
+    (global $inputs_perceptionRadius (export "inputs_perceptionRadius") (mut f32) (f32.const 0))
+  (global $inputs_alignmentFactor (export "inputs_alignmentFactor") (mut f32) (f32.const 0))
+  (global $inputs_cohesionFactor (export "inputs_cohesionFactor") (mut f32) (f32.const 0))
+  (global $inputs_separationDist (export "inputs_separationDist") (mut f32) (f32.const 0))
+  (global $inputs_separationFactor (export "inputs_separationFactor") (mut f32) (f32.const 0))
+  (global $inputs_maxSpeed (export "inputs_maxSpeed") (mut f32) (f32.const 0))
+  (global $inputs_width (export "inputs_width") (mut f32) (f32.const 0))
+  (global $inputs_height (export "inputs_height") (mut f32) (f32.const 0))
+  (global $inputs_dt (export "inputs_dt") (mut f32) (f32.const 0))
+  (global $agent_count (export "agent_count") (mut i32) (i32.const 0))
+
+    ;; Optional single-agent step (for debugging)
+    (func (export "step") (param $ptr i32)
+      (local $x f32)
+      (local $y f32)
+      (local $vx f32)
+      (local $vy f32)
+      (local $nearbyAgents f32)
+      (local $nearbyAgents_count f32)
+      (local $nearbyAgents_sum_x f32)
+      (local $nearbyAgents_sum_y f32)
+      (local $nearbyAgents_sum_vx f32)
+      (local $nearbyAgents_sum_vy f32)
+      (local $_loop_idx i32)
+      (local $_loop_ptr i32)
+      (local $_other_x f32)
+      (local $_other_y f32)
+      (local $_dx f32)
+      (local $_dy f32)
+      (local $_dist f32)
+      (local $avgVx f32)
+      (local $avgVy f32)
+      (local $avgX f32)
+      (local $avgY f32)
+      (local $separationX f32)
+      (local $separationY f32)
+      (local $_for_idx i32)
+      (local $_for_ptr i32)
+      (local $_for_dx f32)
+      (local $_for_dy f32)
+      (local $_for_dist f32)
+      (local $neighbor_x f32)
+      (local $neighbor_y f32)
+      (local $dx f32)
+      (local $dy f32)
+      (local $dist2 f32)
+      (local $__speed2 f32)
+      (local $__scale f32)
+      (local $_boundary_width f32)
+      (local $_boundary_height f32)
+      (local $_agent_id f32)
+      ;; load agent fields: id(0), x(+4), y(+8), vx(+12), vy(+16)
+    (local.set $_agent_id (f32.load (i32.add (local.get $ptr) (i32.const 0))))
+    (local.set $x (f32.load (i32.add (local.get $ptr) (i32.const 4))))
+    (local.set $y (f32.load (i32.add (local.get $ptr) (i32.const 8))))
+    (local.set $vx (f32.load (i32.add (local.get $ptr) (i32.const 12))))
+    (local.set $vy (f32.load (i32.add (local.get $ptr) (i32.const 16))))
+
+    ;; execute DSL
+    
+    ;; Find neighbors within radius
+    (local.set $nearbyAgents_count (f32.const 0))
+    (local.set $nearbyAgents_sum_x (f32.const 0))
+    (local.set $nearbyAgents_sum_y (f32.const 0))
+    (local.set $nearbyAgents_sum_vx (f32.const 0))
+    (local.set $nearbyAgents_sum_vy (f32.const 0))
+    (local.set $_loop_idx (i32.const 0))
+    (local.set $_loop_ptr (i32.const 0))
+    (block $_neighbor_exit
+      (loop $_neighbor_loop
+        (br_if $_neighbor_exit (i32.ge_u (local.get $_loop_idx) (global.get $agent_count)))
+        
+        ;; Skip self
+        (if (i32.ne (local.get $_loop_idx) (i32.trunc_f32_u (local.get $_agent_id))) (then
+          ;; Load other agent's position
+          (local.set $_other_x (f32.load (i32.add (local.get $_loop_ptr) (i32.const 4))))
+          (local.set $_other_y (f32.load (i32.add (local.get $_loop_ptr) (i32.const 8))))
+          
+          ;; Calculate distance
+          (local.set $_dx (f32.sub (local.get $x) (local.get $_other_x)))
+          (local.set $_dy (f32.sub (local.get $y) (local.get $_other_y)))
+          (local.set $_dist (f32.sqrt (f32.add (f32.mul (local.get $_dx) (local.get $_dx)) (f32.mul (local.get $_dy) (local.get $_dy)))))
+          
+          ;; If within radius, accumulate
+          (if (f32.lt (local.get $_dist) (global.get $inputs_perceptionRadius)) (then
+            (local.set $nearbyAgents_count (f32.add (local.get $nearbyAgents_count) (f32.const 1)))
+            (local.set $nearbyAgents_sum_x (f32.add (local.get $nearbyAgents_sum_x) (local.get $_other_x)))
+            (local.set $nearbyAgents_sum_y (f32.add (local.get $nearbyAgents_sum_y) (local.get $_other_y)))
+            (local.set $nearbyAgents_sum_vx (f32.add (local.get $nearbyAgents_sum_vx) (f32.load (i32.add (local.get $_loop_ptr) (i32.const 12)))))
+            (local.set $nearbyAgents_sum_vy (f32.add (local.get $nearbyAgents_sum_vy) (f32.load (i32.add (local.get $_loop_ptr) (i32.const 16)))))
+          ))
+        ))
+        
+        ;; Increment loop
+        (local.set $_loop_idx (i32.add (local.get $_loop_idx) (i32.const 1)))
+        (local.set $_loop_ptr (i32.add (local.get $_loop_ptr) (i32.const 20)))
+        (br $_neighbor_loop)
+      )
+    )
+    (if (f32.gt (local.get $nearbyAgents_count) (f32.const 0)) (then
+    (local.set $avgVx (f32.div (local.get $nearbyAgents_sum_vx) (local.get $nearbyAgents_count)))
+    (local.set $avgVy (f32.div (local.get $nearbyAgents_sum_vy) (local.get $nearbyAgents_count)))
+    (local.set $vx (f32.add (local.get $vx) (f32.mul (f32.sub (local.get $avgVx) (local.get $vx)) (global.get $inputs_alignmentFactor))))
+    (local.set $vy (f32.add (local.get $vy) (f32.mul (f32.sub (local.get $avgVy) (local.get $vy)) (global.get $inputs_alignmentFactor))))
+    ))
+    (if (f32.gt (local.get $nearbyAgents_count) (f32.const 0)) (then
+    (local.set $avgX (f32.div (local.get $nearbyAgents_sum_x) (local.get $nearbyAgents_count)))
+    (local.set $avgY (f32.div (local.get $nearbyAgents_sum_y) (local.get $nearbyAgents_count)))
+    (local.set $vx (f32.add (local.get $vx) (f32.mul (f32.sub (local.get $avgX) (local.get $x)) (global.get $inputs_cohesionFactor))))
+    (local.set $vy (f32.add (local.get $vy) (f32.mul (f32.sub (local.get $avgY) (local.get $y)) (global.get $inputs_cohesionFactor))))
+    ))
+    (local.set $separationX (f32.const 0))
+    (local.set $separationY (f32.const 0))
+    
+    ;; For loop over nearbyAgents
+    (local.set $_for_idx (i32.const 0))
+    (local.set $_for_ptr (i32.const 0))
+    (block $_for_exit
+      (loop $_for_loop
+        (br_if $_for_exit (i32.ge_u (local.get $_for_idx) (global.get $agent_count)))
+        
+        ;; Skip self
+        (if (i32.ne (local.get $_for_idx) (i32.trunc_f32_u (local.get $_agent_id))) (then
+          ;; Calculate distance to check if nearby
+          (local.set $_for_dx (f32.sub (local.get $x) (f32.load (i32.add (local.get $_for_ptr) (i32.const 4)))))
+          (local.set $_for_dy (f32.sub (local.get $y) (f32.load (i32.add (local.get $_for_ptr) (i32.const 8)))))
+          (local.set $_for_dist (f32.sqrt (f32.add (f32.mul (local.get $_for_dx) (local.get $_for_dx)) (f32.mul (local.get $_for_dy) (local.get $_for_dy)))))
+          
+          ;; Only process if within perception radius
+          (if (f32.lt (local.get $_for_dist) (global.get $inputs_perceptionRadius)) (then
+            ;; This is a nearby agent - execute loop body
+    (local.set $neighbor_x (f32.load (i32.add (local.get $_for_ptr) (i32.const 4))))
+    (local.set $neighbor_y (f32.load (i32.add (local.get $_for_ptr) (i32.const 8))))
+    (local.set $dx (f32.sub (local.get $x) (local.get $neighbor_x)))
+    (local.set $dy (f32.sub (local.get $y) (local.get $neighbor_y)))
+    (local.set $dist2 (f32.add (f32.mul (local.get $dx) (local.get $dx)) (f32.mul (local.get $dy) (local.get $dy))))
+    (if (i32.and (f32.lt (local.get $dist2) (f32.mul (global.get $inputs_separationDist) (global.get $inputs_separationDist))) (f32.gt (local.get $dist2) (f32.const 0))) (then
+    (local.set $separationX (f32.add (local.get $separationX) (f32.div (local.get $dx) (local.get $dist2))))
+    (local.set $separationY (f32.add (local.get $separationY) (f32.div (local.get $dy) (local.get $dist2))))
+    (local.set $vx (f32.add (local.get $vx) (f32.mul (local.get $separationX) (global.get $inputs_separationFactor))))
+    (local.set $vy (f32.add (local.get $vy) (f32.mul (local.get $separationY) (global.get $inputs_separationFactor))))
+    ))
+              ))
+        ))
+        
+        ;; Increment for loop
+        (local.set $_for_idx (i32.add (local.get $_for_idx) (i32.const 1)))
+        (local.set $_for_ptr (i32.add (local.get $_for_ptr) (i32.const 20)))
+        (br $_for_loop)
+      )
+    )
+    (local.set $__speed2 (f32.add (f32.mul (local.get $vx) (local.get $vx)) (f32.mul (local.get $vy) (local.get $vy))))
+    (if (f32.gt (local.get $__speed2) (f32.mul (global.get $inputs_maxSpeed) (global.get $inputs_maxSpeed))) (then
+      (local.set $__scale (f32.sqrt (f32.div (f32.mul (global.get $inputs_maxSpeed) (global.get $inputs_maxSpeed)) (local.get $__speed2))))
+      (local.set $vx (f32.mul (local.get $vx) (local.get $__scale)))
+      (local.set $vy (f32.mul (local.get $vy) (local.get $__scale)))
+    ))
+    (local.set $_boundary_width (global.get $inputs_width))
+    (local.set $_boundary_height (global.get $inputs_height))
+    (if (f32.lt (local.get $x) (f32.const 0)) (then
+      (local.set $x (f32.add (local.get $x) (global.get $inputs_width)))
+    ))
+    (if (f32.gt (local.get $x) (global.get $inputs_width)) (then
+      (local.set $x (f32.sub (local.get $x) (global.get $inputs_width)))
+    ))
+    (if (f32.lt (local.get $y) (f32.const 0)) (then
+      (local.set $y (f32.add (local.get $y) (global.get $inputs_height)))
+    ))
+    (if (f32.gt (local.get $y) (global.get $inputs_height)) (then
+      (local.set $y (f32.sub (local.get $y) (global.get $inputs_height)))
+    ))
+    (local.set $x (f32.add (local.get $x) (f32.mul (local.get $vx) (global.get $inputs_dt))))
+    (local.set $y (f32.add (local.get $y) (f32.mul (local.get $vy) (global.get $inputs_dt))))
+
+    ;; store back
+    (f32.store (i32.add (local.get $ptr) (i32.const 4)) (local.get $x))
+    (f32.store (i32.add (local.get $ptr) (i32.const 8)) (local.get $y))
+    (f32.store (i32.add (local.get $ptr) (i32.const 12)) (local.get $vx))
+    (f32.store (i32.add (local.get $ptr) (i32.const 16)) (local.get $vy))
+    )
+
+    ;; Batch version
+    (func (export "step_all") (param $base i32) (param $count i32)
+      (local $i i32)
+      (local $ptr i32)
+      (local $x f32)
+      (local $y f32)
+      (local $vx f32)
+      (local $vy f32)
+      (local $nearbyAgents f32)
+      (local $nearbyAgents_count f32)
+      (local $nearbyAgents_sum_x f32)
+      (local $nearbyAgents_sum_y f32)
+      (local $nearbyAgents_sum_vx f32)
+      (local $nearbyAgents_sum_vy f32)
+      (local $_loop_idx i32)
+      (local $_loop_ptr i32)
+      (local $_other_x f32)
+      (local $_other_y f32)
+      (local $_dx f32)
+      (local $_dy f32)
+      (local $_dist f32)
+      (local $avgVx f32)
+      (local $avgVy f32)
+      (local $avgX f32)
+      (local $avgY f32)
+      (local $separationX f32)
+      (local $separationY f32)
+      (local $_for_idx i32)
+      (local $_for_ptr i32)
+      (local $_for_dx f32)
+      (local $_for_dy f32)
+      (local $_for_dist f32)
+      (local $neighbor_x f32)
+      (local $neighbor_y f32)
+      (local $dx f32)
+      (local $dy f32)
+      (local $dist2 f32)
+      (local $__speed2 f32)
+      (local $__scale f32)
+      (local $_boundary_width f32)
+      (local $_boundary_height f32)
+      (local $_agent_id f32)
+
+      (local.set $i (i32.const 0))
+      (local.set $ptr (local.get $base))
+
+      (block $exit
+        (loop $loop
+          (br_if $exit (i32.ge_u (local.get $i) (local.get $count)))
+
+          ;; ---- per-agent kernel ----
+          ;; load agent fields: id(0), x(+4), y(+8), vx(+12), vy(+16)
+    (local.set $_agent_id (f32.load (i32.add (local.get $ptr) (i32.const 0))))
+    (local.set $x (f32.load (i32.add (local.get $ptr) (i32.const 4))))
+    (local.set $y (f32.load (i32.add (local.get $ptr) (i32.const 8))))
+    (local.set $vx (f32.load (i32.add (local.get $ptr) (i32.const 12))))
+    (local.set $vy (f32.load (i32.add (local.get $ptr) (i32.const 16))))
+
+    ;; execute DSL
+    
+    ;; Find neighbors within radius
+    (local.set $nearbyAgents_count (f32.const 0))
+    (local.set $nearbyAgents_sum_x (f32.const 0))
+    (local.set $nearbyAgents_sum_y (f32.const 0))
+    (local.set $nearbyAgents_sum_vx (f32.const 0))
+    (local.set $nearbyAgents_sum_vy (f32.const 0))
+    (local.set $_loop_idx (i32.const 0))
+    (local.set $_loop_ptr (i32.const 0))
+    (block $_neighbor_exit
+      (loop $_neighbor_loop
+        (br_if $_neighbor_exit (i32.ge_u (local.get $_loop_idx) (global.get $agent_count)))
+        
+        ;; Skip self
+        (if (i32.ne (local.get $_loop_idx) (i32.trunc_f32_u (local.get $_agent_id))) (then
+          ;; Load other agent's position
+          (local.set $_other_x (f32.load (i32.add (local.get $_loop_ptr) (i32.const 4))))
+          (local.set $_other_y (f32.load (i32.add (local.get $_loop_ptr) (i32.const 8))))
+          
+          ;; Calculate distance
+          (local.set $_dx (f32.sub (local.get $x) (local.get $_other_x)))
+          (local.set $_dy (f32.sub (local.get $y) (local.get $_other_y)))
+          (local.set $_dist (f32.sqrt (f32.add (f32.mul (local.get $_dx) (local.get $_dx)) (f32.mul (local.get $_dy) (local.get $_dy)))))
+          
+          ;; If within radius, accumulate
+          (if (f32.lt (local.get $_dist) (global.get $inputs_perceptionRadius)) (then
+            (local.set $nearbyAgents_count (f32.add (local.get $nearbyAgents_count) (f32.const 1)))
+            (local.set $nearbyAgents_sum_x (f32.add (local.get $nearbyAgents_sum_x) (local.get $_other_x)))
+            (local.set $nearbyAgents_sum_y (f32.add (local.get $nearbyAgents_sum_y) (local.get $_other_y)))
+            (local.set $nearbyAgents_sum_vx (f32.add (local.get $nearbyAgents_sum_vx) (f32.load (i32.add (local.get $_loop_ptr) (i32.const 12)))))
+            (local.set $nearbyAgents_sum_vy (f32.add (local.get $nearbyAgents_sum_vy) (f32.load (i32.add (local.get $_loop_ptr) (i32.const 16)))))
+          ))
+        ))
+        
+        ;; Increment loop
+        (local.set $_loop_idx (i32.add (local.get $_loop_idx) (i32.const 1)))
+        (local.set $_loop_ptr (i32.add (local.get $_loop_ptr) (i32.const 20)))
+        (br $_neighbor_loop)
+      )
+    )
+    (if (f32.gt (local.get $nearbyAgents_count) (f32.const 0)) (then
+    (local.set $avgVx (f32.div (local.get $nearbyAgents_sum_vx) (local.get $nearbyAgents_count)))
+    (local.set $avgVy (f32.div (local.get $nearbyAgents_sum_vy) (local.get $nearbyAgents_count)))
+    (local.set $vx (f32.add (local.get $vx) (f32.mul (f32.sub (local.get $avgVx) (local.get $vx)) (global.get $inputs_alignmentFactor))))
+    (local.set $vy (f32.add (local.get $vy) (f32.mul (f32.sub (local.get $avgVy) (local.get $vy)) (global.get $inputs_alignmentFactor))))
+    ))
+    (if (f32.gt (local.get $nearbyAgents_count) (f32.const 0)) (then
+    (local.set $avgX (f32.div (local.get $nearbyAgents_sum_x) (local.get $nearbyAgents_count)))
+    (local.set $avgY (f32.div (local.get $nearbyAgents_sum_y) (local.get $nearbyAgents_count)))
+    (local.set $vx (f32.add (local.get $vx) (f32.mul (f32.sub (local.get $avgX) (local.get $x)) (global.get $inputs_cohesionFactor))))
+    (local.set $vy (f32.add (local.get $vy) (f32.mul (f32.sub (local.get $avgY) (local.get $y)) (global.get $inputs_cohesionFactor))))
+    ))
+    (local.set $separationX (f32.const 0))
+    (local.set $separationY (f32.const 0))
+    
+    ;; For loop over nearbyAgents
+    (local.set $_for_idx (i32.const 0))
+    (local.set $_for_ptr (i32.const 0))
+    (block $_for_exit
+      (loop $_for_loop
+        (br_if $_for_exit (i32.ge_u (local.get $_for_idx) (global.get $agent_count)))
+        
+        ;; Skip self
+        (if (i32.ne (local.get $_for_idx) (i32.trunc_f32_u (local.get $_agent_id))) (then
+          ;; Calculate distance to check if nearby
+          (local.set $_for_dx (f32.sub (local.get $x) (f32.load (i32.add (local.get $_for_ptr) (i32.const 4)))))
+          (local.set $_for_dy (f32.sub (local.get $y) (f32.load (i32.add (local.get $_for_ptr) (i32.const 8)))))
+          (local.set $_for_dist (f32.sqrt (f32.add (f32.mul (local.get $_for_dx) (local.get $_for_dx)) (f32.mul (local.get $_for_dy) (local.get $_for_dy)))))
+          
+          ;; Only process if within perception radius
+          (if (f32.lt (local.get $_for_dist) (global.get $inputs_perceptionRadius)) (then
+            ;; This is a nearby agent - execute loop body
+    (local.set $neighbor_x (f32.load (i32.add (local.get $_for_ptr) (i32.const 4))))
+    (local.set $neighbor_y (f32.load (i32.add (local.get $_for_ptr) (i32.const 8))))
+    (local.set $dx (f32.sub (local.get $x) (local.get $neighbor_x)))
+    (local.set $dy (f32.sub (local.get $y) (local.get $neighbor_y)))
+    (local.set $dist2 (f32.add (f32.mul (local.get $dx) (local.get $dx)) (f32.mul (local.get $dy) (local.get $dy))))
+    (if (i32.and (f32.lt (local.get $dist2) (f32.mul (global.get $inputs_separationDist) (global.get $inputs_separationDist))) (f32.gt (local.get $dist2) (f32.const 0))) (then
+    (local.set $separationX (f32.add (local.get $separationX) (f32.div (local.get $dx) (local.get $dist2))))
+    (local.set $separationY (f32.add (local.get $separationY) (f32.div (local.get $dy) (local.get $dist2))))
+    (local.set $vx (f32.add (local.get $vx) (f32.mul (local.get $separationX) (global.get $inputs_separationFactor))))
+    (local.set $vy (f32.add (local.get $vy) (f32.mul (local.get $separationY) (global.get $inputs_separationFactor))))
+    ))
+              ))
+        ))
+        
+        ;; Increment for loop
+        (local.set $_for_idx (i32.add (local.get $_for_idx) (i32.const 1)))
+        (local.set $_for_ptr (i32.add (local.get $_for_ptr) (i32.const 20)))
+        (br $_for_loop)
+      )
+    )
+    (local.set $__speed2 (f32.add (f32.mul (local.get $vx) (local.get $vx)) (f32.mul (local.get $vy) (local.get $vy))))
+    (if (f32.gt (local.get $__speed2) (f32.mul (global.get $inputs_maxSpeed) (global.get $inputs_maxSpeed))) (then
+      (local.set $__scale (f32.sqrt (f32.div (f32.mul (global.get $inputs_maxSpeed) (global.get $inputs_maxSpeed)) (local.get $__speed2))))
+      (local.set $vx (f32.mul (local.get $vx) (local.get $__scale)))
+      (local.set $vy (f32.mul (local.get $vy) (local.get $__scale)))
+    ))
+    (local.set $_boundary_width (global.get $inputs_width))
+    (local.set $_boundary_height (global.get $inputs_height))
+    (if (f32.lt (local.get $x) (f32.const 0)) (then
+      (local.set $x (f32.add (local.get $x) (global.get $inputs_width)))
+    ))
+    (if (f32.gt (local.get $x) (global.get $inputs_width)) (then
+      (local.set $x (f32.sub (local.get $x) (global.get $inputs_width)))
+    ))
+    (if (f32.lt (local.get $y) (f32.const 0)) (then
+      (local.set $y (f32.add (local.get $y) (global.get $inputs_height)))
+    ))
+    (if (f32.gt (local.get $y) (global.get $inputs_height)) (then
+      (local.set $y (f32.sub (local.get $y) (global.get $inputs_height)))
+    ))
+    (local.set $x (f32.add (local.get $x) (f32.mul (local.get $vx) (global.get $inputs_dt))))
+    (local.set $y (f32.add (local.get $y) (f32.mul (local.get $vy) (global.get $inputs_dt))))
+
+    ;; store back
+    (f32.store (i32.add (local.get $ptr) (i32.const 4)) (local.get $x))
+    (f32.store (i32.add (local.get $ptr) (i32.const 8)) (local.get $y))
+    (f32.store (i32.add (local.get $ptr) (i32.const 12)) (local.get $vx))
+    (f32.store (i32.add (local.get $ptr) (i32.const 16)) (local.get $vy))
+
+          ;; increment i and ptr (20 bytes per agent: 5 floats * 4 bytes)
+          (local.set $i   (i32.add (local.get $i) (i32.const 1)))
+          (local.set $ptr (i32.add (local.get $ptr) (i32.const 20)))
+
+          (br $loop)
+        )
+      )
+    )
+  )
+
+=== Required Inputs ===
+[
+  'perceptionRadius',
+  'alignmentFactor',
+  'cohesionFactor',
+  'separationDist',
+  'separationFactor',
+  'maxSpeed',
+  'width',
+  'height',
+  'dt'
+]

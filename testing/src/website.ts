@@ -3,6 +3,8 @@ import { Grapher, type BenchmarkResult } from "./simulation/helpers/grapher";
 import type { Method, RenderMode } from "./simulation/types";
 
 var simulationInterval: any = null;
+import { boidsDSL } from "../boids.ts";
+
 type MethodOption = {
     id: string;
     label: string;
@@ -12,36 +14,64 @@ type MethodOption = {
 let benchmarkCancelled = false;
 
 const options = {
-    agents: 100000
+    agents: 1000  // Reduced for boids simulation performance
 };
 
-const AGENT_DSL = `
-       moveDown(inputs.gravity)
-    `
+const AGENT_DSL = boidsDSL;
 
-const FPS = 1;
+// const AGENT_DSL = `
+//     vy += inputs.alignmentFactor;
+//     updatePosition(inputs.dt);
+
+//     var loop_count = inputs.agentCount;
+//     for (var i = 0; i < loop_count; i++) {
+        
+//     } 
+
+//     var _boundary_width = inputs.width;
+//     var _boundary_height = inputs.height;
+//     borderWrapping();
+// `
+
+const FPS = 100;
 
 const simulation = new Simulation({
     canvas: document.querySelector('#simulationCanvas') as HTMLCanvasElement,
+    gpuCanvas: document.querySelector('#gpuCanvas') as HTMLCanvasElement | null,
     options,
-    agentScript: AGENT_DSL
+    agentScript: AGENT_DSL as any
 });
+
+const PERCEPTION_RADIUS = 40;
+const ALIGNMENT_FACTOR = 0.01;
+const COHESION_FACTOR = 0.001;
+const SEPARATION_FACTOR = 0.06;
+const SEPARATION_DIST = 40;
+const MAX_SPEED = 1;
+const DT = 1;
+
+const inputValues = {
+    perceptionRadius: PERCEPTION_RADIUS,
+    alignmentFactor: ALIGNMENT_FACTOR,
+    cohesionFactor: COHESION_FACTOR,
+    separationFactor: SEPARATION_FACTOR,
+    separationDist: SEPARATION_DIST,
+    maxSpeed: MAX_SPEED,
+    dt: DT,
+    agentCount: options.agents,
+};
 
 const startSimulation = (method: Method, renderMode: RenderMode) => {
     if (simulationInterval) return;
 
     simulationInterval = setInterval(() => {
-        const inputValues = {
-            gravity: 9.8,
-        };
-
         void simulation.runFrame(method, inputValues, renderMode);
     }, 1000 / FPS);
 };
 
 // Simple simulation controls
 document.getElementById('startButton')?.addEventListener('click', () => {
-    startSimulation("JavaScript", "cpu");
+    startSimulation("WebGPU", "gpu");
 });
 
 document.getElementById('startWebGPUButton')?.addEventListener('click', () => {
@@ -187,13 +217,14 @@ async function runBenchmark() {
                 // Create a new simulation for this test
                 const testSimulation = new Simulation({
                     canvas: benchmarkCanvas,
+                    gpuCanvas: benchmarkCanvas,
                     options: { agents: agentCount },
-                    agentScript: AGENT_DSL
+                    agentScript: AGENT_DSL as any
                 });
 
                 // Warmup run
                 if (warmupRun) {
-                    await testSimulation.runFrame(method, { gravity: 9.8 }, renderMode);
+                    await testSimulation.runFrame(method, inputValues, renderMode);
                     await sleep(100);
                 }
 
@@ -202,7 +233,7 @@ async function runBenchmark() {
 
                 // Run test frames
                 for (let i = 0; i < framesPerTest; i++) {
-                    await testSimulation.runFrame(method, { gravity: 9.8 }, renderMode);
+                    await testSimulation.runFrame(method, inputValues, renderMode);
                     await sleep(50); // Small delay between frames
                 }
 
@@ -274,3 +305,7 @@ document.getElementById('cancelBenchmark')?.addEventListener('click', () => {
     benchmarkCancelled = true;
     updateBenchmarkStatus('Cancelling benchmark...', 'running');
 });
+function readFileSync(arg0: string, arg1: string) {
+    throw new Error("Function not implemented.");
+}
+
