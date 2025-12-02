@@ -1,0 +1,40 @@
+{
+  "name": "websimbench",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@chakra-ui/react": "^2.8.2",
+    "@emotion/react": "^11.11.1",
+    "@emotion/styled": "^11.11.0",
+    "@types/node": "^24.10.1",
+    "@types/prismjs": "^1.26.5",
+    "chart.js": "^4.5.1",
+    "chartjs-chart-error-bars": "^4.4.5",
+    "framer-motion": "^10.16.4",
+    "html2canvas": "^1.4.1",
+    "prettier": "^3.7.3",
+    "prettier-plugin-glsl": "^0.2.2",
+    "prismjs": "^1.29.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-icons": "^4.11.0",
+    "react-resizable-panels": "^3.0.6",
+    "react-simple-code-editor": "^0.13.1",
+    "wabt": "^1.0.39"
+  },
+  "devDependencies": {
+    "@types/html2canvas": "^0.5.35",
+    "@types/react": "^18.2.37",
+    "@types/react-dom": "^18.2.15",
+    "@vitejs/plugin-react": "^4.2.0",
+    "@webgpu/types": "^0.1.66",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.0"
+  }
+}

@@ -24,6 +24,8 @@ With the following features:
 
 The idea is the following layout:
 
+Top nav bar with website name - no extra functionallity for now.
+
 - Left side: code editor - with tabs bannor at the top for 'Sim Code', 'WASM', 'Javascript' - anything other than sim code are read only
 - Logs + Errors pannel resizable beneath the code editor
 
