@@ -1,0 +1,139 @@
+import { Compiler } from "./compiler/compiler";
+import { ComputeEngine } from "./compute/compute";
+import { Grapher } from "./helpers/grapher";
+import Logger from "./helpers/logger";
+import { PerformanceMonitor } from "./performance";
+import { Renderer } from "./renderer";
+import type { SimulationConstructor, Method, InputValues, Agent, CompilationResult, RenderMode } from "./types";
+import GPU from "./helpers/gpu";
+export const MAX_AGENTS = 10_000_000;
+
+export class Simulation {
+    private readonly Renderer: Renderer;
+    private readonly ComputeEngine: ComputeEngine;
+    private readonly PerformanceMonitor: PerformanceMonitor;
+    private readonly Compiler: Compiler;
+    private readonly Logger: Logger;
+    private readonly Grapher: Grapher;
+
+    private frameInProgress = false;
+    public agents: Agent[] = [];
+    public compilationResult: CompilationResult | null = null;
+
+    constructor({ canvas, gpuCanvas, options, agentScript, appearance }: SimulationConstructor) {
+        this.Logger = new Logger('Simulation', 'blue');
+
+        if (options.agents > MAX_AGENTS) {
+            const message = `Number of agents exceeds maximum limit of ${MAX_AGENTS}.`;
+            this.Logger.error(message);
+            throw new Error(message);
+        }
+
+        this.PerformanceMonitor = new PerformanceMonitor();
+
+        this.Compiler = new Compiler();
+        const compilationResult = this.Compiler.compileAgentCode(agentScript);
+        this.compilationResult = compilationResult;
+
+        this.Renderer = new Renderer(canvas, gpuCanvas, appearance);
+        this.Grapher = new Grapher(canvas);
+
+        this.ComputeEngine = new ComputeEngine(compilationResult, this.PerformanceMonitor, options.agents, options.workers);
+
+        this.agents = Array.from({ length: options.agents }, (_, i) => ({
+            id: i,
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            vx: (Math.random() - 0.5) * 2, // Random velocity between -1 and 1
+            vy: (Math.random() - 0.5) * 2
+        }));
+    }
+
+    public async initGPU() {
+        const gpuHelper = new GPU("SimulationGPU");
+        const gpuDevice = await gpuHelper.getDevice() as GPUDevice;
+
+        this.Renderer.initGPU(gpuDevice);
+        this.ComputeEngine.initGPU(gpuDevice);
+    }
+
+    public destroy() {
+        // Stop any running loops or listeners if any
+        // Currently Simulation doesn't hold its own loop, but if it did, we'd stop it here.
+        // We can also release references to help GC
+        this.agents = [];
+        // If we had specific GPU resource destroy methods, we'd call them here.
+        // Note: We don't destroy the shared GPU device as it's a singleton.
+    }
+
+    public async runFrame(method: Method, inputValues: InputValues, renderMode: RenderMode = "cpu") {
+
+        if (this.frameInProgress) {
+            this.PerformanceMonitor.logMissingFrame();
+            return;
+        }
+
+        const inputs = {
+            width: this.Renderer.canvas.width,
+            height: this.Renderer.canvas.height,
+            agents: this.agents,
+            ...inputValues
+        };
+
+        if (
+            this.compilationResult?.requiredInputs.some(input => !(input in inputs))
+        ) {
+            const missingInputs = this.compilationResult.requiredInputs.filter(input => !(input in inputs));
+
+            const message = `Missing required input values: ${missingInputs.join(', ')}`;
+            this.Logger.error(message);
+            throw new Error(message);
+        }
+
+        this.frameInProgress = true;
+
+        this.Logger.log(`Simulation running (${method}) with ${renderMode.toUpperCase()} render`);
+
+        try {
+            const agentPositions = await this.ComputeEngine.runFrame(method, this.agents, inputs, renderMode);
+
+            // console.log(agentPositions);
+            this.agents = agentPositions;
+
+            // Track render time separately
+            const renderStart = performance.now();
+            if (renderMode === "gpu") {
+                await this.Renderer.renderAgentsGPU(agentPositions, this.ComputeEngine.gpuRenderState);
+            } else {
+                this.Renderer.renderAgents(agentPositions);
+            }
+            const renderEnd = performance.now();
+            const renderTime = renderEnd - renderStart;
+
+            // Update the last frame's performance data to include render time
+            const frames = this.PerformanceMonitor.frames;
+            if (frames.length > 0) {
+                const lastFrame = frames[frames.length - 1];
+                lastFrame.renderTime = renderTime;
+                // Update total execution time to include render
+                lastFrame.totalExecutionTime += renderTime;
+            }
+        } catch (error) {
+
+            const message = error instanceof Error ? error.message : String(error);
+
+            this.Logger.error(`Failed to run simulation frame: ${message}`);
+
+        } finally {
+            this.frameInProgress = false;
+        }
+    }
+
+    public renderFrameGraph() {
+        this.Grapher.render(this.PerformanceMonitor.frames);
+    }
+
+    public getPerformanceMonitor() {
+        return this.PerformanceMonitor;
+    }
+}
