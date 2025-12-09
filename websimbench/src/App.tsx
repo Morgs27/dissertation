@@ -4,6 +4,7 @@ import { Navbar } from './components/Layout/Navbar';
 import { EditorPanel } from './components/Editor/EditorPanel';
 import { LogsPanel } from './components/Editor/LogsPanel';
 import { PlaygroundView } from './components/Playground/PlaygroundView';
+import { CompareView } from './components/CompareView';
 import { BenchmarkView } from './components/BenchmarkView';
 import { ReportsView } from './components/ReportsView';
 import { OptionsView } from './components/OptionsView';
@@ -111,6 +112,7 @@ function App() {
               <Tabs variant="enclosed" colorScheme="teal" h="100%" display="flex" flexDirection="column">
                 <TabList bg="rgba(0,0,0,0.2)" px={4} pt={2}>
                   <Tab>Playground</Tab>
+                  <Tab>Compare</Tab>
                   <Tab>Benchmark</Tab>
                   <Tab>Reports</Tab>
                   <Tab>Options</Tab>
@@ -132,6 +134,14 @@ function App() {
                       inputs={inputs}
                       definedInputs={definedInputs}
                       handleInputChange={handleInputChange}
+                    />
+                  </TabPanel>
+
+                  {/* Compare Panel */}
+                  <TabPanel h="100%" p={0}>
+                    <CompareView
+                      code={code}
+                      definedInputs={definedInputs}
                     />
                   </TabPanel>
 

@@ -8,7 +8,7 @@ import { SIMULATIONS } from '../simulations';
 import GPU from '../../src/simulation/helpers/gpu';
 
 // Test configuration
-const NUM_FRAMES = 5;
+const NUM_FRAMES = 10;  // Increased from 5 for more thorough testing
 const NUM_AGENTS = 100;
 const WIDTH = 800;
 const HEIGHT = 600;
@@ -16,13 +16,13 @@ const HEIGHT = 600;
 // Methods to test
 const METHODS: Method[] = ['JavaScript', 'WebAssembly', 'WebWorkers', 'WebGPU'];
 
-
+// Lowered tolerances to verify exact parity where possible
 const TOLERANCES: Record<Method, number> = {
     'JavaScript': 0,
     'WebGL': 0,
-    'WebWorkers': 0,
-    'WebAssembly': 4.0,
-    'WebGPU': 4.0
+    'WebWorkers': 0,        // Should be exact parity with delta-based merge
+    'WebAssembly': 1.5,     // Float32 precision drift accumulates over frames
+    'WebGPU': 1.5           // Float32 precision drift accumulates over frames
 };
 
 // Create a seeded random number generator for reproducible tests
@@ -214,8 +214,14 @@ describe('Compute Cross-Method Comparison', () => {
                             frame: number;
                             maxPosDiff: number;
                             avgPosDiff: number;
+                            minPosDiff: number;
                             passed: boolean;
                         }[];
+                        overall: {
+                            avgError: number;
+                            maxError: number;
+                            minError: number;
+                        };
                     }>;
                 } = {
                     simulation: simulationName,
@@ -224,12 +230,27 @@ describe('Compute Cross-Method Comparison', () => {
                     comparisons: []
                 };
 
+                // Header for detailed report
+                console.log('\n' + '='.repeat(80));
+                console.log(`PARITY REPORT: ${simulationName.toUpperCase()}`);
+                console.log(`Agents: ${NUM_AGENTS} | Frames: ${NUM_FRAMES}`);
+                console.log('='.repeat(80));
+
                 // Compare each method against JavaScript
                 for (const [method, result] of results) {
                     if (method === 'JavaScript' || !result.available) continue;
 
                     const tolerance = TOLERANCES[method];
                     const frameComparisons: typeof comparisonReport.comparisons[0]['vsJavaScript'] = [];
+
+                    let totalAvgError = 0;
+                    let overallMaxError = 0;
+                    let overallMinError = Infinity;
+
+                    console.log(`\n${method} vs JavaScript (tolerance: ${tolerance})`);
+                    console.log('-'.repeat(60));
+                    console.log('Frame | Avg Error  | Max Error  | Min Error  | Status');
+                    console.log('-'.repeat(60));
 
                     for (let frame = 0; frame < NUM_FRAMES; frame++) {
                         const jsAgents = jsResult!.frames[frame];
@@ -240,20 +261,35 @@ describe('Compute Cross-Method Comparison', () => {
 
                         const comparison = compareAgents(jsAgents, methodAgents);
 
+                        // Calculate min position diff for agents that have any diff
+                        const agentsWithDiff = comparison.agentDiffs.filter(d => d.posDiff > 0);
+                        const minPosDiff = agentsWithDiff.length > 0
+                            ? Math.min(...agentsWithDiff.map(d => d.posDiff))
+                            : 0;
+
                         frameComparisons.push({
                             frame,
                             maxPosDiff: comparison.maxPosDiff,
                             avgPosDiff: comparison.avgPosDiff,
+                            minPosDiff,
                             passed: comparison.maxPosDiff <= tolerance
                         });
 
-                        // Log differences for debugging
-                        if (comparison.maxPosDiff > tolerance) {
-                            console.error(
-                                `[${simulationName}] Frame ${frame}: ${method} vs JavaScript - ` +
-                                `maxPosDiff=${comparison.maxPosDiff.toFixed(6)} (tolerance=${tolerance})`
-                            );
+                        // Track overall stats
+                        totalAvgError += comparison.avgPosDiff;
+                        overallMaxError = Math.max(overallMaxError, comparison.maxPosDiff);
+                        if (comparison.maxPosDiff > 0) {
+                            overallMinError = Math.min(overallMinError, minPosDiff > 0 ? minPosDiff : Infinity);
                         }
+
+                        const status = comparison.maxPosDiff <= tolerance ? '✓ PASS' : '✗ FAIL';
+                        console.log(
+                            `${String(frame).padStart(5)} | ` +
+                            `${comparison.avgPosDiff.toFixed(6).padStart(10)} | ` +
+                            `${comparison.maxPosDiff.toFixed(6).padStart(10)} | ` +
+                            `${minPosDiff.toFixed(6).padStart(10)} | ` +
+                            status
+                        );
 
                         // Assert positions match within tolerance
                         expect(
@@ -262,16 +298,43 @@ describe('Compute Cross-Method Comparison', () => {
                         ).toBeLessThanOrEqual(tolerance);
                     }
 
+                    const avgError = totalAvgError / NUM_FRAMES;
+                    if (overallMinError === Infinity) overallMinError = 0;
+
+                    console.log('-'.repeat(60));
+                    console.log(
+                        `OVERALL | ` +
+                        `${avgError.toFixed(6).padStart(10)} | ` +
+                        `${overallMaxError.toFixed(6).padStart(10)} | ` +
+                        `${overallMinError.toFixed(6).padStart(10)} | ` +
+                        (overallMaxError <= tolerance ? '✓ PASS' : '✗ FAIL')
+                    );
+
                     comparisonReport.comparisons.push({
                         method,
-                        vsJavaScript: frameComparisons
+                        vsJavaScript: frameComparisons,
+                        overall: {
+                            avgError,
+                            maxError: overallMaxError,
+                            minError: overallMinError
+                        }
                     });
+                }
 
+                console.log('\n' + '='.repeat(80));
+                console.log('SUMMARY');
+                console.log('='.repeat(80));
+                for (const comp of comparisonReport.comparisons) {
+                    const tolerance = TOLERANCES[comp.method as Method];
+                    const status = comp.overall.maxError <= tolerance ? '✓' : '✗';
                     console.log(
-                        `[${simulationName}] ${method} vs JavaScript: ` +
-                        `all ${NUM_FRAMES} frames match (tolerance=${tolerance})`
+                        `${status} ${comp.method}: ` +
+                        `avg=${comp.overall.avgError.toFixed(6)}, ` +
+                        `max=${comp.overall.maxError.toFixed(6)}, ` +
+                        `tolerance=${tolerance}`
                     );
                 }
+                console.log('='.repeat(80) + '\n');
 
                 // Write comparison report
                 const reportPath = `tests/compute/outputs/${simulationName}/comparison_report.json`;

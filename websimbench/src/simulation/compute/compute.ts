@@ -21,6 +21,11 @@ export class ComputeEngine {
 
     private compileTimes: Record<string, number | undefined> = {};
 
+    // Double-buffer for trail map parity across all compute methods
+    private trailMapRead: Float32Array | null = null;
+    private trailMapWrite: Float32Array | null = null;
+    private trailMapSeeded: boolean = false;
+
     constructor(compilationResult: CompilationResult, performanceMonitor: PerformanceMonitor, agentCount: number, workerCount?: number) {
         this.compilationResult = compilationResult;
         this.PerformanceMonitor = performanceMonitor;
@@ -32,6 +37,78 @@ export class ComputeEngine {
         this.Logger = new Logger('ComputeEngine', 'purple');
 
         console.log("ComputeEngine initialized");
+    }
+
+    /**
+     * Ensure double-buffer trail maps are allocated for the given dimensions
+     */
+    private ensureTrailMapBuffers(width: number, height: number): void {
+        const size = width * height;
+        if (!this.trailMapRead || this.trailMapRead.length !== size) {
+            this.trailMapRead = new Float32Array(size);
+            this.trailMapWrite = new Float32Array(size);
+            this.trailMapSeeded = false;
+        }
+    }
+
+    /**
+     * Apply diffuse and decay to trail map (blur + decay)
+     * This creates consistent post-processing across all compute methods
+     */
+    private applyDiffuseDecay(width: number, height: number, decayFactor: number): void {
+        if (!this.trailMapRead || !this.trailMapWrite) return;
+
+        // First, add deposits from write buffer to read buffer
+        for (let i = 0; i < this.trailMapRead.length; i++) {
+            this.trailMapRead[i] += this.trailMapWrite[i];
+        }
+
+        // Clear write buffer for next frame
+        this.trailMapWrite.fill(0);
+
+        // Apply blur (3x3 kernel) and decay
+        const temp = new Float32Array(this.trailMapRead.length);
+
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                let sum = 0;
+                let count = 0;
+
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        let nx = x + dx;
+                        let ny = y + dy;
+
+                        // Wrap around
+                        if (nx < 0) nx += width;
+                        if (nx >= width) nx -= width;
+                        if (ny < 0) ny += height;
+                        if (ny >= height) ny -= height;
+
+                        sum += this.trailMapRead[ny * width + nx];
+                        count++;
+                    }
+                }
+
+                const idx = y * width + x;
+                const blurred = sum / count;
+                const current = this.trailMapRead[idx];
+                const diffused = current * 0.1 + blurred * 0.9;
+                temp[idx] = diffused * (1.0 - decayFactor);
+            }
+        }
+
+        // Copy result back to read buffer
+        this.trailMapRead.set(temp);
+    }
+
+    /**
+     * Swap buffers and sync with external trailMap if provided
+     */
+    private syncTrailMapToExternal(externalTrailMap: Float32Array): void {
+        if (this.trailMapRead) {
+            externalTrailMap.set(this.trailMapRead);
+        }
     }
 
     private _WebWorkers: WebWorkers | undefined;
@@ -96,16 +173,52 @@ export class ComputeEngine {
     async runFrame(method: Method, agents: Agent[], inputValues: InputValues, renderMode: RenderMode): Promise<Agent[]> {
         this.Logger.log(`Running Compute:`, method);
 
+        // Setup double-buffered trail maps if trailMap exists
+        const hasTrailMap = inputValues.trailMap !== undefined;
+        const width = (inputValues.width as number) || 0;
+        const height = (inputValues.height as number) || 0;
+        const decayFactor = (inputValues.decayFactor as number) || 0.05;
+
+        if (hasTrailMap && width > 0 && height > 0) {
+            this.ensureTrailMapBuffers(width, height);
+
+            // Seed buffers on first frame
+            if (!this.trailMapSeeded && inputValues.trailMap) {
+                this.trailMapRead!.set(inputValues.trailMap as Float32Array);
+                this.trailMapWrite!.fill(0);
+                this.trailMapSeeded = true;
+            }
+
+            // Provide separate read/write buffers to compute methods
+            inputValues.trailMapRead = this.trailMapRead!;
+            inputValues.trailMapWrite = this.trailMapWrite!;
+        }
+
+        let result: Agent[];
+
         switch (method) {
             case "WebWorkers":
-                return this.runOnWebWorkers(agents, inputValues);
+                result = await this.runOnWebWorkers(agents, inputValues);
+                break;
             case "WebGPU":
-                return this.runOnWebGPU(agents, inputValues, renderMode);
+                result = await this.runOnWebGPU(agents, inputValues, renderMode);
+                break;
             case "WebAssembly":
-                return this.runOnWASM(agents, inputValues);
+                result = await this.runOnWASM(agents, inputValues);
+                break;
             default:
-                return this.runOnMainThread(agents, inputValues);
+                result = await this.runOnMainThread(agents, inputValues);
+                break;
         }
+
+        // Apply diffuse/decay and sync back to external trailMap
+        // (Skip for WebGPU which handles this on GPU)
+        if (hasTrailMap && method !== "WebGPU" && inputValues.trailMap) {
+            this.applyDiffuseDecay(width, height, decayFactor);
+            this.syncTrailMapToExternal(inputValues.trailMap as Float32Array);
+        }
+
+        return result;
     }
 
     private async runOnWASM(agents: Agent[], inputs: InputValues): Promise<Agent[]> {
@@ -166,10 +279,15 @@ export class ComputeEngine {
     private async runOnWebWorkers(agents: Agent[], inputs: InputValues): Promise<Agent[]> {
         const instance = this.WebWorkersInstance;
 
-        const { agents: updatedAgents, trailMap, performance: workerPerf } = await instance.compute(agents, inputs);
+        const { agents: updatedAgents, trailMap: depositDeltas, performance: workerPerf } = await instance.compute(agents, inputs);
 
-        if (trailMap && inputs.trailMap) {
-            (inputs.trailMap as Float32Array).set(trailMap);
+        // Write worker deposits to the write buffer (not the original trailMap)
+        // The deposits will be merged with the read buffer in applyDiffuseDecay
+        if (depositDeltas && inputs.trailMapWrite) {
+            const writeBuffer = inputs.trailMapWrite as Float32Array;
+            for (let i = 0; i < depositDeltas.length; i++) {
+                writeBuffer[i] += depositDeltas[i];
+            }
         }
 
         // totalExecutionTime excludes setup (serializationTime is setup/overhead)

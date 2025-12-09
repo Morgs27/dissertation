@@ -82,16 +82,27 @@ export class WebAssemblyCompute {
     const writeStart = performance.now();
 
     // Ensure memory size and view
-    // Agents: agentCount * 20 bytes
-    // TrailMap: width * height * 4 bytes if present
-    const agentsEnd = this.agentCount * bytesPerAgent;
-    let trailMapPtr = 0;
+    // Memory layout:
+    // - AgentsWrite: agentCount * 20 bytes (base ptr, where updates are written)
+    // - AgentsRead: agentCount * 20 bytes (snapshot for neighbor queries)
+    // - TrailMapRead: width * height * 4 bytes if present (for sensing)
+    // - TrailMapWrite: width * height * 4 bytes if present (for deposits)
+    // - RandomValues: agentCount * 4 bytes if present
+    const agentsWriteEnd = this.agentCount * bytesPerAgent;
+    const agentsReadPtr = agentsWriteEnd;
+    const agentsReadEnd = agentsReadPtr + this.agentCount * bytesPerAgent;
+
+    let trailMapReadPtr = 0;
+    let trailMapWritePtr = 0;
     let trailMapSize = 0;
 
-    if (inputs.trailMap && inputs.width && inputs.height) {
-      trailMapPtr = agentsEnd;
-      // Align to 4 bytes (it is already)
-      trailMapSize = ((inputs.width as number) * (inputs.height as number)) * 4;
+    const width = inputs.width as number || 0;
+    const height = inputs.height as number || 0;
+
+    if (inputs.trailMapRead && width > 0 && height > 0) {
+      trailMapSize = width * height * 4;
+      trailMapReadPtr = agentsReadEnd;
+      trailMapWritePtr = agentsReadEnd + trailMapSize;
     }
 
     let randomValuesSize = 0;
@@ -99,7 +110,8 @@ export class WebAssemblyCompute {
       randomValuesSize = this.agentCount * 4;
     }
 
-    const totalBytesNeeded = agentsEnd + trailMapSize + randomValuesSize;
+    // Total memory: agentsWrite + agentsRead + trailMapRead + trailMapWrite + randomValues
+    const totalBytesNeeded = agentsReadEnd + (trailMapSize * 2) + randomValuesSize;
     const currentBytes = this.memory!.buffer.byteLength;
 
     if (totalBytesNeeded > currentBytes) {
@@ -116,7 +128,7 @@ export class WebAssemblyCompute {
 
     const f32 = this.f32!;
 
-    // Write agents into memory
+    // Write agents into memory (write buffer at base ptr)
     for (let i = 0; i < agents.length; i++) {
       const o = baseF32 + i * f32PerAgent;
       const a = agents[i];
@@ -127,24 +139,48 @@ export class WebAssemblyCompute {
       f32[o + 4] = a.vy;
     }
 
-    // Write trailMap if present
-    if (inputs.trailMap && trailMapPtr > 0) {
-      const src = inputs.trailMap as Float32Array;
-      // Copy to f32 view
-      // trailMapPtr is byte offset, f32 index is / 4
-      f32.set(src, trailMapPtr >>> 2);
-
-      // Update trailMapPtr global
-      if (this.exports.trailMapPtr) {
-        this.exports.trailMapPtr.value = trailMapPtr;
-      }
-      if (this.exports.trailMapPtr) {
-        this.exports.trailMapPtr.value = trailMapPtr;
-      }
-      // console.log('WASM TrailMap Ptr:', trailMapPtr, 'Size:', trailMapSize);
+    // Copy agents to read buffer (snapshot for neighbor queries)
+    const agentsReadF32Offset = agentsReadPtr >>> 2;
+    for (let i = 0; i < agents.length; i++) {
+      const srcOffset = baseF32 + i * f32PerAgent;
+      const dstOffset = agentsReadF32Offset + i * f32PerAgent;
+      f32[dstOffset] = f32[srcOffset];       // id
+      f32[dstOffset + 1] = f32[srcOffset + 1]; // x
+      f32[dstOffset + 2] = f32[srcOffset + 2]; // y
+      f32[dstOffset + 3] = f32[srcOffset + 3]; // vx
+      f32[dstOffset + 4] = f32[srcOffset + 4]; // vy
     }
 
-    // console.log('WASM Inputs:', Object.keys(inputs));
+    // Set agentsReadPtr global
+    if (this.exports.agentsReadPtr) {
+      this.exports.agentsReadPtr.value = agentsReadPtr;
+    }
+
+    // Write trailMapRead (for sensing - previous frame state)
+    if (inputs.trailMapRead && trailMapReadPtr > 0) {
+      const src = inputs.trailMapRead as Float32Array;
+      f32.set(src, trailMapReadPtr >>> 2);
+
+      // Update trailMapReadPtr global
+      if (this.exports.trailMapReadPtr) {
+        this.exports.trailMapReadPtr.value = trailMapReadPtr;
+      }
+    }
+
+    // Clear and setup trailMapWrite (for deposits - starts at zero)
+    if (inputs.trailMapWrite && trailMapWritePtr > 0) {
+      const writeBuffer = inputs.trailMapWrite as Float32Array;
+      // Clear the write region in WASM memory
+      const writeStart = trailMapWritePtr >>> 2;
+      for (let i = 0; i < writeBuffer.length; i++) {
+        f32[writeStart + i] = 0;
+      }
+
+      // Update trailMapWritePtr global
+      if (this.exports.trailMapWritePtr) {
+        this.exports.trailMapWritePtr.value = trailMapWritePtr;
+      }
+    }
 
     // Update input globals
     for (const [key, value] of Object.entries(inputs)) {
@@ -156,14 +192,10 @@ export class WebAssemblyCompute {
     // Write randomValues if present
     let randomValuesPtr = 0;
     if (inputs.randomValues) {
-      // Calculate offset after trailMap
-      randomValuesPtr = agentsEnd;
-      if (trailMapSize > 0) {
-        randomValuesPtr += trailMapSize;
-      }
+      // Calculate offset after all buffers (agentsRead + trailMaps)
+      randomValuesPtr = agentsReadEnd + (trailMapSize * 2);
 
       const src = inputs.randomValues as Float32Array;
-      // Copy to f32 view
       f32.set(src, randomValuesPtr >>> 2);
 
       // Update randomValuesPtr global
@@ -199,10 +231,10 @@ export class WebAssemblyCompute {
       };
     });
 
-    // Read back trailMap if needed (assuming changes)
-    if (inputs.trailMap && trailMapPtr > 0) {
-      const dest = inputs.trailMap as Float32Array;
-      const srcSub = f32.subarray((trailMapPtr >>> 2), (trailMapPtr >>> 2) + dest.length);
+    // Read back deposits from trailMapWrite (WASM wrote deposits here)
+    if (inputs.trailMapWrite && trailMapWritePtr > 0) {
+      const dest = inputs.trailMapWrite as Float32Array;
+      const srcSub = f32.subarray((trailMapWritePtr >>> 2), (trailMapWritePtr >>> 2) + dest.length);
       dest.set(srcSub);
     }
 
