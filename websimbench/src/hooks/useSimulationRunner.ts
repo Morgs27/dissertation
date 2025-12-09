@@ -46,7 +46,9 @@ export function useSimulationRunner(code: string, inputs: Record<string, number>
         agentColor: options.agentColor,
         backgroundColor: options.backgroundColor,
         agentSize: options.agentSize,
-        agentShape: options.agentShape
+        agentShape: options.agentShape,
+        showTrails: options.showTrails,
+        trailColor: options.trailColor
       };
 
       simulationRef.current = new Simulation({

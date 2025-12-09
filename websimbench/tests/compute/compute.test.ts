@@ -1,0 +1,282 @@
+import { describe, it, expect, beforeAll } from 'vitest';
+import { server } from 'vitest/browser';
+import { Compiler } from '../../src/simulation/compiler/compiler';
+import { ComputeEngine } from '../../src/simulation/compute/compute';
+import { PerformanceMonitor } from '../../src/simulation/performance';
+import type { Agent, Method, InputValues, CompilationResult } from '../../src/simulation/types';
+import { SIMULATIONS } from '../simulations';
+import GPU from '../../src/simulation/helpers/gpu';
+
+// Test configuration
+const NUM_FRAMES = 5;
+const NUM_AGENTS = 100;
+const WIDTH = 800;
+const HEIGHT = 600;
+
+// Methods to test
+const METHODS: Method[] = ['JavaScript', 'WebAssembly', 'WebWorkers', 'WebGPU'];
+
+
+const TOLERANCES: Record<Method, number> = {
+    'JavaScript': 0,
+    'WebGL': 0,
+    'WebWorkers': 0,
+    'WebAssembly': 4.0,
+    'WebGPU': 4.0
+};
+
+// Create a seeded random number generator for reproducible tests
+function seededRandom(seed: number) {
+    return function () {
+        seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+        return seed / 0x7fffffff;
+    };
+}
+
+// Generate deterministic initial agents
+function generateAgents(count: number, width: number, height: number, seed: number = 42): Agent[] {
+    const random = seededRandom(seed);
+    return Array.from({ length: count }, (_, i) => ({
+        id: i,
+        x: random() * width,
+        y: random() * height,
+        vx: (random() - 0.5) * 2,
+        vy: (random() - 0.5) * 2
+    }));
+}
+
+// Deep clone agents to avoid mutation issues
+function cloneAgents(agents: Agent[]): Agent[] {
+    return agents.map(a => ({ ...a }));
+}
+
+// Get default input values for a simulation
+function getDefaultInputs(
+    compilationResult: CompilationResult,
+    width: number,
+    height: number,
+    agents: Agent[],
+    seed: number = 42
+): InputValues {
+    const inputs: InputValues = {
+        width,
+        height,
+        agents,
+        trailMap: new Float32Array(width * height)
+    };
+
+    // Add default values from defined inputs
+    for (const input of compilationResult.definedInputs) {
+        inputs[input.name] = input.defaultValue;
+    }
+
+    // Add randomValues if required
+    if (compilationResult.requiredInputs.includes('randomValues')) {
+        const rng = seededRandom(seed);
+        const randomValues = new Float32Array(agents.length);
+        for (let i = 0; i < agents.length; i++) {
+            randomValues[i] = rng();
+        }
+        inputs['randomValues'] = randomValues;
+    }
+
+    return inputs;
+}
+
+// Compare two agent arrays and compute differences
+function compareAgents(agents1: Agent[], agents2: Agent[]): {
+    maxPosDiff: number;
+    avgPosDiff: number;
+    maxVelDiff: number;
+    agentDiffs: Array<{ id: number; posDiff: number; velDiff: number }>;
+} {
+    let maxPosDiff = 0;
+    let maxVelDiff = 0;
+    let totalPosDiff = 0;
+    const agentDiffs: Array<{ id: number; posDiff: number; velDiff: number }> = [];
+
+    for (let i = 0; i < agents1.length; i++) {
+        const xDiff = Math.abs(agents1[i].x - agents2[i].x);
+        const yDiff = Math.abs(agents1[i].y - agents2[i].y);
+        const vxDiff = Math.abs(agents1[i].vx - agents2[i].vx);
+        const vyDiff = Math.abs(agents1[i].vy - agents2[i].vy);
+
+        const posDiff = Math.sqrt(xDiff * xDiff + yDiff * yDiff);
+        const velDiff = Math.sqrt(vxDiff * vxDiff + vyDiff * vyDiff);
+
+        maxPosDiff = Math.max(maxPosDiff, posDiff);
+        maxVelDiff = Math.max(maxVelDiff, velDiff);
+        totalPosDiff += posDiff;
+
+        if (posDiff > 0 || velDiff > 0) {
+            agentDiffs.push({ id: agents1[i].id, posDiff, velDiff });
+        }
+    }
+
+    return {
+        maxPosDiff,
+        avgPosDiff: totalPosDiff / agents1.length,
+        maxVelDiff,
+        agentDiffs
+    };
+}
+
+// Helper to write file using Vitest server commands
+async function writeOutputFile(relativePath: string, content: string) {
+    try {
+        await server.commands.writeFile(relativePath, content);
+    } catch (error) {
+        console.error(`Failed to write file ${relativePath}:`, error);
+    }
+}
+
+interface MethodResult {
+    method: Method;
+    frames: Agent[][];
+    available: boolean;
+}
+
+describe('Compute Cross-Method Comparison', () => {
+    for (const [simulationName, sourceCode] of Object.entries(SIMULATIONS)) {
+        describe(`${simulationName} simulation`, () => {
+            let compilationResult: CompilationResult;
+            let initialAgents: Agent[];
+            let gpuDevice: any | null = null;
+
+            beforeAll(async () => {
+                // Compile the simulation
+                const compiler = new Compiler();
+                compilationResult = compiler.compileAgentCode(sourceCode);
+                initialAgents = generateAgents(NUM_AGENTS, WIDTH, HEIGHT);
+
+                // Try to initialize GPU
+                try {
+                    const gpuHelper = new GPU('ComputeTest');
+                    gpuDevice = await gpuHelper.getDevice();
+                } catch (e) {
+                    console.warn('WebGPU not available:', e);
+                }
+            });
+
+            it('should produce matching results across all compute methods', async () => {
+                const results: Map<Method, MethodResult> = new Map();
+
+                // Run each method
+                for (const method of METHODS) {
+                    // Skip WebGPU if not available
+                    if (method === 'WebGPU' && !gpuDevice) {
+                        console.warn(`Skipping ${method} - GPU device not available`);
+                        results.set(method, { method, frames: [], available: false });
+                        continue;
+                    }
+
+                    const performanceMonitor = new PerformanceMonitor();
+                    const computeEngine = new ComputeEngine(
+                        compilationResult,
+                        performanceMonitor,
+                        NUM_AGENTS,
+                        4
+                    );
+
+                    // Initialize GPU for WebGPU method
+                    if (method === 'WebGPU' && gpuDevice) {
+                        computeEngine.initGPU(gpuDevice);
+                    }
+
+                    // Start with fresh clone of initial agents
+                    let agents = cloneAgents(initialAgents);
+                    const trailMap = new Float32Array(WIDTH * HEIGHT);
+                    const frames: Agent[][] = [];
+
+                    // Run frames
+                    for (let frame = 0; frame < NUM_FRAMES; frame++) {
+                        const inputs = getDefaultInputs(compilationResult, WIDTH, HEIGHT, agents, frame);
+                        inputs.trailMap = trailMap;
+
+                        agents = await computeEngine.runFrame(method, agents, inputs, 'cpu');
+                        frames.push(cloneAgents(agents));
+                    }
+
+                    results.set(method, { method, frames, available: true });
+                }
+
+                // Use JavaScript as the reference for comparison
+                const jsResult = results.get('JavaScript');
+                expect(jsResult?.available).toBe(true);
+
+                const comparisonReport: {
+                    simulation: string;
+                    numFrames: number;
+                    numAgents: number;
+                    comparisons: Array<{
+                        method: string;
+                        vsJavaScript: {
+                            frame: number;
+                            maxPosDiff: number;
+                            avgPosDiff: number;
+                            passed: boolean;
+                        }[];
+                    }>;
+                } = {
+                    simulation: simulationName,
+                    numFrames: NUM_FRAMES,
+                    numAgents: NUM_AGENTS,
+                    comparisons: []
+                };
+
+                // Compare each method against JavaScript
+                for (const [method, result] of results) {
+                    if (method === 'JavaScript' || !result.available) continue;
+
+                    const tolerance = TOLERANCES[method];
+                    const frameComparisons: typeof comparisonReport.comparisons[0]['vsJavaScript'] = [];
+
+                    for (let frame = 0; frame < NUM_FRAMES; frame++) {
+                        const jsAgents = jsResult!.frames[frame];
+                        const methodAgents = result.frames[frame];
+
+                        // Verify agent count matches
+                        expect(methodAgents.length).toBe(jsAgents.length);
+
+                        const comparison = compareAgents(jsAgents, methodAgents);
+
+                        frameComparisons.push({
+                            frame,
+                            maxPosDiff: comparison.maxPosDiff,
+                            avgPosDiff: comparison.avgPosDiff,
+                            passed: comparison.maxPosDiff <= tolerance
+                        });
+
+                        // Log differences for debugging
+                        if (comparison.maxPosDiff > tolerance) {
+                            console.error(
+                                `[${simulationName}] Frame ${frame}: ${method} vs JavaScript - ` +
+                                `maxPosDiff=${comparison.maxPosDiff.toFixed(6)} (tolerance=${tolerance})`
+                            );
+                        }
+
+                        // Assert positions match within tolerance
+                        expect(
+                            comparison.maxPosDiff,
+                            `${method} frame ${frame} position difference exceeds tolerance`
+                        ).toBeLessThanOrEqual(tolerance);
+                    }
+
+                    comparisonReport.comparisons.push({
+                        method,
+                        vsJavaScript: frameComparisons
+                    });
+
+                    console.log(
+                        `[${simulationName}] ${method} vs JavaScript: ` +
+                        `all ${NUM_FRAMES} frames match (tolerance=${tolerance})`
+                    );
+                }
+
+                // Write comparison report
+                const reportPath = `tests/compute/outputs/${simulationName}/comparison_report.json`;
+                await writeOutputFile(reportPath, JSON.stringify(comparisonReport, null, 2));
+            });
+        });
+    }
+});

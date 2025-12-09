@@ -26,9 +26,9 @@ const baseF32 = basePtr >>> 2;
 export type WASMComputeResult = {
   agents: Agent[];
   performance: {
-      writeTime: number;
-      computeTime: number;
-      readTime: number;
+    writeTime: number;
+    computeTime: number;
+    readTime: number;
   }
 }
 
@@ -59,8 +59,17 @@ export class WebAssemblyCompute {
     this.Logger.log("Initializing WebAssembly memory with", initialPages, "pages");
 
     this.memory = new WebAssembly.Memory({ initial: initialPages });
-    
-    const instance = new WebAssembly.Instance(wasmModule, { env: { memory: this.memory } });
+
+    const instance = new WebAssembly.Instance(wasmModule, {
+      env: {
+        memory: this.memory,
+        sin: Math.sin,
+        cos: Math.cos,
+        atan2: Math.atan2,
+        random: Math.random, // Fallback if we don't use internal RNG
+        log: (x: number) => console.log('WASM Log:', x) // Debug helper
+      }
+    });
 
     this.exports = instance.exports as Record<string, any>;
 
@@ -68,10 +77,44 @@ export class WebAssemblyCompute {
   }
 
   compute(agents: Agent[], inputs: InputValues): WASMComputeResult {
-    if (!this.exports || !this.f32) throw new Error("WebAssemblyCompute not initialized");
+    if (!this.exports) throw new Error("WebAssemblyCompute not initialized");
 
     const writeStart = performance.now();
-    const f32 = this.f32;
+
+    // Ensure memory size and view
+    // Agents: agentCount * 20 bytes
+    // TrailMap: width * height * 4 bytes if present
+    const agentsEnd = this.agentCount * bytesPerAgent;
+    let trailMapPtr = 0;
+    let trailMapSize = 0;
+
+    if (inputs.trailMap && inputs.width && inputs.height) {
+      trailMapPtr = agentsEnd;
+      // Align to 4 bytes (it is already)
+      trailMapSize = ((inputs.width as number) * (inputs.height as number)) * 4;
+    }
+
+    let randomValuesSize = 0;
+    if (inputs.randomValues) {
+      randomValuesSize = this.agentCount * 4;
+    }
+
+    const totalBytesNeeded = agentsEnd + trailMapSize + randomValuesSize;
+    const currentBytes = this.memory!.buffer.byteLength;
+
+    if (totalBytesNeeded > currentBytes) {
+      const pagesNeeded = Math.ceil((totalBytesNeeded - currentBytes) / (64 * 1024));
+      if (pagesNeeded > 0) {
+        this.memory!.grow(pagesNeeded);
+        // Re-create views
+        this.f32 = new Float32Array(this.memory!.buffer);
+      }
+    } else if (!this.f32 || this.f32.buffer.byteLength === 0) {
+      // View might be detached or not created
+      this.f32 = new Float32Array(this.memory!.buffer);
+    }
+
+    const f32 = this.f32!;
 
     // Write agents into memory
     for (let i = 0; i < agents.length; i++) {
@@ -84,11 +127,49 @@ export class WebAssemblyCompute {
       f32[o + 4] = a.vy;
     }
 
+    // Write trailMap if present
+    if (inputs.trailMap && trailMapPtr > 0) {
+      const src = inputs.trailMap as Float32Array;
+      // Copy to f32 view
+      // trailMapPtr is byte offset, f32 index is / 4
+      f32.set(src, trailMapPtr >>> 2);
+
+      // Update trailMapPtr global
+      if (this.exports.trailMapPtr) {
+        this.exports.trailMapPtr.value = trailMapPtr;
+      }
+      if (this.exports.trailMapPtr) {
+        this.exports.trailMapPtr.value = trailMapPtr;
+      }
+      // console.log('WASM TrailMap Ptr:', trailMapPtr, 'Size:', trailMapSize);
+    }
+
+    // console.log('WASM Inputs:', Object.keys(inputs));
+
     // Update input globals
     for (const [key, value] of Object.entries(inputs)) {
       if (typeof value !== "number") continue;
       const g = this.exports[`inputs_${key}`];
       if (g instanceof WebAssembly.Global) g.value = value;
+    }
+
+    // Write randomValues if present
+    let randomValuesPtr = 0;
+    if (inputs.randomValues) {
+      // Calculate offset after trailMap
+      randomValuesPtr = agentsEnd;
+      if (trailMapSize > 0) {
+        randomValuesPtr += trailMapSize;
+      }
+
+      const src = inputs.randomValues as Float32Array;
+      // Copy to f32 view
+      f32.set(src, randomValuesPtr >>> 2);
+
+      // Update randomValuesPtr global
+      if (this.exports.randomValuesPtr) {
+        this.exports.randomValuesPtr.value = randomValuesPtr;
+      }
     }
 
     // Update agent count
@@ -107,23 +188,33 @@ export class WebAssemblyCompute {
     const readStart = performance.now();
     const resultAgents = agents.map((_, i) => {
       const o = baseF32 + i * f32PerAgent;
+      const id = this.f32![o];
+      const x = this.f32![o + 1];
       return {
-        id: f32[o],
-        x: f32[o + 1],
-        y: f32[o + 2],
-        vx: f32[o + 3],
-        vy: f32[o + 4],
+        id: id,
+        x: x,
+        y: this.f32![o + 2],
+        vx: this.f32![o + 3],
+        vy: this.f32![o + 4],
       };
     });
+
+    // Read back trailMap if needed (assuming changes)
+    if (inputs.trailMap && trailMapPtr > 0) {
+      const dest = inputs.trailMap as Float32Array;
+      const srcSub = f32.subarray((trailMapPtr >>> 2), (trailMapPtr >>> 2) + dest.length);
+      dest.set(srcSub);
+    }
+
     const readEnd = performance.now();
 
     return {
-        agents: resultAgents,
-        performance: {
-            writeTime: writeEnd - writeStart,
-            computeTime: computeEnd - computeStart,
-            readTime: readEnd - readStart
-        }
+      agents: resultAgents,
+      performance: {
+        writeTime: writeEnd - writeStart,
+        computeTime: computeEnd - computeStart,
+        readTime: readEnd - readStart
+      }
     };
   }
 }

@@ -7,7 +7,6 @@ import {
     FormControl,
     FormLabel,
     Grid,
-    GridItem,
     Heading,
     Input,
     NumberInput,
@@ -61,12 +60,12 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
     const [agentStart, setAgentStart] = useState(100);
     const [agentEnd, setAgentEnd] = useState(5000);
     const [agentStep, setAgentStep] = useState(500);
-    
+
     // Configuration State - Method-specific
     const [testWorkerVariations, setTestWorkerVariations] = useState(false);
     const [workerCountsInput, setWorkerCountsInput] = useState('1, 2, 4, max');
     const [testWorkgroupVariations, setTestWorkgroupVariations] = useState(false);
-    
+
     const [framesPerTest, setFramesPerTest] = useState(100);
     const [warmupRun, setWarmupRun] = useState(true);
     const [selectedMethods, setSelectedMethods] = useState<Set<string>>(new Set(['methodWebGPUGpu']));
@@ -157,7 +156,7 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
 
         // Collect device info
         const deviceInfo = await collectDeviceInfo();
-        
+
         // Determine worker counts to test
         let workerCounts: number[] | undefined = undefined;
         if (testWorkerVariations) {
@@ -166,7 +165,7 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
                 .map(s => s.trim().toLowerCase())
                 .map(s => s === 'max' ? deviceInfo.hardwareConcurrency : parseInt(s))
                 .filter(n => !isNaN(n) && n >= 1); // Start from 1, not 0
-            
+
             if (parsedCounts.length === 0) {
                 toast({ title: "Error", description: "Please enter valid worker counts (must be >= 1)", status: "error" });
                 setIsRunning(false);
@@ -174,17 +173,17 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
             }
             workerCounts = parsedCounts;
         }
-        
+
         // Determine workgroup sizes to test (common powers of 2)
         const workgroupSizes = testWorkgroupVariations
             ? [64, 128, 256]
             : undefined;
 
         const methodsToTest = METHOD_OPTIONS.filter(m => selectedMethods.has(m.id));
-        
+
         // Calculate total tests accounting for variations
         let totalTests = 0;
-        for (const agentCount of agentCounts) {
+        for (const _agentCount of agentCounts) {
             for (const { method } of methodsToTest) {
                 if (method === 'WebWorkers' && workerCounts) {
                     totalTests += workerCounts.length;
@@ -195,7 +194,7 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
                 }
             }
         }
-        
+
         let completedTests = 0;
         const newResults: BenchmarkResult[] = [];
 
@@ -210,7 +209,9 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
             agentColor: options.agentColor,
             backgroundColor: options.backgroundColor,
             agentSize: options.agentSize,
-            agentShape: options.agentShape
+            agentShape: options.agentShape,
+            showTrails: options.showTrails,
+            trailColor: options.trailColor
         };
 
         try {
@@ -221,8 +222,8 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
                     if (cancelledRef.current) break;
 
                     // Determine variations to test for this method
-                    let variations: Array<{workerCount?: number, workgroupSize?: number}> = [{}];
-                    
+                    let variations: Array<{ workerCount?: number, workgroupSize?: number }> = [{}];
+
                     if (method === 'WebWorkers' && workerCounts) {
                         variations = workerCounts.map(wc => ({ workerCount: wc }));
                     } else if (method === 'WebGPU' && workgroupSizes) {
@@ -232,12 +233,12 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
                     for (const variation of variations) {
                         if (cancelledRef.current) break;
 
-                        const variationLabel = variation.workerCount !== undefined 
+                        const variationLabel = variation.workerCount !== undefined
                             ? ` (${variation.workerCount} workers)`
                             : variation.workgroupSize !== undefined
-                            ? ` (WG: ${variation.workgroupSize})`
-                            : '';
-                        
+                                ? ` (WG: ${variation.workgroupSize})`
+                                : '';
+
                         setStatusMessage(`Testing ${label}${variationLabel} with ${agentCount} agents...`);
 
                         // Create simulation
@@ -245,7 +246,7 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
                         if (variation.workerCount !== undefined) {
                             simOptions.workers = variation.workerCount;
                         }
-                        
+
                         const sim = new Simulation({
                             canvas: canvasRef.current,
                             gpuCanvas: gpuCanvasRef.current,
@@ -290,14 +291,14 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
                             const avgTime = executionTimes.reduce((a, b) => a + b, 0) / executionTimes.length;
                             const minTime = Math.min(...executionTimes);
                             const maxTime = Math.max(...executionTimes);
-                            
+
                             // Calculate averages for detailed metrics
                             const avgSetup = frames.reduce((sum, f) => sum + (f.setupTime || 0), 0) / frames.length;
                             const avgCompute = frames.reduce((sum, f) => sum + (f.computeTime || 0), 0) / frames.length;
                             const avgRender = frames.reduce((sum, f) => sum + (f.renderTime || 0), 0) / frames.length;
                             const avgReadback = frames.reduce((sum, f) => sum + (f.readbackTime || 0), 0) / frames.length;
                             const avgCompile = frames.find(f => f.compileTime)?.compileTime;
-                            
+
                             // Aggregate specific stats if available
                             const specificStats: Record<string, number> = {};
                             const firstFrame = frames[0];
@@ -335,10 +336,10 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
             if (!cancelledRef.current) {
                 setStatusMessage('Benchmark complete!');
                 setShowSuccess(true);
-                
+
                 // Build configuration object
                 const config: BenchmarkConfiguration = {
-                    agentRange: agentRangeMode === 'range' 
+                    agentRange: agentRangeMode === 'range'
                         ? { start: agentStart, end: agentEnd, step: agentStep }
                         : { start: Math.min(...agentCounts), end: Math.max(...agentCounts), step: 0 },
                     workerCounts: workerCounts,
@@ -347,7 +348,7 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
                     framesPerTest,
                     warmupRun
                 };
-                
+
                 // Notify parent to save report
                 onComplete(newResults, deviceInfo, config);
             } else {
@@ -378,9 +379,9 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
                     <Heading size="sm" mb={3} color="gray.300">Agent Count Configuration</Heading>
                     <FormControl mb={3}>
                         <FormLabel fontSize="sm">Mode</FormLabel>
-                        <Select 
-                            size="sm" 
-                            value={agentRangeMode} 
+                        <Select
+                            size="sm"
+                            value={agentRangeMode}
                             onChange={(e) => setAgentRangeMode(e.target.value as 'manual' | 'range')}
                             bg="rgba(0,0,0,0.2)"
                         >
@@ -388,7 +389,7 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
                             <option value="range">Range (start, end, step)</option>
                         </Select>
                     </FormControl>
-                    
+
                     {agentRangeMode === 'manual' ? (
                         <FormControl>
                             <FormLabel fontSize="sm">Agent Counts</FormLabel>
@@ -435,8 +436,8 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
                         <Box>
                             <HStack justify="space-between" mb={2}>
                                 <Text fontSize="sm">Test WebWorker counts</Text>
-                                <Switch 
-                                    isChecked={testWorkerVariations} 
+                                <Switch
+                                    isChecked={testWorkerVariations}
                                     onChange={(e) => handleWorkerVariationsToggle(e.target.checked)}
                                     colorScheme="teal"
                                 />
@@ -458,13 +459,13 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
                                 </FormControl>
                             )}
                         </Box>
-                        
+
                         <Divider />
-                        
+
                         <HStack justify="space-between">
                             <Text fontSize="sm">Test GPU Workgroup sizes</Text>
-                            <Switch 
-                                isChecked={testWorkgroupVariations} 
+                            <Switch
+                                isChecked={testWorkgroupVariations}
                                 onChange={(e) => handleWorkgroupVariationsToggle(e.target.checked)}
                                 colorScheme="teal"
                             />
@@ -537,9 +538,9 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
                     </Box>
                 </Flex>
                 <Text fontSize="xs" mt={2} color="gray.400">{statusMessage}</Text>
-                
+
                 {showSuccess && (
-                     <Alert status="success" mt={4} variant="subtle" flexDirection="column" alignItems="center" justifyContent="center" textAlign="center" height="100px" rounded="md">
+                    <Alert status="success" mt={4} variant="subtle" flexDirection="column" alignItems="center" justifyContent="center" textAlign="center" height="100px" rounded="md">
                         <AlertIcon boxSize="40px" mr={0} />
                         <Text mt={2} fontSize="sm">
                             Benchmark report has been generated in the Reports tab.
@@ -581,7 +582,7 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
                     }}
                 />
             </Box>
-            
+
             {!isRunning && (
                 <Flex flex="1" align="center" justify="center" bg="rgba(0,0,0,0.1)">
                     <Text color="gray.500">Ready to benchmark.</Text>

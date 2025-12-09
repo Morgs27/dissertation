@@ -16,10 +16,12 @@ export type SimulationAppearance = {
     backgroundColor: string;
     agentSize: number;
     agentShape: 'circle' | 'square';
+    showTrails: boolean;
+    trailColor: string;
 }
 
 export type InputValues = {
-    [key: string]: number | Agent[];
+    [key: string]: number | Agent[] | Float32Array | Uint32Array;
 }
 
 export type InputDefinition = {
@@ -29,12 +31,18 @@ export type InputDefinition = {
     max?: number;
 }
 
+export type TrailEnvironmentConfig = {
+    depositAmountInput?: string;
+    decayFactorInput?: string;
+}
+
 export type CompilationResult = {
     requiredInputs: string[];
     definedInputs: InputDefinition[];
     wgslCode: string;
     jsCode: string;
     WASMCode: string;
+    trailEnvironmentConfig?: TrailEnvironmentConfig;
 }
 
 export type Agent = {

@@ -76,10 +76,10 @@ export default class Logger {
     codeError(message: string, code: string, lineIndex: number) {
         if (GlobalLogLevel >= LogLevel.Error) {
             const lines = code.split('\n');
-            const line = lines[lineIndex];
+
             const contextStart = Math.max(0, lineIndex - 2);
             const contextEnd = Math.min(lines.length - 1, lineIndex + 2);
-            
+
             const contextLines = lines.slice(contextStart, contextEnd + 1).map((l, i) => {
                 const currentLineIndex = contextStart + i;
                 const marker = currentLineIndex === lineIndex ? ' > ' : '   ';
@@ -87,7 +87,7 @@ export default class Logger {
             }).join('\n');
 
             const formattedMessage = `${message}\nAt line ${lineIndex + 1}:\n${contextLines}`;
-            
+
             this.emit(LogLevel.Error, formattedMessage);
             console.error(`[${this.context}] CODE ERROR: ${message}`, '\n', contextLines);
         }

@@ -12,6 +12,7 @@ export type WebGPURenderResources = {
     agentVertexBuffer: GPUBuffer;
     agentCount: number;
     agentStride: number;
+    trailMapBuffer?: GPUBuffer;
 };
 
 export type WebGPUComputeResult = {
@@ -43,6 +44,19 @@ export default class WebGPU {
     private inputUniformBuffer: GPUBuffer | null = null;
     private inputUniformCapacity = 0;
 
+    // Optional trail map buffers (double-buffered for diffuse/decay)
+    private trailMapBuffer: GPUBuffer | null = null;
+    private trailMapBuffer2: GPUBuffer | null = null; // Double buffering for diffuse/decay
+    private trailMapCapacity = 0;
+    private randomValuesBuffer: GPUBuffer | null = null;
+    private randomValuesCapacity = 0;
+    private hasTrailMap = false;
+    private trailMapGPUSeeded = false; // Track if trail map is initialized on GPU
+
+    // Diffuse/decay compute pipeline
+    private diffuseDecayPipeline: GPUComputePipeline | null = null;
+    private diffuseDecayBindGroupLayout: GPUBindGroupLayout | null = null;
+
     private agentCount = 0;
     private gpuStateSeeded = false;
     private lastSyncedAgentsRef: Agent[] | null = null;
@@ -61,11 +75,31 @@ export default class WebGPU {
         console.log("Initializing WebGPU with device:", device);
         const module = device.createShaderModule({ code: this.wgslCode });
 
+        this.hasTrailMap = this.inputsExpected.includes('trailMap');
+
+        const bindGroupEntries: GPUBindGroupLayoutEntry[] = [
+            { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } },
+            { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } },
+        ];
+
+        if (this.hasTrailMap) {
+            bindGroupEntries.push({
+                binding: 2,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "storage" }
+            });
+        }
+
+        if (this.inputsExpected.includes('randomValues')) {
+            bindGroupEntries.push({
+                binding: 3,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "read-only-storage" }
+            });
+        }
+
         this.bindGroupLayout = device.createBindGroupLayout({
-            entries: [
-                { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } },
-                { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } },
-            ],
+            entries: bindGroupEntries,
         });
 
         this.computePipeline = device.createComputePipeline({
@@ -75,6 +109,11 @@ export default class WebGPU {
 
         this.maxWorkgroupsPerDimension =
             device.limits?.maxComputeWorkgroupsPerDimension ?? this.maxWorkgroupsPerDimension;
+
+        // Initialize diffuse/decay compute shader if trail map is used
+        if (this.hasTrailMap) {
+            this.initDiffuseDecayPipeline(device);
+        }
 
         // Preallocate worst-case buffers once
         this.agentStorageBuffer = this.gpuHelper.createEmptyBuffer(
@@ -97,6 +136,135 @@ export default class WebGPU {
                 AGENT_BUFFER_SIZE / (1024 * 1024)
             )} MB per buffer).`
         );
+    }
+
+    /**
+     * Initialize the GPU compute pipeline for diffuse and decay effects on the trail map.
+     * This shader applies a 3x3 blur kernel with wrapping and decay, matching the CPU implementation.
+     */
+    private initDiffuseDecayPipeline(device: GPUDevice) {
+        const DIFFUSE_DECAY_WGSL = `
+            struct DiffuseUniforms {
+                width: u32,
+                height: u32,
+                decayFactor: f32,
+                _pad: f32,
+            }
+
+            @group(0) @binding(0) var<storage, read> inputMap: array<f32>;
+            @group(0) @binding(1) var<storage, read_write> outputMap: array<f32>;
+            @group(0) @binding(2) var<uniform> uniforms: DiffuseUniforms;
+
+            @compute @workgroup_size(${WORKGROUP_SIZE}, 1, 1)
+            fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
+                let idx = global_id.x;
+                let w = uniforms.width;
+                let h = uniforms.height;
+                let total = w * h;
+
+                if (idx >= total) { return; }
+
+                let x = idx % w;
+                let y = idx / w;
+
+                // 3x3 blur kernel with wrapping
+                var sum: f32 = 0.0;
+                var count: f32 = 0.0;
+
+                for (var dy: i32 = -1; dy <= 1; dy++) {
+                    for (var dx: i32 = -1; dx <= 1; dx++) {
+                        var nx = i32(x) + dx;
+                        var ny = i32(y) + dy;
+
+                        // Wrap around
+                        if (nx < 0) { nx += i32(w); }
+                        if (nx >= i32(w)) { nx -= i32(w); }
+                        if (ny < 0) { ny += i32(h); }
+                        if (ny >= i32(h)) { ny -= i32(h); }
+
+                        sum += inputMap[u32(ny) * w + u32(nx)];
+                        count += 1.0;
+                    }
+                }
+
+                let blurred = sum / count;
+                let current = inputMap[idx];
+                let diffused = current * 0.1 + blurred * 0.9; // Diffusion mix
+                outputMap[idx] = diffused * (1.0 - uniforms.decayFactor);
+            }
+        `;
+
+        const diffuseModule = device.createShaderModule({ code: DIFFUSE_DECAY_WGSL });
+
+        this.diffuseDecayBindGroupLayout = device.createBindGroupLayout({
+            entries: [
+                { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } },
+                { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } },
+                { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } },
+            ],
+        });
+
+        this.diffuseDecayPipeline = device.createComputePipeline({
+            layout: device.createPipelineLayout({ bindGroupLayouts: [this.diffuseDecayBindGroupLayout] }),
+            compute: { module: diffuseModule, entryPoint: "main" },
+        });
+
+        this.Logger.info("Diffuse/decay GPU compute pipeline initialized.");
+    }
+
+    /**
+     * Run the diffuse and decay effect on the GPU trail map.
+     * Uses double-buffering (ping-pong) to avoid read-write hazards.
+     */
+    private runDiffuseDecayGPU(device: GPUDevice, width: number, height: number, decayFactor: number) {
+        if (!this.diffuseDecayPipeline || !this.diffuseDecayBindGroupLayout) return;
+        if (!this.trailMapBuffer || !this.trailMapBuffer2) return;
+
+        const uniformSize = 16; // 4 x 4 bytes (u32, u32, f32, f32)
+        const uniformData = new ArrayBuffer(uniformSize);
+        const uniformView = new DataView(uniformData);
+        uniformView.setUint32(0, width, true);
+        uniformView.setUint32(4, height, true);
+        uniformView.setFloat32(8, decayFactor, true);
+        uniformView.setFloat32(12, 0, true); // padding
+
+        // Create a small uniform buffer for diffuse/decay params
+        const uniformBuffer = this.gpuHelper.createEmptyBuffer(
+            device,
+            uniformSize,
+            GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+            "DiffuseDecayUniforms"
+        );
+        device.queue.writeBuffer(uniformBuffer, 0, uniformData);
+
+        // Bind group: read from trailMapBuffer, write to trailMapBuffer2
+        const bindGroup = device.createBindGroup({
+            layout: this.diffuseDecayBindGroupLayout,
+            entries: [
+                { binding: 0, resource: { buffer: this.trailMapBuffer } },
+                { binding: 1, resource: { buffer: this.trailMapBuffer2 } },
+                { binding: 2, resource: { buffer: uniformBuffer } },
+            ],
+        });
+
+        const encoder = device.createCommandEncoder();
+        const pass = encoder.beginComputePass();
+        pass.setPipeline(this.diffuseDecayPipeline);
+        pass.setBindGroup(0, bindGroup);
+
+        const totalPixels = width * height;
+        const workgroups = Math.ceil(totalPixels / WORKGROUP_SIZE);
+        pass.dispatchWorkgroups(workgroups);
+        pass.end();
+
+        // Swap buffers: copy trailMapBuffer2 back to trailMapBuffer
+        const trailMapSize = width * height * FLOAT_SIZE;
+        encoder.copyBufferToBuffer(this.trailMapBuffer2, 0, this.trailMapBuffer, 0, trailMapSize);
+
+        device.queue.submit([encoder.finish()]);
+
+        // Clean up the temporary uniform buffer
+        uniformBuffer.destroy();
     }
 
     public async runGPU(agents: Agent[], inputs: InputValues): Promise<WebGPUComputeResult> {
@@ -122,7 +290,7 @@ export default class WebGPU {
         const device = this.device;
         const pipeline = this.computePipeline;
         const layout = this.bindGroupLayout!;
-        
+
         const incomingAgentCount = agents.length;
         const needsAgentSync =
             !this.gpuStateSeeded ||
@@ -140,18 +308,28 @@ export default class WebGPU {
 
         // Ensure uniform buffer and write inputs
         this.ensureAndWriteInputs(device, inputs);
-        
+
         const setupEnd = performance.now();
         const setupTime = setupEnd - setupStart;
 
         const dispatchStart = performance.now();
 
+        const bindGroupEntries: GPUBindGroupEntry[] = [
+            { binding: 0, resource: { buffer: this.agentStorageBuffer! } },
+            { binding: 1, resource: { buffer: this.inputUniformBuffer! } },
+        ];
+
+        if (this.hasTrailMap && this.trailMapBuffer) {
+            bindGroupEntries.push({ binding: 2, resource: { buffer: this.trailMapBuffer } });
+        }
+
+        if (this.randomValuesBuffer && this.inputsExpected.includes('randomValues')) {
+            bindGroupEntries.push({ binding: 3, resource: { buffer: this.randomValuesBuffer } });
+        }
+
         const bindGroup = device.createBindGroup({
             layout,
-            entries: [
-                { binding: 0, resource: { buffer: this.agentStorageBuffer! } },
-                { binding: 1, resource: { buffer: this.inputUniformBuffer! } },
-            ],
+            entries: bindGroupEntries,
         });
 
         const encoder = device.createCommandEncoder();
@@ -181,6 +359,15 @@ export default class WebGPU {
 
         device.queue.submit([encoder.finish()]);
 
+        // Run diffuse and decay on the GPU always if we have a trail map
+        // This ensures the GPU state (trailMapBuffer) is updated for the next frame
+        if (this.hasTrailMap) {
+            const width = typeof inputs.width === 'number' ? inputs.width : 0;
+            const height = typeof inputs.height === 'number' ? inputs.height : 0;
+            const decayFactor = typeof inputs.decayFactor === 'number' ? inputs.decayFactor : 0.1;
+            this.runDiffuseDecayGPU(device, width, height, decayFactor);
+        }
+
         const dispatchEnd = performance.now();
         const dispatchTime = dispatchEnd - dispatchStart;
 
@@ -191,7 +378,7 @@ export default class WebGPU {
             await this.stagingReadbackBuffer!.mapAsync(GPUMapMode.READ, 0, copySize);
             try {
                 const data = new Float32Array(this.stagingReadbackBuffer!.getMappedRange(0, copySize));
-                
+
                 // IMPORTANT: Update agents in-place to preserve array reference
                 // This prevents unnecessary re-syncs on the next frame
                 updatedAgents = agents; // Reuse the same array reference
@@ -203,12 +390,40 @@ export default class WebGPU {
                     updatedAgents[i].vx = data[base + 3];
                     updatedAgents[i].vy = data[base + 4];
                 }
-                
+
                 this.Logger.log(`Readback complete: Agent[0] updated to x=${updatedAgents[0].x.toFixed(2)}, y=${updatedAgents[0].y.toFixed(2)}`);
             } finally {
                 this.stagingReadbackBuffer!.unmap(); // reuse next call
             }
+
+            // Only readback trailMap in CPU render mode (when doReadback is true)
+            // In GPU render mode, the trail map stays on GPU and is not read back
+            if (this.hasTrailMap && this.trailMapBuffer && inputs.trailMap) {
+                const trailMap = inputs.trailMap as Float32Array;
+                const size = trailMap.byteLength;
+
+                // Create a temporary staging buffer for trail map if we don't have one cached
+                // (For simplicity creating one here, but optimally should cache)
+                const stagingTrail = this.gpuHelper.createEmptyBuffer(
+                    device,
+                    size,
+                    GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+                    "StagingTrailReader"
+                );
+
+                // Encode copy
+                const readEncoder = device.createCommandEncoder();
+                readEncoder.copyBufferToBuffer(this.trailMapBuffer, 0, stagingTrail, 0, size);
+                device.queue.submit([readEncoder.finish()]);
+
+                await stagingTrail.mapAsync(GPUMapMode.READ);
+                const src = new Float32Array(stagingTrail.getMappedRange());
+                trailMap.set(src);
+                stagingTrail.unmap();
+                stagingTrail.destroy();
+            }
         }
+
         const readbackEnd = performance.now();
         const readbackTime = readbackEnd - readbackStart;
 
@@ -221,6 +436,7 @@ export default class WebGPU {
                         agentVertexBuffer: this.agentVertexBuffer,
                         agentCount: this.agentCount,
                         agentStride: COMPONENTS_PER_AGENT * FLOAT_SIZE,
+                        trailMapBuffer: this.hasTrailMap ? this.trailMapBuffer! : undefined
                     }
                     : undefined,
             performance: {
@@ -254,11 +470,13 @@ export default class WebGPU {
     }
 
     private ensureAndWriteInputs(device: GPUDevice, inputs: InputValues) {
-        const values = this.inputsExpected.map((n) => {
-            const value = inputs[n];
-            // Only convert numeric inputs, default to 0 for non-numeric
-            return typeof value === 'number' ? value : 0;
-        });
+        const values = this.inputsExpected
+            .filter(n => n !== 'trailMap') // don't put trailMap in uniform buffer
+            .map((n) => {
+                const value = inputs[n];
+                // Only convert numeric inputs, default to 0 for non-numeric
+                return typeof value === 'number' ? value : 0;
+            });
         const byteLen = values.length * FLOAT_SIZE;
 
         if (!this.inputUniformBuffer || this.inputUniformCapacity < byteLen) {
@@ -276,6 +494,63 @@ export default class WebGPU {
 
         const f32 = new Float32Array(values);
         device.queue.writeBuffer(this.inputUniformBuffer!, 0, f32.buffer, f32.byteOffset, byteLen);
+
+        // Handle TrailMap - only upload from CPU on first frame
+        // After initial seeding, the trail map lives entirely on GPU
+        if (this.hasTrailMap && inputs.trailMap) {
+            const trailMap = inputs.trailMap as Float32Array;
+            const size = trailMap.byteLength;
+
+            // Check if we need to recreate buffers (size changed or not created yet)
+            const needsRecreate = !this.trailMapBuffer || this.trailMapCapacity < size;
+
+            if (needsRecreate) {
+                if (this.trailMapBuffer) this.trailMapBuffer.destroy();
+                if (this.trailMapBuffer2) this.trailMapBuffer2.destroy();
+
+                this.trailMapBuffer = this.gpuHelper.createEmptyBuffer(
+                    device,
+                    size,
+                    GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
+                    "TrailMap"
+                );
+                this.trailMapBuffer2 = this.gpuHelper.createEmptyBuffer(
+                    device,
+                    size,
+                    GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
+                    "TrailMap2"
+                );
+                this.trailMapCapacity = size;
+                this.trailMapGPUSeeded = false; // Need to re-seed after buffer recreation
+            }
+
+            // Only upload from CPU on first frame - after that, trail map lives on GPU
+            if (!this.trailMapGPUSeeded) {
+                device.queue.writeBuffer(this.trailMapBuffer!, 0, trailMap.buffer, trailMap.byteOffset, trailMap.byteLength);
+                device.queue.writeBuffer(this.trailMapBuffer2!, 0, trailMap.buffer, trailMap.byteOffset, trailMap.byteLength);
+                this.trailMapGPUSeeded = true;
+                this.Logger.info("Trail map seeded to GPU (first frame only)");
+            }
+        }
+
+        // Handle RandomValues
+        if (inputs.randomValues) {
+            const randomValues = inputs.randomValues as Float32Array;
+            const size = randomValues.byteLength;
+
+            if (!this.randomValuesBuffer || this.randomValuesCapacity < size) {
+                if (this.randomValuesBuffer) this.randomValuesBuffer.destroy();
+                this.randomValuesBuffer = this.gpuHelper.createEmptyBuffer(
+                    device,
+                    size,
+                    GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+                    "RandomValues"
+                );
+                this.randomValuesCapacity = size;
+            }
+
+            device.queue.writeBuffer(this.randomValuesBuffer!, 0, randomValues.buffer, randomValues.byteOffset, randomValues.byteLength);
+        }
     }
 
     private ensureVertexBuffer(device: GPUDevice) {
