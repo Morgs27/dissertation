@@ -344,14 +344,14 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
         localVars.add("_loop_ptr"); localVars.add("_other_x"); localVars.add("_other_y"); localVars.add("_dx");
         localVars.add("_dy"); localVars.add("_dist");
         return `
-    ;; Find neighbors within radius
+    ;; Find neighbors within radius (reading from agentsReadPtr for order-independent sensing)
     (local.set $${parsed.name}_count (f32.const 0))
     (local.set $${parsed.name}_sum_x (f32.const 0))
     (local.set $${parsed.name}_sum_y (f32.const 0))
     (local.set $${parsed.name}_sum_vx (f32.const 0))
     (local.set $${parsed.name}_sum_vy (f32.const 0))
     (local.set $_loop_idx (i32.const 0))
-    (local.set $_loop_ptr (i32.const 0))
+    (local.set $_loop_ptr (global.get $agentsReadPtr))
     (block $_neighbor_exit
       (loop $_neighbor_loop
         (br_if $_neighbor_exit (i32.ge_u (local.get $_loop_idx) (global.get $agent_count)))
@@ -701,8 +701,10 @@ export const compileDSLtoWAT = (
     (import "env" "random" (func $random_js (result f32)))
 
     ${inputGlobals}
-    ${inputs.includes('trailMap') ? '(global $trailMapPtr (export "trailMapPtr") (mut i32) (i32.const 0))' : ''}
+    ${inputs.includes('trailMap') ? `(global $trailMapReadPtr (export "trailMapReadPtr") (mut i32) (i32.const 0))
+    (global $trailMapWritePtr (export "trailMapWritePtr") (mut i32) (i32.const 0))` : ''}
     ${inputs.includes('randomValues') ? '(global $randomValuesPtr (export "randomValuesPtr") (mut i32) (i32.const 0))' : ''}
+    (global $agentsReadPtr (export "agentsReadPtr") (mut i32) (i32.const 0))
 
     (func $random (param $id f32) (param $x f32) (param $y f32) (result f32) (call $random_js))
 
@@ -720,9 +722,10 @@ export const compileDSLtoWAT = (
       (if (i32.ge_s (local.get $ix) (local.get $w)) (then (local.set $ix (i32.sub (local.get $ix) (local.get $w)))))
       (if (i32.lt_s (local.get $iy) (i32.const 0)) (then (local.set $iy (i32.add (local.get $iy) (local.get $h)))))
       (if (i32.ge_s (local.get $iy) (local.get $h)) (then (local.set $iy (i32.sub (local.get $iy) (local.get $h)))))
-      (if (i32.eqz (global.get $trailMapPtr)) (then (return (f32.const 0))))
+      (if (i32.eqz (global.get $trailMapReadPtr)) (then (return (f32.const 0))))
       (local.set $idx (i32.add (i32.mul (local.get $iy) (local.get $w)) (local.get $ix)))
-      (f32.load (i32.add (global.get $trailMapPtr) (i32.shl (local.get $idx) (i32.const 2))))
+      ;; Read from trailMapReadPtr (previous frame state)
+      (f32.load (i32.add (global.get $trailMapReadPtr) (i32.shl (local.get $idx) (i32.const 2))))
     )
     (func $deposit (param $x f32) (param $y f32) (param $amount f32)
       (local $ix i32) (local $iy i32) (local $w i32) (local $h i32) (local $idx i32) (local $ptr i32) (local $val f32)
@@ -734,9 +737,10 @@ export const compileDSLtoWAT = (
       (if (i32.ge_s (local.get $ix) (local.get $w)) (then (local.set $ix (i32.sub (local.get $ix) (local.get $w)))))
       (if (i32.lt_s (local.get $iy) (i32.const 0)) (then (local.set $iy (i32.add (local.get $iy) (local.get $h)))))
       (if (i32.ge_s (local.get $iy) (local.get $h)) (then (local.set $iy (i32.sub (local.get $iy) (local.get $h)))))
-      (if (global.get $trailMapPtr) (then
+      ;; Write to trailMapWritePtr (deposits for this frame)
+      (if (global.get $trailMapWritePtr) (then
          (local.set $idx (i32.add (i32.mul (local.get $iy) (local.get $w)) (local.get $ix)))
-         (local.set $ptr (i32.add (global.get $trailMapPtr) (i32.shl (local.get $idx) (i32.const 2))))
+         (local.set $ptr (i32.add (global.get $trailMapWritePtr) (i32.shl (local.get $idx) (i32.const 2))))
          (local.set $val (f32.load (local.get $ptr)))
          (f32.store (local.get $ptr) (f32.add (local.get $val) (local.get $amount)))
       ))

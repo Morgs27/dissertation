@@ -229,6 +229,9 @@ export const compileDSLtoJS = (lines: LineInfo[], _inputs: string[], logger: Log
                     };
 
                     const _sense = (angleOffset, distance) => {
+                        // Read from trailMapRead (previous frame state) for order-independent sensing
+                        const readMap = inputs.trailMapRead || inputs.trailMap;
+                        
                         // angle based on current velocity
                         if (vx === 0 && vy === 0) {
                             // Random angle if stopped? or just 0
@@ -246,14 +249,17 @@ export const compileDSLtoJS = (lines: LineInfo[], _inputs: string[], logger: Log
                         if (iy < 0) iy += inputs.height;
                         if (iy >= inputs.height) iy -= inputs.height;
 
-                        if (inputs.trailMap) {
-                            return inputs.trailMap[iy * inputs.width + ix];
+                        if (readMap) {
+                            return readMap[iy * inputs.width + ix];
                         }
                         return 0;
                     };
 
                     const _deposit = (amount) => {
-                        if (!inputs.trailMap) return;
+                        // Write to trailMapWrite (new deposits for this frame)
+                        const writeMap = inputs.trailMapWrite || inputs.trailMap;
+                        if (!writeMap) return;
+                        
                         let ix = Math.floor(x);
                         let iy = Math.floor(y);
                         if (ix < 0) ix += inputs.width;
@@ -261,8 +267,8 @@ export const compileDSLtoJS = (lines: LineInfo[], _inputs: string[], logger: Log
                         if (iy < 0) iy += inputs.height;
                         if (iy >= inputs.height) iy -= inputs.height;
 
-                        // Simple atomic add
-                        inputs.trailMap[iy * inputs.width + ix] += amount;
+                        // Atomic add to write buffer
+                        writeMap[iy * inputs.width + ix] += amount;
                     };
 
 

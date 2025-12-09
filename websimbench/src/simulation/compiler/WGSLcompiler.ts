@@ -44,7 +44,8 @@ fn _sense(x: f32, y: f32, vx: f32, vy: f32, angle_offset: f32, dist: f32) -> f32
     if (iy >= i32(h)) { iy -= i32(h); }
     
     let idx = u32(iy * i32(w) + ix);
-    return trailMap[idx];
+    // Read from trailMapRead (previous frame state)
+    return trailMapRead[idx];
 }
 
 fn _deposit(x: f32, y: f32, amount: f32) {
@@ -60,10 +61,9 @@ fn _deposit(x: f32, y: f32, amount: f32) {
     if (iy >= i32(h)) { iy -= i32(h); }
     
     let idx = u32(iy * i32(w) + ix);
-    // Atomic add not supported on f32 buffers universally easily without atomic extensions, 
-    // but for this sim race conditions are acceptable (or use atomic encoded). 
-    // We'll just do read-modify-write which is racy but visually fine for slime mold.
-    trailMap[idx] += amount;
+    // Write to trailMapWrite (deposits for this frame)
+    // Racy but acceptable for visual slime mold simulation
+    trailMapWrite[idx] += amount;
 }
 `;
 
@@ -214,9 +214,9 @@ function transpileLine(line: string, context: WGSLContext): string[] {
                 statements.push(`var ${parsed.name}_sum_y: f32 = 0.0;`);
                 statements.push(`var ${parsed.name}_sum_vx: f32 = 0.0;`);
                 statements.push(`var ${parsed.name}_sum_vy: f32 = 0.0;`);
-                statements.push(`for (var _ni: u32 = 0u; _ni < arrayLength(&agents); _ni++) {`);
+                statements.push(`for (var _ni: u32 = 0u; _ni < arrayLength(&agentsRead); _ni++) {`);
                 statements.push(`if (_ni == i) { continue; }`);
-                statements.push(`let other = agents[_ni];`);
+                statements.push(`let other = agentsRead[_ni];`);
                 statements.push(`let dx = agent.x - other.x;`);
                 statements.push(`let dy = agent.y - other.y;`);
                 statements.push(`let dist = sqrt(dx*dx + dy*dy);`);
@@ -497,10 +497,16 @@ struct Agent {
     vy : f32,
 };
 
-@group(0) @binding(0) var<storage, read_write> agents : array<Agent>;`.trim();
+@group(0) @binding(0) var<storage, read_write> agents : array<Agent>;
+@group(0) @binding(5) var<storage, read> agentsRead : array<Agent>;`.trim();
 
-    const trailMapBinding = hasTrailMap
-        ? `@group(0) @binding(2) var<storage, read_write> trailMap : array<f32>;`
+    // Separate trail map bindings for double-buffering
+    const trailMapReadBinding = hasTrailMap
+        ? `@group(0) @binding(2) var<storage, read> trailMapRead : array<f32>;`
+        : '';
+
+    const trailMapWriteBinding = hasTrailMap
+        ? `@group(0) @binding(4) var<storage, read_write> trailMapWrite : array<f32>;`
         : '';
 
     const randomValuesBinding = hasRandomValues
@@ -551,5 +557,5 @@ fn main(
 
     const helpers = hasTrailMap ? WGSL_HELPERS : '';
 
-    return [agentStruct, inputStruct, trailMapBinding, randomValuesBinding, helpers, computeFn].join('\n\n');
+    return [agentStruct, inputStruct, trailMapReadBinding, trailMapWriteBinding, randomValuesBinding, helpers, computeFn].join('\n\n');
 };
