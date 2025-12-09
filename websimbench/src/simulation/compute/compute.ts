@@ -166,7 +166,11 @@ export class ComputeEngine {
     private async runOnWebWorkers(agents: Agent[], inputs: InputValues): Promise<Agent[]> {
         const instance = this.WebWorkersInstance;
 
-        const { agents: updatedAgents, performance: workerPerf } = await instance.compute(agents, inputs);
+        const { agents: updatedAgents, trailMap, performance: workerPerf } = await instance.compute(agents, inputs);
+
+        if (trailMap && inputs.trailMap) {
+            (inputs.trailMap as Float32Array).set(trailMap);
+        }
 
         // totalExecutionTime excludes setup (serializationTime is setup/overhead)
         const totalExecutionTime = workerPerf.workerTime + workerPerf.deserializationTime;

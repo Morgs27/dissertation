@@ -1,4 +1,4 @@
-import { Box, FormControl, FormLabel, Input, Grid, GridItem, Heading, Slider, SliderTrack, SliderFilledTrack, SliderThumb, Flex, Select, Text, Button } from '@chakra-ui/react';
+import { Box, FormControl, FormLabel, Input, Grid, GridItem, Heading, Slider, SliderTrack, SliderFilledTrack, SliderThumb, Flex, Select, Text, Button, Switch } from '@chakra-ui/react';
 import { SimulationAppearanceOptions, AgentShape, UpdateOptionFn } from '../hooks/useSimulationOptions';
 import { LogLevel } from '../simulation/helpers/logger';
 
@@ -68,6 +68,31 @@ export const OptionsView = ({ options, updateOption, resetOptions }: OptionsView
               />
             </Flex>
           </FormControl>
+
+          {options.showTrails && (
+            <FormControl mb={4}>
+              <FormLabel>Trail Color</FormLabel>
+              <Flex align="center">
+                <Input
+                  type="color"
+                  w="60px"
+                  h="40px"
+                  p={0}
+                  mr={2}
+                  value={options.trailColor}
+                  onChange={(e) => updateOption('trailColor', e.target.value)}
+                  bg="transparent"
+                  border="none"
+                />
+                <Input
+                  type="text"
+                  w="120px"
+                  value={options.trailColor}
+                  onChange={(e) => updateOption('trailColor', e.target.value)}
+                />
+              </Flex>
+            </FormControl>
+          )}
         </GridItem>
 
         <GridItem>
@@ -103,6 +128,18 @@ export const OptionsView = ({ options, updateOption, resetOptions }: OptionsView
               <option value="circle">Circle</option>
               <option value="square">Square</option>
             </Select>
+          </FormControl>
+
+          <FormControl mb={6} display="flex" alignItems="center">
+            <FormLabel htmlFor="show-trails" mb="0">
+              Show Trails
+            </FormLabel>
+            <Switch
+              id="show-trails"
+              isChecked={options.showTrails}
+              onChange={(e) => updateOption('showTrails', e.target.checked)}
+              colorScheme="teal"
+            />
           </FormControl>
 
           <FormControl mb={6}>

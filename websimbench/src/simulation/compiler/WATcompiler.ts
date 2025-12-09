@@ -1,5 +1,6 @@
-import type Logger from "../helpers/logger";
-import { Compiler, type AVAILABLE_COMMANDS, type LineInfo } from "./compiler";
+
+import Logger from "../helpers/logger";
+import { DSLParser, type AVAILABLE_COMMANDS, type LineInfo } from "./parser";
 
 const COMMANDS: Record<
   AVAILABLE_COMMANDS,
@@ -20,6 +21,11 @@ const COMMANDS: Record<
   borderWrapping: { target: "x", op: "complex" },
   borderBounce: { target: "x", op: "complex" },
   limitSpeed: { target: "vx", op: "complex" },
+  turn: { target: "vx", op: "complex" },
+  moveForward: { target: "x", op: "complex" },
+  deposit: { target: "x", op: "complex" },
+  sense: { target: "x", op: "complex" },
+  enableTrails: { target: "x", op: "complex" },
 };
 
 /**
@@ -78,7 +84,8 @@ function infixToSExpression(expr: string): string {
 
   // Handle property access like neighbor.x or nearbyAgents.length
   if (expr.includes(".")) {
-    expr = expr.replace(/(\w+)\.(\w+)/g, "$1_$2");
+    // Only replace identifier.property where identifier starts with letter/underscore
+    expr = expr.replace(/([a-zA-Z_]\w*)\.(\w+)/g, "$1_$2");
   }
 
   // Replace inputs.* references with GLOBAL markers
@@ -93,7 +100,6 @@ function infixToSExpression(expr: string): string {
   }
 
   // Check for GLOBAL before checking for simple identifier
-  // Only match if the ENTIRE expression is a GLOBAL_ variable, not just starts with it
   if (/^GLOBAL_\w+$/.test(expr)) {
     return `(global.get $inputs_${expr.substring(7)})`;
   }
@@ -125,6 +131,13 @@ function infixToSExpression(expr: string): string {
     if (tokens[i] === "+" || tokens[i] === "-") {
       const left = tokens.slice(0, i).join(" ");
       const right = tokens.slice(i + 1).join(" ");
+
+      // Handle unary minus
+      if (tokens[i] === "-" && (!left || left.trim() === "")) {
+        return `(f32.neg ${infixToSExpression(right)})`;
+      }
+
+      // Binary operation
       const op = tokens[i] === "+" ? "f32.add" : "f32.sub";
       return `(${op} ${infixToSExpression(left)} ${infixToSExpression(right)})`;
     }
@@ -163,6 +176,9 @@ function infixToSExpression(expr: string): string {
   // If we get here, just join tokens and try to convert each one
   const converted = tokens
     .map((token) => {
+      if (token === "__RANDOM__") {
+        return `(call $random (local.get $_agent_id) (local.get $x) (local.get $y))`;
+      }
       if (/^GLOBAL_\w+$/.test(token)) {
         return `(global.get $inputs_${token.substring(7)})`;
       }
@@ -182,20 +198,19 @@ function infixToSExpression(expr: string): string {
 /**
  * Normalizes expressions for WASM (converts to S-expressions)
  */
-function normalizeWASMExpression(expr: string): string {
+function normalizeWASMExpression(expr: string, randomInputs: Set<string>): string {
   let r = expr.trim();
 
-  // Handle sqrt function - WASM has native support!
+  // Handle sqrt function
   r = r.replace(/sqrt\(([^)]+)\)/g, (_match, arg) => {
     return `(f32.sqrt ${infixToSExpression(arg)})`;
   });
 
-  // Handle exponentiation ^2 and **2 by expanding to multiplication
-  // Match patterns like "inputs.x^2" or "variable**2" - DON'T add parentheses
+  // Handle exponentiation ^2 and **2
   r = r.replace(/(\w+(?:\.\w+)?)\s*\^2/g, "$1 * $1");
   r = r.replace(/(\w+(?:\.\w+)?)\s*\*\*2/g, "$1 * $1");
 
-  // Handle neighbors() - mark for special processing
+  // Handle neighbors()
   if (r.includes("neighbors(")) {
     const match = r.match(/neighbors\(([^)]+)\)/);
     if (match) {
@@ -203,12 +218,11 @@ function normalizeWASMExpression(expr: string): string {
     }
   }
 
-  // Handle mean() - mark for special processing
+  // Handle mean()
   if (r.includes("mean(")) {
     const match = r.match(/mean\(([^)]+)\)/);
     if (match) {
       const arg = match[1].trim();
-      // Extract property name from patterns like "nearbyAgents.vx"
       const propMatch = arg.match(/\w+\.(\w+)/);
       if (propMatch) {
         return `__MEAN__${propMatch[1]}__`;
@@ -216,100 +230,89 @@ function normalizeWASMExpression(expr: string): string {
     }
   }
 
-  // Convert to S-expression
+  // Handle sense(a, b)
+  if (r.includes("sense(")) {
+    const match = r.match(/sense\(([^)]+)\)/);
+    if (match) {
+      const args = match[1].split(',').map(s => infixToSExpression(s.trim()));
+      if (args.length === 2) {
+        return `(call $sense (local.get $x) (local.get $y) (local.get $vx) (local.get $vy) ${args[0]} ${args[1]})`;
+      }
+    }
+  }
+
+  // Handle random()
+  if (r.includes("random(")) {
+    return `(call $random (local.get $_agent_id) (local.get $x) (local.get $y))`;
+  }
+
+  // Handle inputs.random
+  if (r.includes("inputs.random")) {
+    return normalizeWASMExpression(r.replace(/inputs\.random/g, "__RANDOM__"), randomInputs);
+  }
+
+  // Handle inputs.NAME replacement for random inputs
+  if (randomInputs.size > 0) {
+    r = r.replace(/inputs\.(\w+)/g, (match, name) => {
+      if (randomInputs.has(name)) {
+        return name; // Will be picked up as local.get $name
+      }
+      return match;
+    });
+  }
+
   return infixToSExpression(r);
 }
 
-function normalizeWASMCondition(cond: string): string {
+function normalizeWASMCondition(cond: string, randomInputs: Set<string>): string {
   cond = cond.trim();
 
-  // Handle "i < count"
-  if (cond.includes("<=")) {
-    const [left, right] = cond.split("<=").map((s) => s.trim());
-    return `(i32.le_u (local.get $${left}) (local.get $${right}))`;
-  } else if (cond.includes("<")) {
-    const [left, right] = cond.split("<").map((s) => s.trim());
-    return `(i32.lt_u (local.get $${left}) (local.get $${right}))`;
-  } else if (cond.includes(">=")) {
-    const [left, right] = cond.split(">=").map((s) => s.trim());
-    return `(i32.ge_u (local.get $${left}) (local.get $${right}))`;
-  } else if (cond.includes(">")) {
-    const [left, right] = cond.split(">").map((s) => s.trim());
-    return `(i32.gt_u (local.get $${left}) (local.get $${right}))`;
-  } else {
-    // fallback (never true)
-    return `(i32.const 0)`;
+  // Try to find comparison operator
+  // Order matters: checks >= and <= before > and <
+  const operators = [
+    { op: ">=", asm: "f32.ge" },
+    { op: "<=", asm: "f32.le" },
+    { op: ">", asm: "f32.gt" },
+    { op: "<", asm: "f32.lt" },
+    { op: "==", asm: "f32.eq" },
+    { op: "!=", asm: "f32.ne" },
+  ];
+
+  for (const { op, asm } of operators) {
+    if (cond.includes(op)) {
+      const parts = cond.split(op);
+      // Only handle simple binary comparison, rejoin if multiple splits (failure case?)
+      // Assuming DSL condition is simple: expr op expr
+      const left = parts[0].trim();
+      const right = parts.slice(1).join(op).trim();
+      return `(${asm} ${normalizeWASMExpression(left, randomInputs)} ${normalizeWASMExpression(right, randomInputs)})`;
+    }
   }
+
+  // If no operator, treat as boolean (f32 != 0)
+  return `(f32.ne ${normalizeWASMExpression(cond, randomInputs)} (f32.const 0))`;
 }
 
 /**
  * Parses a single condition into WASM comparison
+ * NOTE: normalizeWASMCondition does the heavy lifting now.
  */
-function parseCondition(condition: string): string {
+function parseCondition(condition: string, randomInputs: Set<string>): string {
   condition = condition.trim();
-
-  // Handle .length property access for collections (like nearbyAgents.length)
   condition = condition.replace(/(\w+)\.length/g, "$1_count");
 
-  // Check for comparison operators in order of precedence
-  if (condition.includes(">=")) {
-    const parts = condition.split(">=").map((p) => p.trim());
-    const left = normalizeWASMExpression(parts[0]);
-    const right = normalizeWASMExpression(parts[1]);
-    if (left.includes("UNSUPPORTED") || right.includes("UNSUPPORTED")) {
-      return `;; TODO: Unsupported expression in condition: ${condition}`;
-    }
-    return `(f32.ge ${left} ${right})`;
-  } else if (condition.includes("<=")) {
-    const parts = condition.split("<=").map((p) => p.trim());
-    const left = normalizeWASMExpression(parts[0]);
-    const right = normalizeWASMExpression(parts[1]);
-    if (left.includes("UNSUPPORTED") || right.includes("UNSUPPORTED")) {
-      return `;; TODO: Unsupported expression in condition: ${condition}`;
-    }
-    return `(f32.le ${left} ${right})`;
-  } else if (condition.includes(">")) {
-    const parts = condition.split(">").map((p) => p.trim());
-    const left = normalizeWASMExpression(parts[0]);
-    const right = normalizeWASMExpression(parts[1]);
-    if (left.includes("UNSUPPORTED") || right.includes("UNSUPPORTED")) {
-      return `;; TODO: Unsupported expression in condition: ${condition}`;
-    }
-    return `(f32.gt ${left} ${right})`;
-  } else if (condition.includes("<")) {
-    const parts = condition.split("<").map((p) => p.trim());
-    const left = normalizeWASMExpression(parts[0]);
-    const right = normalizeWASMExpression(parts[1]);
-    if (left.includes("UNSUPPORTED") || right.includes("UNSUPPORTED")) {
-      return `;; TODO: Unsupported expression in condition: ${condition}`;
-    }
-    return `(f32.lt ${left} ${right})`;
-  } else if (condition.includes("==")) {
-    const parts = condition.split("==").map((p) => p.trim());
-    const left = normalizeWASMExpression(parts[0]);
-    const right = normalizeWASMExpression(parts[1]);
-    if (left.includes("UNSUPPORTED") || right.includes("UNSUPPORTED")) {
-      return `;; TODO: Unsupported expression in condition: ${condition}`;
-    }
-    return `(f32.eq ${left} ${right})`;
-  } else if (condition.includes("!=")) {
-    const parts = condition.split("!=").map((p) => p.trim());
-    const left = normalizeWASMExpression(parts[0]);
-    const right = normalizeWASMExpression(parts[1]);
-    if (left.includes("UNSUPPORTED") || right.includes("UNSUPPORTED")) {
-      return `;; TODO: Unsupported expression in condition: ${condition}`;
-    }
-    return `(f32.ne ${left} ${right})`;
-  } else {
-    return `;; TODO: Unrecognized condition pattern in WASM: ${condition}`;
-  }
+  // Delegate to normalizeWASMCondition which now returns f32 comparison result (0 or 1) as i32?
+  // Wait, WASM comparison instructions (f32.lt etc) return i32 (0 or 1).
+  // parser callers (if/elseif) expect i32 result for (if ...).
+
+  return normalizeWASMCondition(condition, randomInputs);
 }
 
 /**
  * Transpiles a single line of DSL to WASM using shared parser
  */
-function transpileLine(line: string, localVars: Set<string>): string | null {
-  const parsed = Compiler.parseDSLLine(line);
+function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<string>): string | null {
+  const parsed = DSLParser.parseDSLLine(line);
 
   switch (parsed.type) {
     case "empty":
@@ -317,18 +320,14 @@ function transpileLine(line: string, localVars: Set<string>): string | null {
 
     case "brace": {
       const trimmed = line.trim();
-      // Convert closing braces to proper WASM syntax
       if (trimmed === "}") {
         return "))"; // Close if or loop
       }
-      return ""; // Opening braces are implicit in WASM
+      return "";
     }
 
     case "var": {
-      // Track local variable declarations
       localVars.add(parsed.name);
-
-      // Handle array indexing directly before normalization
       let expr = parsed.expression;
       const arrayMatch = expr.match(/nearbyAgents\[\w+\]\.(\w+)/);
       if (arrayMatch) {
@@ -336,31 +335,14 @@ function transpileLine(line: string, localVars: Set<string>): string | null {
         const offset = offsets[arrayMatch[1]] || 0;
         return `(local.set $${parsed.name} (f32.load (i32.add (local.get $_for_ptr) (i32.const ${offset}))))`;
       }
-
-      let wasmExpr = normalizeWASMExpression(expr);
-
-      // Handle neighbors() - generate code to iterate through agents
+      const wasmExpr = normalizeWASMExpression(expr, randomInputs);
       if (wasmExpr.startsWith("__NEIGHBORS__")) {
-        const radiusExpr = wasmExpr
-          .replace("__NEIGHBORS__", "")
-          .replace("__", "");
-        const radius = normalizeWASMExpression(radiusExpr);
-
-        // Add local variables for neighbor search
-        localVars.add(`${parsed.name}_count`);
-        localVars.add(`${parsed.name}_sum_x`);
-        localVars.add(`${parsed.name}_sum_y`);
-        localVars.add(`${parsed.name}_sum_vx`);
-        localVars.add(`${parsed.name}_sum_vy`);
-        localVars.add("_loop_idx");
-        localVars.add("_loop_ptr");
-        localVars.add("_other_x");
-        localVars.add("_other_y");
-        localVars.add("_dx");
-        localVars.add("_dy");
-        localVars.add("_dist");
-
-        // Generate neighbor search loop
+        const radiusExpr = wasmExpr.replace("__NEIGHBORS__", "").replace("__", "");
+        const radius = normalizeWASMExpression(radiusExpr, randomInputs);
+        localVars.add(`${parsed.name}_count`); localVars.add(`${parsed.name}_sum_x`); localVars.add(`${parsed.name}_sum_y`);
+        localVars.add(`${parsed.name}_sum_vx`); localVars.add(`${parsed.name}_sum_vy`); localVars.add("_loop_idx");
+        localVars.add("_loop_ptr"); localVars.add("_other_x"); localVars.add("_other_y"); localVars.add("_dx");
+        localVars.add("_dy"); localVars.add("_dist");
         return `
     ;; Find neighbors within radius
     (local.set $${parsed.name}_count (f32.const 0))
@@ -373,19 +355,12 @@ function transpileLine(line: string, localVars: Set<string>): string | null {
     (block $_neighbor_exit
       (loop $_neighbor_loop
         (br_if $_neighbor_exit (i32.ge_u (local.get $_loop_idx) (global.get $agent_count)))
-        
-        ;; Skip self
         (if (i32.ne (local.get $_loop_idx) (i32.trunc_f32_u (local.get $_agent_id))) (then
-          ;; Load other agent's position
           (local.set $_other_x (f32.load (i32.add (local.get $_loop_ptr) (i32.const 4))))
           (local.set $_other_y (f32.load (i32.add (local.get $_loop_ptr) (i32.const 8))))
-          
-          ;; Calculate distance
           (local.set $_dx (f32.sub (local.get $x) (local.get $_other_x)))
           (local.set $_dy (f32.sub (local.get $y) (local.get $_other_y)))
           (local.set $_dist (f32.sqrt (f32.add (f32.mul (local.get $_dx) (local.get $_dx)) (f32.mul (local.get $_dy) (local.get $_dy)))))
-          
-          ;; If within radius, accumulate
           (if (f32.lt (local.get $_dist) ${radius}) (then
             (local.set $${parsed.name}_count (f32.add (local.get $${parsed.name}_count) (f32.const 1)))
             (local.set $${parsed.name}_sum_x (f32.add (local.get $${parsed.name}_sum_x) (local.get $_other_x)))
@@ -394,104 +369,44 @@ function transpileLine(line: string, localVars: Set<string>): string | null {
             (local.set $${parsed.name}_sum_vy (f32.add (local.get $${parsed.name}_sum_vy) (f32.load (i32.add (local.get $_loop_ptr) (i32.const 16)))))
           ))
         ))
-        
-        ;; Increment loop
         (local.set $_loop_idx (i32.add (local.get $_loop_idx) (i32.const 1)))
         (local.set $_loop_ptr (i32.add (local.get $_loop_ptr) (i32.const 20)))
         (br $_neighbor_loop)
       )
     )`;
       }
-
-      // Handle mean() - use pre-calculated sums
       if (wasmExpr.startsWith("__MEAN__")) {
         const property = wasmExpr.replace("__MEAN__", "").replace("__", "");
-        // Assume the variable before this was nearbyAgents
-        const collectionName = "nearbyAgents"; // We'd need to track this properly
+        const collectionName = "nearbyAgents";
         return `(local.set $${parsed.name} (f32.div (local.get $${collectionName}_sum_${property}) (local.get $${collectionName}_count)))`;
-      }
-
-      if (wasmExpr.startsWith(";; UNSUPPORTED:")) {
-        return `;; Variable ${parsed.name}: ${wasmExpr}`;
       }
       return `(local.set $${parsed.name} ${wasmExpr})`;
     }
 
     case "if": {
-      // WASM if statement - now handles logical operators
-      const condition = parsed.condition;
+      // Handle logical operators && and ||
+      const combinedCondition = (parts: string[], op: "and" | "or") => {
+        const conditions = parts.map(p => parseCondition(p, randomInputs));
+        if (conditions.some(c => c.includes("TODO"))) return conditions.find(c => c.includes("TODO")) ?? null;
+        return `(if ${conditions.reduce((acc, c) => acc ? `(i32.${op} ${acc} ${c})` : c)} (then`;
+      };
 
-      // Handle logical AND (&&)
-      if (condition.includes("&&")) {
-        const parts = condition.split("&&").map((p) => p.trim());
-        const conditions: string[] = [];
+      if (parsed.condition.includes("&&")) return combinedCondition(parsed.condition.split("&&").map(p => p.trim()), "and") ?? null;
+      if (parsed.condition.includes("||")) return combinedCondition(parsed.condition.split("||").map(p => p.trim()), "or") ?? null;
 
-        for (const part of parts) {
-          const cond = parseCondition(part);
-          if (cond.includes("UNSUPPORTED") || cond.includes("TODO")) {
-            return `;; TODO: Unsupported expression in AND condition: ${condition}`;
-          }
-          conditions.push(cond);
-        }
-
-        // WASM: (if (i32.and cond1 cond2) (then ...
-        const combined = conditions.reduce((acc, c) =>
-          acc ? `(i32.and ${acc} ${c})` : c
-        );
-        return `(if ${combined} (then`;
-      }
-
-      // Handle logical OR (||)
-      if (condition.includes("||")) {
-        const parts = condition.split("||").map((p) => p.trim());
-        const conditions: string[] = [];
-
-        for (const part of parts) {
-          const cond = parseCondition(part);
-          if (cond.includes("UNSUPPORTED") || cond.includes("TODO")) {
-            return `;; TODO: Unsupported expression in OR condition: ${condition}`;
-          }
-          conditions.push(cond);
-        }
-
-        // WASM: (if (i32.or cond1 cond2) (then ...
-        const combined = conditions.reduce((acc, c) =>
-          acc ? `(i32.or ${acc} ${c})` : c
-        );
-        return `(if ${combined} (then`;
-      }
-
-      // Simple condition
-      const cond = parseCondition(condition);
-      if (cond.includes("UNSUPPORTED") || cond.includes("TODO")) {
-        return cond;
-      }
-      return `(if ${cond} (then`;
+      return `(if ${parseCondition(parsed.condition, randomInputs)} (then`;
     }
 
+    case "else": return "(else";
+    case "elseif": return `(elseif ${parseCondition(parsed.condition, randomInputs)}`;
+
     case "for": {
-      // Check if iterating over nearbyAgents collection
-      // Pattern: for (var i = 0; i < nearbyAgents.length; i++)
       const initMatch = parsed.init.match(/var\s+(\w+)\s*=\s*(.+)/);
       const condMatch = parsed.condition.match(/(\w+)\s*<\s*(\w+)\.length/);
-
       if (initMatch && condMatch && condMatch[2] === "nearbyAgents") {
-        const loopVar = initMatch[1]; // e.g., "i"
-
-        // Add necessary local variables
-        localVars.add(loopVar);
-        localVars.add("_for_idx");
-        localVars.add("_for_ptr");
-        localVars.add("_for_dx");
-        localVars.add("_for_dy");
-        localVars.add("_for_dist");
-
-        // Don't declare the user's loop variable if it conflicts with step_all's $i
-        // Just use our internal $_for_idx instead
-        if (loopVar !== "i") {
-          localVars.add(loopVar);
-        }
-
+        const loopVar = initMatch[1];
+        localVars.add(loopVar); if (loopVar !== "i") localVars.add(loopVar);
+        localVars.add("_for_idx"); localVars.add("_for_ptr"); localVars.add("_for_dx"); localVars.add("_for_dy"); localVars.add("_for_dist");
         return `
     ;; For loop over nearbyAgents
     (local.set $_for_idx (i32.const 0))
@@ -499,55 +414,32 @@ function transpileLine(line: string, localVars: Set<string>): string | null {
     (block $_for_exit
       (loop $_for_loop
         (br_if $_for_exit (i32.ge_u (local.get $_for_idx) (global.get $agent_count)))
-        
-        ;; Skip self
         (if (i32.ne (local.get $_for_idx) (i32.trunc_f32_u (local.get $_agent_id))) (then
-          ;; Calculate distance to check if nearby
           (local.set $_for_dx (f32.sub (local.get $x) (f32.load (i32.add (local.get $_for_ptr) (i32.const 4)))))
           (local.set $_for_dy (f32.sub (local.get $y) (f32.load (i32.add (local.get $_for_ptr) (i32.const 8)))))
           (local.set $_for_dist (f32.sqrt (f32.add (f32.mul (local.get $_for_dx) (local.get $_for_dx)) (f32.mul (local.get $_for_dy) (local.get $_for_dy)))))
-          
-          ;; Only process if within perception radius
           (if (f32.lt (local.get $_for_dist) (global.get $inputs_perceptionRadius)) (then
             ;; This is a nearby agent - execute loop body`;
       } else {
-        // Standard numeric for loop
         const loopVar = initMatch ? initMatch[1] : "i";
-        // Don't declare 'i' if it conflicts with step_all's outer loop
-        if (loopVar !== "i") {
-          localVars.add(loopVar);
-        }
-
-        const initExpr = initMatch
-          ? normalizeWASMExpression(initMatch[2])
-          : "(f32.const 0)";
-
-        // Convert JS-like condition to integer-based WASM branch
-        const condExpr = normalizeWASMCondition(parsed.condition);
-
+        /* if (loopVar !== "i") */ localVars.add(loopVar);
+        const initExpr = initMatch ? normalizeWASMExpression(initMatch[2], randomInputs) : "(f32.const 0)";
+        // Need to pass randomInputs to normalizeWASMCondition
         return `
     ;; Standard for loop
     (local.set $${loopVar} ${initExpr})
     (block $_for_exit
       (loop $_for_loop
-        (br_if $_for_exit (i32.eqz ${condExpr}))
+        (br_if $_for_exit (i32.eqz ${normalizeWASMCondition(parsed.condition, randomInputs)}))
         ;; Loop body`;
       }
     }
 
     case "foreach": {
-      // Keep foreach support for backward compatibility
       if (parsed.collection === "nearbyAgents") {
-        localVars.add("_foreach_idx");
-        localVars.add("_foreach_ptr");
-        localVars.add(`${parsed.varName}_x`);
-        localVars.add(`${parsed.varName}_y`);
-        localVars.add(`${parsed.varName}_vx`);
-        localVars.add(`${parsed.varName}_vy`);
-        localVars.add("_foreach_dx");
-        localVars.add("_foreach_dy");
-        localVars.add("_foreach_dist");
-
+        localVars.add("_foreach_idx"); localVars.add("_foreach_ptr"); localVars.add(`${parsed.varName}_x`);
+        localVars.add(`${parsed.varName}_y`); localVars.add(`${parsed.varName}_vx`); localVars.add(`${parsed.varName}_vy`);
+        localVars.add("_foreach_dx"); localVars.add("_foreach_dy"); localVars.add("_foreach_dist");
         return `
     ;; Foreach loop over nearbyAgents
     (local.set $_foreach_idx (i32.const 0))
@@ -555,185 +447,205 @@ function transpileLine(line: string, localVars: Set<string>): string | null {
     (block $_foreach_exit
       (loop $_foreach_loop
         (br_if $_foreach_exit (i32.ge_u (local.get $_foreach_idx) (global.get $agent_count)))
-        
-        ;; Skip self
         (if (i32.ne (local.get $_foreach_idx) (i32.trunc_f32_u (local.get $_agent_id))) (then
-          ;; Load other agent's data
           (local.set $${parsed.varName}_x (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 4))))
           (local.set $${parsed.varName}_y (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 8))))
           (local.set $${parsed.varName}_vx (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 12))))
           (local.set $${parsed.varName}_vy (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 16))))
-          
-          ;; Calculate distance to check if nearby
           (local.set $_foreach_dx (f32.sub (local.get $x) (local.get $${parsed.varName}_x)))
           (local.set $_foreach_dy (f32.sub (local.get $y) (local.get $${parsed.varName}_y)))
           (local.set $_foreach_dist (f32.sqrt (f32.add (f32.mul (local.get $_foreach_dx) (local.get $_foreach_dx)) (f32.mul (local.get $_foreach_dy) (local.get $_foreach_dy)))))
-          
-          ;; Only process if within perception radius
           (if (f32.lt (local.get $_foreach_dist) (global.get $inputs_perceptionRadius)) (then
             ;; Loop body will be inserted here by subsequent lines`;
-      } else {
-        return `;; TODO: foreach loops only supported for nearbyAgents collection (got: ${parsed.collection})`;
       }
+      return `;; TODO: foreach loops only supported for nearbyAgents`;
     }
 
     case "assignment": {
-      // Check if expression contains array indexing before normalization
       const arrayMatch = parsed.expression.match(/nearbyAgents\[\w+\]\.(\w+)/);
-
-      let wasmExpr: string;
       if (arrayMatch) {
-        // Handle array indexing by replacing with memory load
         const offsets: Record<string, number> = { x: 4, y: 8, vx: 12, vy: 16 };
         const offset = offsets[arrayMatch[1]] || 0;
         const loadExpr = `(f32.load (i32.add (local.get $_for_ptr) (i32.const ${offset})))`;
-
-        // Replace the array access with the load expression
-        const exprWithLoad = parsed.expression.replace(
-          /nearbyAgents\[\w+\]\.(\w+)/,
-          loadExpr
-        );
-        wasmExpr = normalizeWASMExpression(exprWithLoad);
-      } else {
-        wasmExpr = normalizeWASMExpression(parsed.expression);
+        const exprWithLoad = parsed.expression.replace(/nearbyAgents\[\w+\]\.(\w+)/, loadExpr);
+        return `(local.set $${parsed.target} ${normalizeWASMExpression(exprWithLoad, randomInputs)})`;
       }
-
-      if (wasmExpr.startsWith(";; UNSUPPORTED:")) {
-        return `;; Assignment to ${parsed.target}: ${wasmExpr}`;
-      }
-      return `(local.set $${parsed.target} ${wasmExpr})`;
+      return `(local.set $${parsed.target} ${normalizeWASMExpression(parsed.expression, randomInputs)})`;
     }
 
     case "command": {
       const { target, op } = COMMANDS[parsed.command];
-
       if (op === "update") {
-        // Special case: updatePosition multiplies velocity by dt
-        const argExpr = normalizeWASMExpression(parsed.argument);
-        const xUpdate = `(local.set $x (f32.add (local.get $x) (f32.mul (local.get $vx) ${argExpr})))`;
-        const yUpdate = `(local.set $y (f32.add (local.get $y) (f32.mul (local.get $vy) ${argExpr})))`;
-        return `${xUpdate}\n    ${yUpdate}`;
+        const argExpr = normalizeWASMExpression(parsed.argument, randomInputs);
+        return `(local.set $x (f32.add (local.get $x) (f32.mul (local.get $vx) ${argExpr})))\n    (local.set $y (f32.add (local.get $y) (f32.mul (local.get $vy) ${argExpr})))`;
       } else if (op === "complex") {
-        // Handle specific complex operations
         if (parsed.command === "limitSpeed") {
-          const maxSpeed = normalizeWASMExpression(parsed.argument);
-          localVars.add("__speed2");
-          localVars.add("__scale");
-          // Calculate speed squared and limit if needed
+          const maxSpeed = normalizeWASMExpression(parsed.argument, randomInputs);
+          localVars.add("__speed2"); localVars.add("__scale");
           return `(local.set $__speed2 (f32.add (f32.mul (local.get $vx) (local.get $vx)) (f32.mul (local.get $vy) (local.get $vy))))\n    (if (f32.gt (local.get $__speed2) (f32.mul ${maxSpeed} ${maxSpeed})) (then\n      (local.set $__scale (f32.sqrt (f32.div (f32.mul ${maxSpeed} ${maxSpeed}) (local.get $__speed2))))\n      (local.set $vx (f32.mul (local.get $vx) (local.get $__scale)))\n      (local.set $vy (f32.mul (local.get $vy) (local.get $__scale)))\n    ))`;
         } else if (parsed.command === "borderWrapping") {
-          // Border wrapping with width/height from inputs
-          return `(if (f32.lt (local.get $x) (f32.const 0)) (then\n      (local.set $x (f32.add (local.get $x) (global.get $inputs_width)))\n    ))\n    (if (f32.gt (local.get $x) (global.get $inputs_width)) (then\n      (local.set $x (f32.sub (local.get $x) (global.get $inputs_width)))\n    ))\n    (if (f32.lt (local.get $y) (f32.const 0)) (then\n      (local.set $y (f32.add (local.get $y) (global.get $inputs_height)))\n    ))\n    (if (f32.gt (local.get $y) (global.get $inputs_height)) (then\n      (local.set $y (f32.sub (local.get $y) (global.get $inputs_height)))\n    ))`;
+          return `(if (f32.lt (local.get $x) (f32.const 0)) (then (local.set $x (f32.add (local.get $x) (global.get $inputs_width)))))\n    (if (f32.gt (local.get $x) (global.get $inputs_width)) (then (local.set $x (f32.sub (local.get $x) (global.get $inputs_width)))))\n    (if (f32.lt (local.get $y) (f32.const 0)) (then (local.set $y (f32.add (local.get $y) (global.get $inputs_height)))))\n    (if (f32.gt (local.get $y) (global.get $inputs_height)) (then (local.set $y (f32.sub (local.get $y) (global.get $inputs_height)))))`;
         } else if (parsed.command === "borderBounce") {
-          // Border bouncing
-          return `(if (i32.or (f32.lt (local.get $x) (f32.const 0)) (f32.gt (local.get $x) (global.get $inputs_width))) (then\n      (local.set $vx (f32.neg (local.get $vx)))\n    ))\n    (if (i32.or (f32.lt (local.get $y) (f32.const 0)) (f32.gt (local.get $y) (global.get $inputs_height))) (then\n      (local.set $vy (f32.neg (local.get $vy)))\n    ))\n    (local.set $x (f32.max (f32.const 0) (f32.min (global.get $inputs_width) (local.get $x))))\n    (local.set $y (f32.max (f32.const 0) (f32.min (global.get $inputs_height) (local.get $y))))`;
-        } else {
-          return `;; TODO: ${parsed.command} not yet implemented in WASM`;
+          return `(if (i32.or (f32.lt (local.get $x) (f32.const 0)) (f32.gt (local.get $x) (global.get $inputs_width))) (then (local.set $vx (f32.neg (local.get $vx)))))\n    (if (i32.or (f32.lt (local.get $y) (f32.const 0)) (f32.gt (local.get $y) (global.get $inputs_height))) (then (local.set $vy (f32.neg (local.get $vy)))))\n    (local.set $x (f32.max (f32.const 0) (f32.min (global.get $inputs_width) (local.get $x))))\n    (local.set $y (f32.max (f32.const 0) (f32.min (global.get $inputs_height) (local.get $y))))`;
+        } else if (parsed.command === "turn") {
+          const angle = normalizeWASMExpression(parsed.argument, randomInputs);
+          localVars.add("__c"); localVars.add("__s"); localVars.add("__vx");
+          return `(local.set $__c (call $cos ${angle}))\n            (local.set $__s (call $sin ${angle}))\n            (local.set $__vx (f32.sub (f32.mul (local.get $vx) (local.get $__c)) (f32.mul (local.get $vy) (local.get $__s))))\n            (local.set $vy (f32.add (f32.mul (local.get $vx) (local.get $__s)) (f32.mul (local.get $vy) (local.get $__c))))\n            (local.set $vx (local.get $__vx))`;
+        } else if (parsed.command === "moveForward") {
+          const speed = normalizeWASMExpression(parsed.argument, randomInputs);
+          return `(local.set $x (f32.add (local.get $x) (f32.mul (local.get $vx) ${speed})))\n    (local.set $y (f32.add (local.get $y) (f32.mul (local.get $vy) ${speed})))`;
+        } else if (parsed.command === "deposit") {
+          return `(call $deposit (local.get $x) (local.get $y) ${normalizeWASMExpression(parsed.argument, randomInputs)})`;
+        } else if (parsed.command === "sense") {
+          const args = parsed.argument.split(',').map(s => s.trim());
+          return `(call $sense ${normalizeWASMExpression(args[0], randomInputs)} ${normalizeWASMExpression(args[1], randomInputs)})`;
+        } else if (parsed.command === "enableTrails") {
+          return `nop`;
         }
+        return `;; TODO: ${parsed.command} not yet implemented in WASM`;
       } else {
-        const argExpr = normalizeWASMExpression(parsed.argument);
-
-        if (op === "set") {
-          return `(local.set $${target} ${argExpr})`;
-        } else {
-          const opInstr = op === "add" ? "f32.add" : "f32.sub";
-          return `(local.set $${target} (${opInstr} (local.get $${target}) ${argExpr}))`;
-        }
+        const argExpr = normalizeWASMExpression(parsed.argument, randomInputs);
+        const opInstr = op === "add" ? "f32.add" : "f32.sub";
+        if (op === "set") return `(local.set $${target} ${argExpr})`;
+        return `(local.set $${target} (${opInstr} (local.get $${target}) ${argExpr}))`;
       }
     }
-
     case "unknown":
-    default:
-      return null;
+    default: return null;
   }
 }
+
 
 export const compileDSLtoWAT = (
   lines: LineInfo[],
   inputs: string[],
   logger: Logger,
-  rawScript: string
+  rawScript: string,
+  randomInputs: string[] = []
 ): string => {
   const statements: string[] = [];
   const localVars = new Set<string>();
-  let openStructures = 0; // Track user-level opened if statements
-  let foreachDepth = 0; // Track foreach loop nesting
-  let forDepth = 0; // Track for loop nesting
-  // let forInternalStructures = 0; // Track if statements created by for loop itself
+  const randomInputsSet = new Set(randomInputs);
+  let openStructures = 0;
+  let foreachDepth = 0;
+  let forDepth = 0;
+  let pendingClosures = 0;
 
-  for (const line of lines) {
+  // Track loop types to generate correct closer: 
+  // { type: 'nearby', internalIfs: 2 } or { type: 'standard', var: string }
+  // internalIfs tracks how many ifs the loop opens internally (skip-self, nearby-check)
+  // openStructuresAtEntry tracks the openStructures count when loop was entered
+  const loopStack: { type: 'nearby' | 'standard', var?: string, internalIfs: number, openStructuresAtEntry: number }[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     const trimmed = line.content.trim();
     if (!trimmed) continue;
-    
-    const transpiled = transpileLine(trimmed, localVars);
-    
+
+    let transpiled = transpileLine(trimmed, localVars, randomInputsSet);
+
     if (transpiled === null && trimmed !== "}") {
-        // If transpileLine returns null and it's not a closing brace or empty, check if it was unknown
-        const parsed = Compiler.parseDSLLine(trimmed);
-        if (parsed.type === 'unknown') {
-            logger.codeError("Unknown syntax or command", rawScript, line.lineIndex);
-        }
+      const parsed = DSLParser.parseDSLLine(trimmed);
+      if (parsed.type === 'unknown') {
+        logger.codeError("Unknown syntax or command", rawScript, line.lineIndex);
+      }
     }
-    
+
+    if (trimmed === "}") {
+      let nextLineIndex = i + 1;
+      let nextLineContent = "";
+      while (nextLineIndex < lines.length) {
+        const c = lines[nextLineIndex].content.trim();
+        if (c) { nextLineContent = c; break; }
+        nextLineIndex++;
+      }
+
+      if (nextLineContent.startsWith("else") || nextLineContent.startsWith("} else")) {
+        transpiled = ")";
+      } else {
+        transpiled = "))";
+        if (pendingClosures > 0) {
+          transpiled += ")".repeat(pendingClosures);
+          openStructures--;
+          pendingClosures = 0;
+        }
+      }
+    }
+
     if (transpiled !== null && transpiled !== "") {
-      // Track for loops - they create 2 nested if statements
-      if (transpiled.includes(";; For loop over")) {
+      if (transpiled.startsWith("(elseif")) {
+        const cond = transpiled.substring(8);
+        transpiled = `(else (if ${cond} (then`;
+        pendingClosures += 2;
+      }
+
+      if (transpiled.includes(";; For loop over nearbyAgents")) {
         forDepth++;
-        // forInternalStructures = 2; // for loop creates 2 if statements
+        loopStack.push({ type: 'nearby', internalIfs: 2, openStructuresAtEntry: openStructures });
+      } else if (transpiled.includes(";; Standard for loop")) {
+        forDepth++;
+        // Extract loop variable from "(local.set $varName ..."
+        const match = transpiled.match(/\(local\.set \$(\w+)/);
+        const varName = match ? match[1] : "i";
+        loopStack.push({ type: 'standard', var: varName, internalIfs: 0, openStructuresAtEntry: openStructures });
       }
 
-      // Track foreach loops - they also create nested if statements
-      if (transpiled.includes(";; Foreach loop over")) {
-        foreachDepth++;
-        // forInternalStructures = 0; // foreach handles its own structure
+      if (transpiled.includes(";; Foreach loop over")) foreachDepth++;
+
+      // Count net open ifs: (if ... (then) opens, )) closes
+      // Only increment openStructures by the NET count of unclosed ifs
+      if (transpiled.includes("(if ") && transpiled.includes("(then") &&
+        !transpiled.includes(";; For loop over") && !transpiled.includes(";; Foreach loop over") &&
+        !transpiled.includes(";; Skip self") && !transpiled.includes(";; Only process") &&
+        !transpiled.includes("(else (if")) {
+        // Count how many (if ... (then pairs vs )) closers
+        const openCount = (transpiled.match(/\(if [^)]*\(then/g) || []).length;
+        const closeCount = (transpiled.match(/\)\)/g) || []).length;
+        const netOpen = openCount - closeCount;
+        if (netOpen > 0) {
+          openStructures += netOpen;
+        }
       }
 
-      // Track open structures (user-level if statements)
-      // Don't count the initial if statements from for/foreach loops
-      if (
-        transpiled.includes("(if ") &&
-        transpiled.includes("(then") &&
-        !transpiled.includes(";; For loop over") &&
-        !transpiled.includes(";; Foreach loop over") &&
-        !transpiled.includes(";; Skip self") &&
-        !transpiled.includes(";; Only process if within perception radius")
-      ) {
-        openStructures++;
-      }
-
-      // Handle closing braces
-      if (transpiled === "))") {
+      if (transpiled === "))" || (transpiled.startsWith("))") && pendingClosures > 0)) {
         if (forDepth > 0 && openStructures === 0) {
-          // Close for loop structure (including internal ifs)
           forDepth--;
-          // forInternalStructures = 0;
-          statements.push(`          ))
-        ))
-        
-        ;; Increment for loop
-        (local.set $_for_idx (i32.add (local.get $_for_idx) (i32.const 1)))
-        (local.set $_for_ptr (i32.add (local.get $_for_ptr) (i32.const 20)))
-        (br $_for_loop)
-      )
-    )`);
+          const loopInfo = loopStack.pop();
+
+          if (loopInfo && loopInfo.type === 'nearby') {
+            // Close 2 ifs, then loop update, then loop/block
+            statements.push(`          ))\n        ))\n        (local.set $_for_idx (i32.add (local.get $_for_idx) (i32.const 1)))\n        (local.set $_for_ptr (i32.add (local.get $_for_ptr) (i32.const 20)))\n        (br $_for_loop)\n      )\n    )`);
+          } else if (loopInfo && loopInfo.type === 'standard') {
+            // Standard loop: No ifs to close (usually), just loop update and close loop/block
+            // Wait, transpiled is "))". If we use it, we close 2 things.
+            // But Standard loop didn't open IFs.
+            // So we should NOT emit "))" at start of closer.
+            // We just emit loop update and close loop/block.
+            const varName = loopInfo.var;
+            // Increment loop var: $i++
+            // Assuming it's f32 (since we default to f32 for user vars) or i32?
+            // In transpileLine: "localVars.add(loopVar)".
+            // In declaration: i32Vars = Set(["_loop_idx", ...]). User vars are usually f32.
+            // But loop counter strictly should probably be checked.
+            // If we initialized it with "0" (f32) -> f32.
+            // If "0" (i32) -> i32.
+            // normalizeWASMExpression returns (f32.const 0) for numbers.
+            // so it's f32.
+            // So we use f32.add.
+            statements.push(`        (local.set $${varName} (f32.add (local.get $${varName}) (f32.const 1)))\n        (br $_for_loop)\n      )\n    )`);
+          } else {
+            // Fallback (shouldn't happen)
+            statements.push(transpiled);
+          }
         } else if (foreachDepth > 0 && openStructures === 0) {
-          // Close foreach loop structure
           foreachDepth--;
-          statements.push(`          ))
-        ))
-        
-        ;; Increment foreach loop
-        (local.set $_foreach_idx (i32.add (local.get $_foreach_idx) (i32.const 1)))
-        (local.set $_foreach_ptr (i32.add (local.get $_foreach_ptr) (i32.const 20)))
-        (br $_foreach_loop)
-      )
-    )`);
+          statements.push(`          ))\n        ))\n        (local.set $_foreach_idx (i32.add (local.get $_foreach_idx) (i32.const 1)))\n        (local.set $_foreach_ptr (i32.add (local.get $_foreach_ptr) (i32.const 20)))\n        (br $_foreach_loop)\n      )\n    )`);
         } else if (openStructures > 0) {
           openStructures--;
           statements.push(transpiled);
         } else {
-          // Unmatched closing brace - comment it out
-          statements.push(";; (unmatched closing brace)");
+          if (transpiled.includes(")")) statements.push(transpiled);
+          else statements.push(";; (unmatched closing brace)");
         }
       } else {
         statements.push(transpiled);
@@ -742,55 +654,31 @@ export const compileDSLtoWAT = (
   }
 
   if (statements.length === 0) {
-    logger.warn(
-      "No WASM statements produced from DSL. Emitting identity function."
-    );
     statements.push(";; no-op");
   }
 
-  // Always add _agent_id as a local variable for neighbor/for loops
   localVars.add("_agent_id");
+  randomInputs.forEach(r => localVars.add(r));
 
-  const inputGlobals =
-    inputs.length > 0
-      ? inputs
-        .map(
-          (n) =>
-            `(global $inputs_${n} (export "inputs_${n}") (mut f32) (f32.const 0))`
-        )
-        .join("\n  ")
-      : "";
-
-  // Add agent_count global for neighbor searching
+  const inputGlobals = inputs.length > 0 ? inputs.filter(n => n !== "randomValues" && n !== "trailMap").map(n => `(global $inputs_${n} (export "inputs_${n}") (mut f32) (f32.const 0))`).join("\n  ") : "";
   const agentCountGlobal = `(global $agent_count (export "agent_count") (mut i32) (i32.const 0))`;
 
-  // Generate local variable declarations for user-defined vars
-  // Filter out 'i' since it's already declared in step_all (conflicts with outer loop)
-  // Internal loop/pointer variables should be i32, everything else f32
-  const i32Vars = new Set([
-    "_loop_idx",
-    "_loop_ptr",
-    "_for_idx",
-    "_for_ptr",
-    "_foreach_idx",
-    "_foreach_ptr",
-  ]);
-
+  const i32Vars = new Set(["_loop_idx", "_loop_ptr", "_for_idx", "_for_ptr", "_foreach_idx", "_foreach_ptr"]);
+  const reservedLocals = new Set(["x", "y", "vx", "vy"]);
   const localVarDecls = Array.from(localVars)
-    .filter((v) => v !== "i") // 'i' is already declared in step_all's outer loop
-    .map((v) => {
-      const type = i32Vars.has(v) ? "i32" : "f32";
-      return `(local $${v} ${type})`;
-    })
-    .join("\n      ");
+    .filter(v => !reservedLocals.has(v))
+    .map(v => `(local $${v} ${i32Vars.has(v) ? "i32" : "f32"})`).join("\n      ");
 
   const agentKernel = `
-    ;; load agent fields: id(0), x(+4), y(+8), vx(+12), vy(+16)
+    ;; load agent fields
     (local.set $_agent_id (f32.load (i32.add (local.get $ptr) (i32.const 0))))
     (local.set $x (f32.load (i32.add (local.get $ptr) (i32.const 4))))
     (local.set $y (f32.load (i32.add (local.get $ptr) (i32.const 8))))
     (local.set $vx (f32.load (i32.add (local.get $ptr) (i32.const 12))))
     (local.set $vy (f32.load (i32.add (local.get $ptr) (i32.const 16))))
+
+    ;; load random values
+    ${randomInputs.map(r => `(local.set $${r} (f32.load (i32.add (global.get $randomValuesPtr) (i32.shl (i32.trunc_f32_u (local.get $_agent_id)) (i32.const 2)))))`).join('\n    ')}
 
     ;; execute DSL
     ${statements.join("\n    ")}
@@ -800,56 +688,80 @@ export const compileDSLtoWAT = (
     (f32.store (i32.add (local.get $ptr) (i32.const 8)) (local.get $y))
     (f32.store (i32.add (local.get $ptr) (i32.const 12)) (local.get $vx))
     (f32.store (i32.add (local.get $ptr) (i32.const 16)) (local.get $vy))
-
-  `.trim();
+  `;
 
   const stepFuncLocals = localVars.size > 0 ? `\n      ${localVarDecls}` : "";
 
-  const wasm = `
+  return `
   (module
-    ;; Shared memory is provided by JS
     (import "env" "memory" (memory 1))
-    ${inputGlobals}
-  ${agentCountGlobal}
+    (import "env" "sin" (func $sin (param f32) (result f32)))
+    (import "env" "cos" (func $cos (param f32) (result f32)))
+    (import "env" "atan2" (func $atan2 (param f32 f32) (result f32)))
+    (import "env" "random" (func $random_js (result f32)))
 
-    ;; Optional single-agent step (for debugging)
+    ${inputGlobals}
+    ${inputs.includes('trailMap') ? '(global $trailMapPtr (export "trailMapPtr") (mut i32) (i32.const 0))' : ''}
+    ${inputs.includes('randomValues') ? '(global $randomValuesPtr (export "randomValuesPtr") (mut i32) (i32.const 0))' : ''}
+
+    (func $random (param $id f32) (param $x f32) (param $y f32) (result f32) (call $random_js))
+
+    ${inputs.includes('trailMap') ? `
+    (func $sense (param $x f32) (param $y f32) (param $vx f32) (param $vy f32) (param $angleOffset f32) (param $dist f32) (result f32)
+      (local $angle f32) (local $sx f32) (local $sy f32) (local $ix i32) (local $iy i32) (local $w i32) (local $h i32) (local $idx i32)
+      (local.set $w (i32.trunc_f32_s (global.get $inputs_width)))
+      (local.set $h (i32.trunc_f32_s (global.get $inputs_height)))
+      (local.set $angle (f32.add (call $atan2 (local.get $vy) (local.get $vx)) (local.get $angleOffset)))
+      (local.set $sx (f32.add (local.get $x) (f32.mul (call $cos (local.get $angle)) (local.get $dist))))
+      (local.set $sy (f32.add (local.get $y) (f32.mul (call $sin (local.get $angle)) (local.get $dist))))
+      (local.set $ix (i32.trunc_f32_s (local.get $sx)))
+      (local.set $iy (i32.trunc_f32_s (local.get $sy)))
+      (if (i32.lt_s (local.get $ix) (i32.const 0)) (then (local.set $ix (i32.add (local.get $ix) (local.get $w)))))
+      (if (i32.ge_s (local.get $ix) (local.get $w)) (then (local.set $ix (i32.sub (local.get $ix) (local.get $w)))))
+      (if (i32.lt_s (local.get $iy) (i32.const 0)) (then (local.set $iy (i32.add (local.get $iy) (local.get $h)))))
+      (if (i32.ge_s (local.get $iy) (local.get $h)) (then (local.set $iy (i32.sub (local.get $iy) (local.get $h)))))
+      (if (i32.eqz (global.get $trailMapPtr)) (then (return (f32.const 0))))
+      (local.set $idx (i32.add (i32.mul (local.get $iy) (local.get $w)) (local.get $ix)))
+      (f32.load (i32.add (global.get $trailMapPtr) (i32.shl (local.get $idx) (i32.const 2))))
+    )
+    (func $deposit (param $x f32) (param $y f32) (param $amount f32)
+      (local $ix i32) (local $iy i32) (local $w i32) (local $h i32) (local $idx i32) (local $ptr i32) (local $val f32)
+      (local.set $w (i32.trunc_f32_s (global.get $inputs_width)))
+      (local.set $h (i32.trunc_f32_s (global.get $inputs_height)))
+      (local.set $ix (i32.trunc_f32_s (local.get $x)))
+      (local.set $iy (i32.trunc_f32_s (local.get $y)))
+      (if (i32.lt_s (local.get $ix) (i32.const 0)) (then (local.set $ix (i32.add (local.get $ix) (local.get $w)))))
+      (if (i32.ge_s (local.get $ix) (local.get $w)) (then (local.set $ix (i32.sub (local.get $ix) (local.get $w)))))
+      (if (i32.lt_s (local.get $iy) (i32.const 0)) (then (local.set $iy (i32.add (local.get $iy) (local.get $h)))))
+      (if (i32.ge_s (local.get $iy) (local.get $h)) (then (local.set $iy (i32.sub (local.get $iy) (local.get $h)))))
+      (if (global.get $trailMapPtr) (then
+         (local.set $idx (i32.add (i32.mul (local.get $iy) (local.get $w)) (local.get $ix)))
+         (local.set $ptr (i32.add (global.get $trailMapPtr) (i32.shl (local.get $idx) (i32.const 2))))
+         (local.set $val (f32.load (local.get $ptr)))
+         (f32.store (local.get $ptr) (f32.add (local.get $val) (local.get $amount)))
+      ))
+    )` : ''}
+
+    ${agentCountGlobal}
+
     (func (export "step") (param $ptr i32)
-      (local $x f32)
-      (local $y f32)
-      (local $vx f32)
-      (local $vy f32)${stepFuncLocals}
+      (local $x f32) (local $y f32) (local $vx f32) (local $vy f32)${stepFuncLocals}
       ${agentKernel}
     )
 
-    ;; Batch version
     (func (export "step_all") (param $base i32) (param $count i32)
-      (local $i i32)
-      (local $ptr i32)
-      (local $x f32)
-      (local $y f32)
-      (local $vx f32)
-      (local $vy f32)${stepFuncLocals}
-
-      (local.set $i (i32.const 0))
+      (local $_outer_i i32) (local $ptr i32) (local $x f32) (local $y f32) (local $vx f32) (local $vy f32)${stepFuncLocals}
+      (local.set $_outer_i (i32.const 0))
       (local.set $ptr (local.get $base))
-
       (block $exit
         (loop $loop
-          (br_if $exit (i32.ge_u (local.get $i) (local.get $count)))
-
-          ;; ---- per-agent kernel ----
+          (br_if $exit (i32.ge_u (local.get $_outer_i) (local.get $count)))
           ${agentKernel}
-
-          ;; increment i and ptr (20 bytes per agent: 5 floats * 4 bytes)
-          (local.set $i   (i32.add (local.get $i) (i32.const 1)))
+          (local.set $_outer_i (i32.add (local.get $_outer_i) (i32.const 1)))
           (local.set $ptr (i32.add (local.get $ptr) (i32.const 20)))
-
           (br $loop)
         )
       )
     )
-  )
-  `.trim();
-
-  return wasm;
+  )`;
 };

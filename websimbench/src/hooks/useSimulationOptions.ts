@@ -8,6 +8,8 @@ export interface SimulationAppearanceOptions {
   backgroundColor: string;
   agentSize: number;
   agentShape: AgentShape;
+  showTrails: boolean;
+  trailColor: string;
   logLevel: LogLevel;
 }
 
@@ -18,6 +20,8 @@ const DEFAULT_OPTIONS: SimulationAppearanceOptions = {
   backgroundColor: '#000000', // Black
   agentSize: 3,
   agentShape: 'circle',
+  showTrails: true,
+  trailColor: '#50FFFF', // Light Cyan default
   logLevel: LogLevel.Info
 };
 
@@ -26,9 +30,9 @@ export function useSimulationOptions() {
     try {
       const saved = localStorage.getItem('websimbench_options');
       if (saved) {
-          const parsed = JSON.parse(saved);
-          // Merge with default options to ensure new fields are present
-          return { ...DEFAULT_OPTIONS, ...parsed };
+        const parsed = JSON.parse(saved);
+        // Merge with default options to ensure new fields are present
+        return { ...DEFAULT_OPTIONS, ...parsed };
       }
       return DEFAULT_OPTIONS;
     } catch (e) {
@@ -38,7 +42,7 @@ export function useSimulationOptions() {
 
   useEffect(() => {
     localStorage.setItem('websimbench_options', JSON.stringify(options));
-    
+
     // Ensure logLevel is valid before setting
     const level = options.logLevel !== undefined ? options.logLevel : DEFAULT_OPTIONS.logLevel;
     Logger.setGlobalLogLevel(level);
