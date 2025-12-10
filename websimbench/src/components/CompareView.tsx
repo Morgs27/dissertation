@@ -39,6 +39,7 @@ export const CompareView = ({ code, definedInputs }: CompareViewProps) => {
     const [frame, setFrame] = useState(0);
     const computeEnginesRef = useRef<Record<Method, ComputeEngine>>({} as Record<Method, ComputeEngine>);
     const animationRef = useRef<number | null>(null);
+    const isRunningRef = useRef(false);
 
     const bg = useColorModeValue('gray.800', 'gray.900');
     const borderColor = useColorModeValue('gray.600', 'gray.700');
@@ -69,7 +70,14 @@ export const CompareView = ({ code, definedInputs }: CompareViewProps) => {
     };
 
     // Build inputs object from definedInputs
-    const buildInputs = useCallback((width: number, height: number, agents: Agent[]): Record<string, number | Float32Array | Agent[]> => {
+    const buildInputs = useCallback((
+        width: number,
+        height: number,
+        agents: Agent[],
+        numAgents: number,
+        frameNum: number,
+        requiredInputs: string[]
+    ): Record<string, number | Float32Array | Agent[]> => {
         const inputs: Record<string, number | Float32Array | Agent[]> = {
             width,
             height,
@@ -80,6 +88,18 @@ export const CompareView = ({ code, definedInputs }: CompareViewProps) => {
                 inputs[def.name] = def.defaultValue;
             }
         });
+
+        // Add seeded random values if required
+        if (requiredInputs.includes('randomValues')) {
+            const randomValues = new Float32Array(numAgents);
+            let seed = 12345 + frameNum; // Different seed per frame, but consistent across methods
+            for (let i = 0; i < numAgents; i++) {
+                seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+                randomValues[i] = seed / 0x7fffffff;
+            }
+            inputs.randomValues = randomValues;
+        }
+
         return inputs;
     }, [definedInputs]);
 
@@ -87,6 +107,7 @@ export const CompareView = ({ code, definedInputs }: CompareViewProps) => {
         if (!code || selectedMethods.length === 0) return;
 
         setIsRunning(true);
+        isRunningRef.current = true;
         setFrame(0);
 
         const width = canvasRef.current?.width || 800;
@@ -96,6 +117,7 @@ export const CompareView = ({ code, definedInputs }: CompareViewProps) => {
         // Compile code
         const compiler = new Compiler();
         const compiled = compiler.compileAgentCode(code);
+        const requiredInputs = compiled.requiredInputs;
 
         // Generate initial agents
         const seedAgents = generateAgents(numAgents, width, height, 12345);
@@ -103,12 +125,39 @@ export const CompareView = ({ code, definedInputs }: CompareViewProps) => {
         // Initialize compute engines for each selected method
         const engines: Record<Method, ComputeEngine> = {} as Record<Method, ComputeEngine>;
         const methodAgents: Record<Method, Agent[]> = {} as Record<Method, Agent[]>;
+        const methodTrailMaps: Record<Method, Float32Array> = {} as Record<Method, Float32Array>;
         const perfMonitor = new PerformanceMonitor();
+
+        // Request GPU device if WebGPU is selected
+        let gpuDevice: GPUDevice | null = null;
+        if (selectedMethods.includes('WebGPU') && navigator.gpu) {
+            try {
+                const adapter = await navigator.gpu.requestAdapter();
+                if (adapter) {
+                    gpuDevice = await adapter.requestDevice();
+                }
+            } catch (e) {
+                console.warn('Failed to get WebGPU device:', e);
+            }
+        }
+
+        // Check if simulation needs trail map
+        const needsTrailMap = requiredInputs.includes('trailMap');
 
         for (const method of selectedMethods) {
             const engine = new ComputeEngine(compiled, perfMonitor, numAgents);
+
+            // Initialize WebGPU device if this engine will use WebGPU
+            if (method === 'WebGPU' && gpuDevice) {
+                engine.initGPU(gpuDevice);
+            }
+
             engines[method] = engine;
             methodAgents[method] = cloneAgents(seedAgents);
+
+            if (needsTrailMap) {
+                methodTrailMaps[method] = new Float32Array(width * height);
+            }
         }
 
         computeEnginesRef.current = engines;
@@ -117,12 +166,19 @@ export const CompareView = ({ code, definedInputs }: CompareViewProps) => {
         // Animation loop
         let currentFrame = 0;
         const animate = async () => {
+            // Check if we should stop
+            if (!isRunningRef.current) return;
+
             const newAgentsByMethod: Record<Method, Agent[]> = {} as Record<Method, Agent[]>;
 
             for (const method of selectedMethods) {
                 const engine = engines[method];
                 const agents = methodAgents[method];
-                const inputs = buildInputs(width, height, agents);
+                const inputs = buildInputs(width, height, agents, numAgents, currentFrame, requiredInputs);
+
+                if (needsTrailMap && methodTrailMaps[method]) {
+                    inputs.trailMap = methodTrailMaps[method];
+                }
 
                 const result = await engine.runFrame(method, agents, inputs, 'cpu');
                 if (result) {
@@ -142,6 +198,7 @@ export const CompareView = ({ code, definedInputs }: CompareViewProps) => {
     }, [code, selectedMethods, generateAgents, buildInputs]);
 
     const handleStop = useCallback(() => {
+        isRunningRef.current = false;
         if (animationRef.current) {
             cancelAnimationFrame(animationRef.current);
             animationRef.current = null;

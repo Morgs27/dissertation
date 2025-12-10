@@ -21,8 +21,8 @@ const TOLERANCES: Record<Method, number> = {
     'JavaScript': 0,
     'WebGL': 0,
     'WebWorkers': 0,        // Should be exact parity with delta-based merge
-    'WebAssembly': 1.5,     // Float32 precision drift accumulates over frames
-    'WebGPU': 1.5           // Float32 precision drift accumulates over frames
+    'WebAssembly': 0,       // Strict parity required
+    'WebGPU': 0             // Strict parity required
 };
 
 // Create a seeded random number generator for reproducible tests
@@ -206,6 +206,7 @@ describe('Compute Cross-Method Comparison', () => {
 
                 const comparisonReport: {
                     simulation: string;
+                    generatedAt: string;
                     numFrames: number;
                     numAgents: number;
                     comparisons: Array<{
@@ -225,6 +226,7 @@ describe('Compute Cross-Method Comparison', () => {
                     }>;
                 } = {
                     simulation: simulationName,
+                    generatedAt: new Date().toISOString(),
                     numFrames: NUM_FRAMES,
                     numAgents: NUM_AGENTS,
                     comparisons: []
