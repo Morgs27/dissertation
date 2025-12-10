@@ -1,22 +1,24 @@
 
 import type Logger from "../helpers/logger";
 import { DSLParser, type CommandMap, type LineInfo } from "./parser";
+import { transformExpression, isArrayExpression } from "./expressionAST";
 
+// COMMANDS updated to use Float32 precision via f() wrapper for WASM/WebGPU parity
 const COMMANDS: CommandMap = {
-    moveUp: 'y -= {arg};',
-    moveDown: 'y += {arg};',
-    moveLeft: 'x -= {arg};',
-    moveRight: 'x += {arg};',
-    addVelocityX: 'vx += {arg};',
-    addVelocityY: 'vy += {arg};',
-    setVelocityX: 'vx = {arg};',
-    setVelocityY: 'vy = {arg};',
-    updatePosition: 'x += vx * {arg}; y += vy * {arg};',
-    borderWrapping: 'if (x < 0) x += inputs.width; if (x > inputs.width) x -= inputs.width; if (y < 0) y += inputs.height; if (y > inputs.height) y -= inputs.height;',
-    borderBounce: 'if (x < 0 || x > inputs.width) vx = -vx; if (y < 0 || y > inputs.height) vy = -vy; x = Math.max(0, Math.min(inputs.width, x)); y = Math.max(0, Math.min(inputs.height, y));',
-    limitSpeed: 'const __speed2 = vx*vx + vy*vy; if (__speed2 > {arg}**2) { const __scale = Math.sqrt({arg}**2 / __speed2); vx *= __scale; vy *= __scale; }',
-    turn: 'const __c = Math.cos({arg}); const __s = Math.sin({arg}); const __vx = vx * __c - vy * __s; vy = vx * __s + vy * __c; vx = __vx;',
-    moveForward: 'x += vx * {arg}; y += vy * {arg};',
+    moveUp: 'y = f(y - {arg});',
+    moveDown: 'y = f(y + {arg});',
+    moveLeft: 'x = f(x - {arg});',
+    moveRight: 'x = f(x + {arg});',
+    addVelocityX: 'vx = f(vx + {arg});',
+    addVelocityY: 'vy = f(vy + {arg});',
+    setVelocityX: 'vx = f({arg});',
+    setVelocityY: 'vy = f({arg});',
+    updatePosition: 'x = f(x + f(vx * {arg})); y = f(y + f(vy * {arg}));',
+    borderWrapping: 'if (x < 0) x = f(x + f(inputs.width)); if (x > f(inputs.width)) x = f(x - f(inputs.width)); if (y < 0) y = f(y + f(inputs.height)); if (y > f(inputs.height)) y = f(y - f(inputs.height));',
+    borderBounce: 'if (x < 0 || x > f(inputs.width)) vx = f(-vx); if (y < 0 || y > f(inputs.height)) vy = f(-vy); x = f(Math.max(0, Math.min(f(inputs.width), x))); y = f(Math.max(0, Math.min(f(inputs.height), y)));',
+    limitSpeed: 'const __speed2 = f(f(vx*vx) + f(vy*vy)); if (__speed2 > f({arg}*{arg})) { const __scale = f(Math.sqrt(f(f({arg}*{arg}) / __speed2))); vx = f(vx * __scale); vy = f(vy * __scale); }',
+    turn: 'const __c = f(Math.cos({arg})); const __s = f(Math.sin({arg})); const __vx = f(f(vx * __c) - f(vy * __s)); vy = f(f(vx * __s) + f(vy * __c)); vx = __vx;',
+    moveForward: 'x = f(x + f(vx * {arg})); y = f(y + f(vy * {arg}));',
     deposit: '_deposit({arg});',
     sense: '', // Handled as expression
     enableTrails: '',
@@ -24,8 +26,9 @@ const COMMANDS: CommandMap = {
 
 /**
  * Transpiles a single line of DSL to JavaScript using shared parser
+ * @param randomInputs Set of random input names for proper variable resolution
  */
-function transpileLine(line: string, randomInputs: Set<string>): string | null {
+function transpileLine(line: string, randomInputs: Set<string> = new Set()): string | null {
     const parsed = DSLParser.parseDSLLine(line);
 
     switch (parsed.type) {
@@ -35,15 +38,23 @@ function transpileLine(line: string, randomInputs: Set<string>): string | null {
         case 'brace':
             return line.trim();
 
-        case 'var':
-            return `let ${parsed.name} = ${transpileExpression(parsed.expression, randomInputs)}; `;
+        case 'var': {
+            // Use AST-based transformation for proper Float32 wrapping
+            const exprTranspiled = transformExpression(parsed.expression, randomInputs);
+            // Don't wrap arrays like neighbors() in f()
+            if (isArrayExpression(parsed.expression)) {
+                return `let ${parsed.name} = ${exprTranspiled}; `;
+            }
+            // The AST already wraps the final result, no need for extra f()
+            return `let ${parsed.name} = ${exprTranspiled}; `;
+        }
 
         case 'if':
-            return `if (${transpileExpression(parsed.condition, randomInputs)}) {
+            return `if (${transformExpression(parsed.condition, randomInputs)}) {
     `;
 
         case 'elseif':
-            return `else if (${transpileExpression(parsed.condition, randomInputs)}) {
+            return `else if (${transformExpression(parsed.condition, randomInputs)}) {
         `;
 
         case 'else':
@@ -56,17 +67,23 @@ function transpileLine(line: string, randomInputs: Set<string>): string | null {
         case 'for': {
             // Handle for loops: for (var i = 0; i < n; i++)
             const init = parsed.init.replace(/^var\s+/, 'let ');
-            const condition = transpileExpression(parsed.condition, randomInputs);
+            const condition = transformExpression(parsed.condition, randomInputs);
             const increment = parsed.increment;
             return `for (${init}; ${condition}; ${increment}) {
                 `;
         }
 
         case 'assignment': {
-            // Handle compound assignments (+=, -=, etc.)
+            // Handle compound assignments (+=, -=, etc.) with AST-based Float32 wrapping
             const target = parsed.target.trim();
             const expression = parsed.expression.trim();
-            return `${target} = ${transpileExpression(expression, randomInputs)}; `;
+            const exprTranspiled = transformExpression(expression, randomInputs);
+            // Don't wrap arrays
+            if (isArrayExpression(expression)) {
+                return `${target} = ${exprTranspiled}; `;
+            }
+            // The AST already wraps arithmetic, no extra f() needed
+            return `${target} = ${exprTranspiled}; `;
         }
 
         case 'command':
@@ -74,7 +91,8 @@ function transpileLine(line: string, randomInputs: Set<string>): string | null {
                 const template = COMMANDS[parsed.command];
                 // Handle configuration-only commands with empty templates
                 if (!template) return '';
-                const arg = transpileExpression(parsed.argument, randomInputs);
+                // Use AST for argument transformation
+                const arg = transformExpression(parsed.argument, randomInputs);
                 const result = DSLParser.applyCommandTemplate(template, arg);
                 return result.endsWith(';') ? result : result + ';';
             }
@@ -84,64 +102,6 @@ function transpileLine(line: string, randomInputs: Set<string>): string | null {
         default:
             return null;
     }
-}
-
-/**
- * Transpiles expressions to JavaScript
- */
-function transpileExpression(expr: string, randomInputs: Set<string> = new Set()): string {
-    let result = expr.trim();
-
-    // Replace ^ with ** for exponentiation
-    result = result.replace(/\^/g, '**');
-
-    // Replace inputs.* references
-    result = result.replace(/inputs\.(\w+)/g, 'inputs.$1');
-
-    // Replace agents.count with agents.length
-    result = result.replace(/(\w+)\.count/g, '$1.length');
-
-    // Handle array indexing with property access: collection[i].property
-    // This pattern matches nearbyAgents[i].x and keeps it as is
-    // (JavaScript handles this natively)
-
-    // Handle function calls like mean(agents.vx)
-    result = result.replace(/mean\(([^)]+)\)/g, (_match, arg) => {
-        const trimmed = arg.trim();
-        // Check if it's property access like agents.vx
-        const propMatch = trimmed.match(/(\w+)\.(\w+)/);
-        if (propMatch) {
-            return `_mean(${propMatch[1]}, '${propMatch[2]}')`;
-        }
-        return `_mean(${trimmed})`;
-    });
-
-    result = result.replace(/sqrt\(([^)]+)\)/g, 'Math.sqrt($1)');
-    result = result.replace(/neighbors\(([^)]+)\)/g, '_neighbors($1)');
-    result = result.replace(/sense\(([^)]+)\)/g, '_sense($1)');
-    result = result.replace(/random\(([^)]*)\)/g, '_random($1)');
-
-    // Handle random inputs replacement
-    if (randomInputs.size > 0) {
-        result = result.replace(/inputs\.(\w+)/g, (match, name) => {
-            if (randomInputs.has(name)) {
-                return name;
-            }
-            return match;
-        });
-    }
-
-    // Handle random inputs replacement
-    if (randomInputs.size > 0) {
-        result = result.replace(/inputs\.(\w+)/g, (match, name) => {
-            if (randomInputs.has(name)) {
-                return name;
-            }
-            return match;
-        });
-    }
-
-    return result;
 }
 
 /**
@@ -186,89 +146,102 @@ export const compileDSLtoJS = (lines: LineInfo[], _inputs: string[], logger: Log
     }
 
     // Generate function with helper functions
+    // f() is the Float32 wrapper for WASM/WebGPU parity
     const agentFunction = `(agent, inputs) => {
-                    // Destructure agent properties for direct access
-                    let { id, x, y, vx, vy } = agent;
+                    // Float32 wrapper for precision parity with WASM/WebGPU
+                    const f = Math.fround;
+                    
+                    // Destructure agent properties with Float32 conversion
+                    let { id } = agent;
+                    let x = f(agent.x);
+                    let y = f(agent.y);
+                    let vx = f(agent.vx);
+                    let vy = f(agent.vy);
 
                     // Get agents array
                     const agents = inputs.agents || [];
 
-                    // Helper function for random values
+                    // Helper function for random values (returns Float32)
                     const _random = (min, max) => {
                         if (max === undefined) {
-                            if (min === undefined) return Math.random();
-                            return Math.random() * min;
+                            if (min === undefined) return f(Math.random());
+                            return f(f(Math.random()) * f(min));
                         }
-                        return min + Math.random() * (max - min);
+                        return f(f(min) + f(f(Math.random()) * f(f(max) - f(min))));
                     };
 
-        // Initialize random input variables
-        ${randomInputs.map(r => `let ${r} = (inputs.randomValues && inputs.randomValues[id] !== undefined) ? inputs.randomValues[id] : _random();`).join('\n        ')}
+        // Initialize random input variables (Float32)
+        ${randomInputs.map(r => `let ${r} = f((inputs.randomValues && inputs.randomValues[id] !== undefined) ? inputs.randomValues[id] : _random());`).join('\n        ')}
 
-                    // Helper function: calculate mean of an array or array property
+                    // Helper function: calculate mean of an array or array property (returns Float32)
                     const _mean = (arr, prop) => {
-                        if (!Array.isArray(arr)) return 0;
-                        if (arr.length === 0) return 0;
+                        if (!Array.isArray(arr)) return f(0);
+                        if (arr.length === 0) return f(0);
                         if (prop) {
                             // Extract property from each element
-                            const values = arr.map(item => item[prop] || 0);
-                            return values.reduce((sum, val) => sum + val, 0) / values.length;
+                            const values = arr.map(item => f(item[prop] || 0));
+                            return f(values.reduce((sum, val) => f(sum + val), f(0)) / f(values.length));
                         }
-                        return arr.reduce((sum, val) => sum + val, 0) / arr.length;
+                        return f(arr.reduce((sum, val) => f(sum + f(val)), f(0)) / f(arr.length));
                     };
 
-                    // Helper function: find nearby neighbors
+                    // Helper function: find nearby neighbors (uses Float32 for distance calc)
                     const _neighbors = (radius) => {
+                        const r = f(radius);
                         return agents.filter(a => {
                             if (a.id === id) return false;
-                            const dx = x - a.x;
-                            const dy = y - a.y;
-                            const dist = Math.sqrt(dx * dx + dy * dy);
-                            return dist < radius;
+                            const dx = f(x - f(a.x));
+                            const dy = f(y - f(a.y));
+                            const dist = f(Math.sqrt(f(f(dx * dx) + f(dy * dy))));
+                            return dist < r;
                         });
                     };
 
                     const _sense = (angleOffset, distance) => {
                         // Read from trailMapRead (previous frame state) for order-independent sensing
                         const readMap = inputs.trailMapRead || inputs.trailMap;
+                        const ao = f(angleOffset);
+                        const dist = f(distance);
                         
-                        // angle based on current velocity
-                        if (vx === 0 && vy === 0) {
-                            // Random angle if stopped? or just 0
-                            // If stopped, let's assume direction 0
-                        }
-                        const currentAngle = Math.atan2(vy, vx);
-                        const angle = currentAngle + angleOffset;
-                        const sx = x + Math.cos(angle) * distance;
-                        const sy = y + Math.sin(angle) * distance;
-                        // Wrap coordinates
-                        let ix = Math.floor(sx);
-                        let iy = Math.floor(sy);
-                        if (ix < 0) ix += inputs.width;
-                        if (ix >= inputs.width) ix -= inputs.width;
-                        if (iy < 0) iy += inputs.height;
-                        if (iy >= inputs.height) iy -= inputs.height;
+                        // angle based on current velocity (Float32 precision)
+                        const currentAngle = f(Math.atan2(vy, vx));
+                        const angle = f(currentAngle + ao);
+                        const sx = f(x + f(f(Math.cos(angle)) * dist));
+                        const sy = f(y + f(f(Math.sin(angle)) * dist));
+                        // Wrap coordinates - use Math.trunc to match WASM's i32.trunc_f32_s
+                        let ix = Math.trunc(sx);
+                        let iy = Math.trunc(sy);
+                        const w = Math.trunc(f(inputs.width));
+                        const h = Math.trunc(f(inputs.height));
+                        if (ix < 0) ix += w;
+                        if (ix >= w) ix -= w;
+                        if (iy < 0) iy += h;
+                        if (iy >= h) iy -= h;
 
                         if (readMap) {
-                            return readMap[iy * inputs.width + ix];
+                            return f(readMap[iy * w + ix]);
                         }
-                        return 0;
+                        return f(0);
                     };
 
                     const _deposit = (amount) => {
                         // Write to trailMapWrite (new deposits for this frame)
                         const writeMap = inputs.trailMapWrite || inputs.trailMap;
                         if (!writeMap) return;
+                        const amt = f(amount);
                         
-                        let ix = Math.floor(x);
-                        let iy = Math.floor(y);
-                        if (ix < 0) ix += inputs.width;
-                        if (ix >= inputs.width) ix -= inputs.width;
-                        if (iy < 0) iy += inputs.height;
-                        if (iy >= inputs.height) iy -= inputs.height;
+                        // Use Math.trunc to match WASM's i32.trunc_f32_s
+                        let ix = Math.trunc(x);
+                        let iy = Math.trunc(y);
+                        const w = Math.trunc(f(inputs.width));
+                        const h = Math.trunc(f(inputs.height));
+                        if (ix < 0) ix += w;
+                        if (ix >= w) ix -= w;
+                        if (iy < 0) iy += h;
+                        if (iy >= h) iy -= h;
 
-                        // Atomic add to write buffer
-                        writeMap[iy * inputs.width + ix] += amount;
+                        // Atomic add to write buffer (Float32)
+                        writeMap[iy * w + ix] = f(writeMap[iy * w + ix] + amt);
                     };
 
 
@@ -276,8 +249,8 @@ export const compileDSLtoJS = (lines: LineInfo[], _inputs: string[], logger: Log
         // Execute DSL code
         ${boidStatements.join('\n        ')}
 
-                    // Return updated agent
-                    return { id, x, y, vx, vy };
+                    // Return updated agent (ensure Float32 values)
+                    return { id, x: f(x), y: f(y), vx: f(vx), vy: f(vy) };
                 } `;
 
     logger.info('Generated boids-style JavaScript function');

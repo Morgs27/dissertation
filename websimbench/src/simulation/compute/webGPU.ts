@@ -184,7 +184,7 @@ export default class WebGPU {
             @group(0) @binding(0) var<storage, read> inputMap: array<f32>;
             @group(0) @binding(1) var<storage, read_write> outputMap: array<f32>;
             @group(0) @binding(2) var<uniform> uniforms: DiffuseUniforms;
-            @group(0) @binding(3) var<storage, read> depositMap: array<f32>;
+            @group(0) @binding(3) var<storage, read> depositMap: array<i32>;
 
             @compute @workgroup_size(${WORKGROUP_SIZE}, 1, 1)
             fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
@@ -198,8 +198,9 @@ export default class WebGPU {
                 let x = idx % w;
                 let y = idx / w;
 
-                // First, merge deposits into the current value
-                let currentWithDeposits = inputMap[idx] + depositMap[idx];
+                // First, merge deposits into the current value (convert fixed-point back to float)
+                let depositVal = f32(depositMap[idx]) / 10000.0;
+                let currentWithDeposits = inputMap[idx] + depositVal;
 
                 // 3x3 blur kernel with wrapping
                 var sum: f32 = 0.0;
@@ -218,14 +219,21 @@ export default class WebGPU {
 
                         // Sample from merged value (inputMap + despositMap at that location)
                         let neighborIdx = u32(ny) * w + u32(nx);
-                        sum += inputMap[neighborIdx] + depositMap[neighborIdx];
+                        let neighborDeposit = f32(depositMap[neighborIdx]) / 10000.0;
+                        sum += inputMap[neighborIdx] + neighborDeposit;
                         count += 1.0;
                     }
                 }
 
                 let blurred = sum / count;
-                let diffused = currentWithDeposits * 0.1 + blurred * 0.9; // Diffusion mix
-                outputMap[idx] = diffused * (1.0 - uniforms.decayFactor);
+                
+                // Explicit steps to match JS fround() behavior and prevent FMA
+                let term1 = currentWithDeposits * 0.1;
+                let term2 = blurred * 0.9;
+                let diffused = term1 + term2;
+                
+                let decayMult = 1.0 - uniforms.decayFactor;
+                outputMap[idx] = diffused * decayMult;
             }
         `;
 
