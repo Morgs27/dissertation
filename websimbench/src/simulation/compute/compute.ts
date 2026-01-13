@@ -58,9 +58,10 @@ export class ComputeEngine {
     private applyDiffuseDecay(width: number, height: number, decayFactor: number): void {
         if (!this.trailMapRead || !this.trailMapWrite) return;
 
-        // First, add deposits from write buffer to read buffer
+        // First, add deposits from write buffer to read buffer (with f32 precision)
+        const f = Math.fround;
         for (let i = 0; i < this.trailMapRead.length; i++) {
-            this.trailMapRead[i] += this.trailMapWrite[i];
+            this.trailMapRead[i] = f(this.trailMapRead[i] + this.trailMapWrite[i]);
         }
 
         // Clear write buffer for next frame
@@ -68,8 +69,6 @@ export class ComputeEngine {
 
         // Apply blur (3x3 kernel) and decay
         const temp = new Float32Array(this.trailMapRead.length);
-
-        const f = Math.fround; // Alias for readability
 
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {

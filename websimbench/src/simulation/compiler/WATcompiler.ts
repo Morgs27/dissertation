@@ -22,6 +22,7 @@ const COMMANDS: Record<
   borderBounce: { target: "x", op: "complex" },
   limitSpeed: { target: "vx", op: "complex" },
   turn: { target: "vx", op: "complex" },
+  turnPrecomputed: { target: "vx", op: "complex" },
   moveForward: { target: "x", op: "complex" },
   deposit: { target: "x", op: "complex" },
   sense: { target: "x", op: "complex" },
@@ -492,6 +493,13 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
           const angle = normalizeWASMExpression(parsed.argument, randomInputs);
           localVars.add("__c"); localVars.add("__s"); localVars.add("__vx");
           return `(local.set $__c (call $cos ${angle}))\n            (local.set $__s (call $sin ${angle}))\n            (local.set $__vx (f32.sub (f32.mul (local.get $vx) (local.get $__c)) (f32.mul (local.get $vy) (local.get $__s))))\n            (local.set $vy (f32.add (f32.mul (local.get $vx) (local.get $__s)) (f32.mul (local.get $vy) (local.get $__c))))\n            (local.set $vx (local.get $__vx))`;
+        } else if (parsed.command === "turnPrecomputed") {
+          // Two arguments: cos and sin values precomputed
+          const args = parsed.argument.split(',').map(a => a.trim());
+          const cosVal = normalizeWASMExpression(args[0], randomInputs);
+          const sinVal = normalizeWASMExpression(args[1], randomInputs);
+          localVars.add("__c"); localVars.add("__s"); localVars.add("__vx");
+          return `(local.set $__c ${cosVal})\n            (local.set $__s ${sinVal})\n            (local.set $__vx (f32.sub (f32.mul (local.get $vx) (local.get $__c)) (f32.mul (local.get $vy) (local.get $__s))))\n            (local.set $vy (f32.add (f32.mul (local.get $vx) (local.get $__s)) (f32.mul (local.get $vy) (local.get $__c))))\n            (local.set $vx (local.get $__vx))`;
         } else if (parsed.command === "moveForward") {
           const speed = normalizeWASMExpression(parsed.argument, randomInputs);
           return `(local.set $x (f32.add (local.get $x) (f32.mul (local.get $vx) ${speed})))\n    (local.set $y (f32.add (local.get $y) (f32.mul (local.get $vy) ${speed})))`;

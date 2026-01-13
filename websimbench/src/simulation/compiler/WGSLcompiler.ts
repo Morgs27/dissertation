@@ -4,22 +4,23 @@ import { DSLParser, type CommandMap, type LineInfo } from "./parser";
 export const WORKGROUP_SIZE = 64;
 
 const COMMANDS: CommandMap = {
-    moveUp: 'agent.y -= {arg};',
-    moveDown: 'agent.y += {arg};',
-    moveLeft: 'agent.x -= {arg};',
-    moveRight: 'agent.x += {arg};',
-    addVelocityX: 'agent.vx += {arg};',
-    addVelocityY: 'agent.vy += {arg};',
-    setVelocityX: 'agent.vx = {arg};',
-    setVelocityY: 'agent.vy = {arg};',
-    updatePosition: 'agent.x += agent.vx * {arg}; agent.y += agent.vy * {arg};',
-    borderWrapping: 'if (agent.x < 0) { agent.x += inputs.width; } if (agent.x > inputs.width) { agent.x -= inputs.width; } if (agent.y < 0) { agent.y += inputs.height; } if (agent.y > inputs.height) { agent.y -= inputs.height; }',
-    borderBounce: 'if (agent.x < 0 || agent.x > inputs.width) { agent.vx = -agent.vx; } if (agent.y < 0 || agent.y > inputs.height) { agent.vy = -agent.vy; } agent.x = max(0.0, min(inputs.width, agent.x)); agent.y = max(0.0, min(inputs.height, agent.y));',
-    limitSpeed: 'let _speed2 = agent.vx*agent.vx + agent.vy*agent.vy; if (_speed2 > {arg}*{arg}) { let _scale = sqrt({arg}*{arg} / _speed2); agent.vx *= _scale; agent.vy *= _scale; }',
-    turn: 'let _c = cos({arg}); let _s = sin({arg}); let _vx = agent.vx * _c - agent.vy * _s; agent.vy = agent.vx * _s + agent.vy * _c; agent.vx = _vx;',
-    moveForward: 'agent.x += agent.vx * {arg}; agent.y += agent.vy * {arg};',
-    deposit: '_deposit(agent.x, agent.y, {arg});',
-    sense: '_sense(agent.x, agent.y, agent.vx, agent.vy, {arg})', // Templated call
+    moveUp: 'y = y - {arg};',
+    moveDown: 'y = y + {arg};',
+    moveLeft: 'x = x - {arg};',
+    moveRight: 'x = x + {arg};',
+    addVelocityX: 'vx = vx + {arg};',
+    addVelocityY: 'vy = vy + {arg};',
+    setVelocityX: 'vx = {arg};',
+    setVelocityY: 'vy = {arg};',
+    updatePosition: 'let _dt_up = {arg}; let _dx_mf_t1 = vx * _dt_up; let _dy_mf_t1 = vy * _dt_up; x = x + _dx_mf_t1; y = y + _dy_mf_t1;',
+    borderWrapping: 'if (x < 0.0) { x = x + inputs.width; } if (x >= inputs.width) { x = x - inputs.width; } if (y < 0.0) { y = y + inputs.height; } if (y >= inputs.height) { y = y - inputs.height; }',
+    borderBounce: 'if (x < 0.0 || x >= inputs.width) { vx = -vx; } if (y < 0.0 || y >= inputs.height) { vy = -vy; } x = clamp(x, 0.0, inputs.width); y = clamp(y, 0.0, inputs.height);',
+    limitSpeed: 'let _spd_ls = {arg}; let _spd_ls2 = _spd_ls * _spd_ls; let _vx2_ls = vx * vx; let _vy2_ls = vy * vy; let _cur_ls2 = _vx2_ls + _vy2_ls; if (_cur_ls2 > _spd_ls2) { let _scale_ls = sqrt(_spd_ls2 / _cur_ls2); vx = vx * _scale_ls; vy = vy * _scale_ls; }',
+    turn: 'let _ang_t = {arg}; let _c_t = cos(_ang_t); let _s_t = sin(_ang_t); let _term1_t = vx * _c_t; let _term2_t = vy * _s_t; let _term3_t = vx * _s_t; let _term4_t = vy * _c_t; let _vx_new_t = _term1_t - _term2_t; let _vy_new_t = _term3_t + _term4_t; vx = _vx_new_t; vy = _vy_new_t;',
+    turnPrecomputed: 'let _c_t = {arg0}; let _s_t = {arg1}; let _term1_t = vx * _c_t; let _term2_t = vy * _s_t; let _term3_t = vx * _s_t; let _term4_t = vy * _c_t; let _vx_new_t = _term1_t - _term2_t; let _vy_new_t = _term3_t + _term4_t; vx = _vx_new_t; vy = _vy_new_t;',
+    moveForward: 'let _dist_mf = {arg}; let _dx_mf_t2 = vx * _dist_mf; let _dy_mf_t2 = vy * _dist_mf;  x = x + _dx_mf_t2; y = y + _dy_mf_t2;',
+    deposit: '_deposit(x, y, {arg});',
+    sense: '_sense(x, y, vx, vy, {arg})', // Templated call
     enableTrails: '', // Configuration only
     print: 'agentLogs[i] = vec2<f32>(1.0, {arg});',
 };
@@ -28,46 +29,56 @@ const WGSL_HELPERS = `
 
 
 fn _sense(x: f32, y: f32, vx: f32, vy: f32, angle_offset: f32, dist: f32) -> f32 {
+    // Match JS: const currentAngle = f(Math.atan2(vy, vx));
     let angle_cur = atan2(vy, vx);
+    
+    // Match JS: const angle = f(currentAngle + ao);
     let angle_new = angle_cur + angle_offset;
-    let sx = x + cos(angle_new) * dist;
-    let sy = y + sin(angle_new) * dist;
+    
+    // Match JS: const sx = f(x + f(f(Math.cos(angle)) * dist));
+    let cos_val = cos(angle_new);
+    let cos_times_dist = cos_val * dist;
+    let sx = x + cos_times_dist;
+    
+    // Match JS: const sy = f(y + f(f(Math.sin(angle)) * dist));
+    let sin_val = sin(angle_new);
+    let sin_times_dist = sin_val * dist;
+    let sy = y + sin_times_dist;
 
     let w = inputs.width;
     let h = inputs.height;
-    
-    // Wrap coordinates
-    var ix = i32(trunc(sx));
-    var iy = i32(trunc(sy));
-    
-    if (ix < 0) { ix += i32(w); }
-    if (ix >= i32(w)) { ix -= i32(w); }
-    if (iy < 0) { iy += i32(h); }
-    if (iy >= i32(h)) { iy -= i32(h); }
-    
+
+    // Wrap coordinates - use i32() which is equivalent to Math.trunc
+    var ix = i32(sx);
+    var iy = i32(sy);
+
+    if (ix < 0) { ix = ix + i32(w); }
+    if (ix >= i32(w)) { ix = ix - i32(w); }
+    if (iy < 0) { iy = iy + i32(h); }
+    if (iy >= i32(h)) { iy = iy - i32(h); }
+
     let idx = u32(iy * i32(w) + ix);
-    // Read from trailMapRead (previous frame state)
     return trailMapRead[idx];
 }
 
 fn _deposit(x: f32, y: f32, amount: f32) {
     let w = inputs.width;
     let h = inputs.height;
-    
+
     var ix = i32(trunc(x));
     var iy = i32(trunc(y));
-    
+
     if (ix < 0) { ix += i32(w); }
     if (ix >= i32(w)) { ix -= i32(w); }
     if (iy < 0) { iy += i32(h); }
     if (iy >= i32(h)) { iy -= i32(h); }
-    
+
     let idx = u32(iy * i32(w) + ix);
     // Write to trailMapWrite (deposits for this frame)
     // Use atomic add with fixed-point conversion (x10000) because f32 atomics aren't supported
     // and standard += is racy/divergent on GPU.
-    let fixed_amount = i32(amount * 10000.0);
-    atomicAdd(&trailMapWrite[idx], fixed_amount);
+    let fixed_amount = i32(amount * 1000000.0);
+    atomicAdd(& trailMapWrite[idx], fixed_amount);
 }
 `;
 
@@ -121,9 +132,9 @@ function transpileExpression(expr: string, context: WGSLContext): string {
     result = result.replace(/(\w+)\.length/g, (_, varName) => {
         const varInfo = context.variables.get(varName);
         if (varInfo?.type === 'neighbors') {
-            return `${varName}_count`;
+            return `${varName} _count`;
         }
-        return `${varName}_count`;
+        return `${varName} _count`;
     });
 
     // Handle sqrt() function - WGSL has native sqrt support
@@ -140,7 +151,7 @@ function transpileExpression(expr: string, context: WGSLContext): string {
     const agentProps = ['x', 'y', 'vx', 'vy'];
     for (const prop of agentProps) {
         // Match standalone property references (not part of a longer identifier)
-        const regex = new RegExp(`\\b${prop}\\b(?!_)`, 'g');
+        const regex = new RegExp(`\\b${prop} \\b(?!_)`, 'g');
         result = result.replace(regex, (match, offset) => {
             // Don't replace if it's part of another identifier or property access
             const before = offset > 0 ? result[offset - 1] : '';
@@ -152,7 +163,7 @@ function transpileExpression(expr: string, context: WGSLContext): string {
             if (context.variables.has(match)) return match;
 
             // Add agent. prefix
-            return `agent.${match}`;
+            return `agent.${match} `;
         });
     }
 
@@ -221,8 +232,8 @@ function transpileLine(line: string, context: WGSLContext): string[] {
                 statements.push(`for (var _ni: u32 = 0u; _ni < arrayLength(&agentsRead); _ni++) {`);
                 statements.push(`if (_ni == i) { continue; }`);
                 statements.push(`let other = agentsRead[_ni];`);
-                statements.push(`let dx = agent.x - other.x;`);
-                statements.push(`let dy = agent.y - other.y;`);
+                statements.push(`let dx = x - other.x;`);
+                statements.push(`let dy = y - other.y;`);
                 statements.push(`let dist = sqrt(dx*dx + dy*dy);`);
                 statements.push(`if (dist < ${radiusExpr}) {`);
                 statements.push(`${parsed.name}_count += 1u;`);
@@ -327,8 +338,8 @@ function transpileLine(line: string, context: WGSLContext): string[] {
                     statements.push(`for (var ${uniqueLoopVar}: u32 = 0u; ${uniqueLoopVar} < arrayLength(&agents); ${uniqueLoopVar}++) {`);
                     statements.push(`if (${uniqueLoopVar} == i) { continue; }`);
                     statements.push(`let _loop_other = agents[${uniqueLoopVar}];`);
-                    statements.push(`let _loop_dx = agent.x - _loop_other.x;`);
-                    statements.push(`let _loop_dy = agent.y - _loop_other.y;`);
+                    statements.push(`let _loop_dx = x - _loop_other.x;`);
+                    statements.push(`let _loop_dy = y - _loop_other.y;`);
                     statements.push(`let _loop_dist = sqrt(_loop_dx*_loop_dx + _loop_dy*_loop_dy);`);
                     statements.push(`if (_loop_dist >= ${radiusExpr}) { continue; }`);
                     statements.push(`// Nearby agent found - execute loop body`);
@@ -367,10 +378,13 @@ function transpileLine(line: string, context: WGSLContext): string[] {
             let target = parsed.target;
             const agentProps = ['x', 'y', 'vx', 'vy'];
             if (agentProps.includes(target) && !context.variables.has(target)) {
-                target = `agent.${target}`;
+                // If it's one of the local agent properties, assign directly to the local variable
+                statements.push(`${target} = ${transpiled};`);
+            } else {
+                // Otherwise, it's a regular variable or an agent property that needs 'agent.' prefix
+                // (e.g., agent.id, or a new variable)
+                statements.push(`${target} = ${transpiled};`);
             }
-
-            statements.push(`${target} = ${transpiled};`);
             return statements;
         }
 
@@ -550,12 +564,20 @@ fn main(
     let i = group_index * ${WORKGROUP_SIZE}u + local_id.x;
     if (i < arrayLength(&agents)) {
         var agent = agents[i];
+        var x = agent.x;
+        var y = agent.y;
+        var vx = agent.vx;
+        var vy = agent.vy;
         
-        // Load random values
-        ${randomInputs.map(r => `var ${r} = randomValues[i];`).join('\n        ')}
+        // Load random values based on agent.id for parity with JS
+        ${randomInputs.map(r => `var ${r} = randomValues[u32(agent.id)];`).join('\n        ')}
         
         ${mainBody}
         
+        agent.x = x;
+        agent.y = y;
+        agent.vx = vx;
+        agent.vy = vy;
         agents[i] = agent;
     }
 }`.trim();

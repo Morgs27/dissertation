@@ -91,8 +91,10 @@
                         if (iy < 0) iy += h;
                         if (iy >= h) iy -= h;
 
-                        // Atomic add to write buffer (Float32)
-                        writeMap[iy * w + ix] = f(writeMap[iy * w + ix] + amt);
+                        // Emulate GPU fixed-point precision: amount * 1e6 -> i32 -> /1e6
+                        // This matches the WGSL atomicAdd with i32 conversion
+                        const fixedAmount = Math.trunc(amt * 1000000) / 1000000;
+                        writeMap[iy * w + ix] = f(writeMap[iy * w + ix] + f(fixedAmount));
                     };
 
 
@@ -102,27 +104,24 @@
         let sL = _sense(f(inputs.sensorAngle), f(inputs.sensorDist)); 
         let sF = _sense(f(0), f(inputs.sensorDist)); 
         let sR = _sense(f(-f(inputs.sensorAngle)), f(inputs.sensorDist)); 
-        if (inputs.print) inputs.print(id, sL);
-        if (inputs.print) inputs.print(id, sF);
-        if (inputs.print) inputs.print(id, sR);
         if (((sF < sL) && (sF < sR))) {
     
         if ((r < f(0.5))) {
     
-        const __c = f(Math.cos(f(inputs.turnAngle))); const __s = f(Math.sin(f(inputs.turnAngle))); const __vx = f(f(vx * __c) - f(vy * __s)); vy = f(f(vx * __s) + f(vy * __c)); vx = __vx;
+        const __c = f(f(inputs.turnCos)); const __s = f(f(inputs.turnSin)); const __vx = f(f(vx * __c) - f(vy * __s)); vy = f(f(vx * __s) + f(vy * __c)); vx = __vx;
         }
         else if ((r >= f(0.5))) {
         
-        const __c = f(Math.cos(f(-f(inputs.turnAngle)))); const __s = f(Math.sin(f(-f(inputs.turnAngle)))); const __vx = f(f(vx * __c) - f(vy * __s)); vy = f(f(vx * __s) + f(vy * __c)); vx = __vx;
+        const __c = f(f(inputs.turnCos)); const __s = f(f(-f(inputs.turnSin))); const __vx = f(f(vx * __c) - f(vy * __s)); vy = f(f(vx * __s) + f(vy * __c)); vx = __vx;
         }
         }
         if ((sL > sR)) {
     
-        const __c = f(Math.cos(f(inputs.turnAngle))); const __s = f(Math.sin(f(inputs.turnAngle))); const __vx = f(f(vx * __c) - f(vy * __s)); vy = f(f(vx * __s) + f(vy * __c)); vx = __vx;
+        const __c = f(f(inputs.turnCos)); const __s = f(f(inputs.turnSin)); const __vx = f(f(vx * __c) - f(vy * __s)); vy = f(f(vx * __s) + f(vy * __c)); vx = __vx;
         }
         if ((sR > sL)) {
     
-        const __c = f(Math.cos(f(-f(inputs.turnAngle)))); const __s = f(Math.sin(f(-f(inputs.turnAngle)))); const __vx = f(f(vx * __c) - f(vy * __s)); vy = f(f(vx * __s) + f(vy * __c)); vx = __vx;
+        const __c = f(f(inputs.turnCos)); const __s = f(f(-f(inputs.turnSin))); const __vx = f(f(vx * __c) - f(vy * __s)); vy = f(f(vx * __s) + f(vy * __c)); vx = __vx;
         }
         x = f(x + f(vx * f(inputs.speed))); y = f(y + f(vy * f(inputs.speed)));
         if (x < 0) x = f(x + f(inputs.width)); if (x > f(inputs.width)) x = f(x - f(inputs.width)); if (y < 0) y = f(y + f(inputs.height)); if (y > f(inputs.height)) y = f(y - f(inputs.height));

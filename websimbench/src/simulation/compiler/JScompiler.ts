@@ -18,6 +18,7 @@ const COMMANDS: CommandMap = {
     borderBounce: 'if (x < 0 || x > f(inputs.width)) vx = f(-vx); if (y < 0 || y > f(inputs.height)) vy = f(-vy); x = f(Math.max(0, Math.min(f(inputs.width), x))); y = f(Math.max(0, Math.min(f(inputs.height), y)));',
     limitSpeed: 'const __speed2 = f(f(vx*vx) + f(vy*vy)); if (__speed2 > f({arg}*{arg})) { const __scale = f(Math.sqrt(f(f({arg}*{arg}) / __speed2))); vx = f(vx * __scale); vy = f(vy * __scale); }',
     turn: 'const __c = f(Math.cos({arg})); const __s = f(Math.sin({arg})); const __vx = f(f(vx * __c) - f(vy * __s)); vy = f(f(vx * __s) + f(vy * __c)); vx = __vx;',
+    turnPrecomputed: 'const __c = f({arg0}); const __s = f({arg1}); const __vx = f(f(vx * __c) - f(vy * __s)); vy = f(f(vx * __s) + f(vy * __c)); vx = __vx;',
     moveForward: 'x = f(x + f(vx * {arg})); y = f(y + f(vy * {arg}));',
     deposit: '_deposit({arg});',
     sense: '', // Handled as expression
@@ -92,8 +93,10 @@ function transpileLine(line: string, randomInputs: Set<string> = new Set()): str
                 const template = COMMANDS[parsed.command];
                 // Handle configuration-only commands with empty templates
                 if (!template) return '';
-                // Use AST for argument transformation
-                const arg = transformExpression(parsed.argument, randomInputs);
+                // For multi-argument commands, transform each arg separately
+                const rawArgs = parsed.argument.split(',').map(a => a.trim());
+                const transformedArgs = rawArgs.map(a => transformExpression(a, randomInputs));
+                const arg = transformedArgs.join(', ');
                 const result = DSLParser.applyCommandTemplate(template, arg);
                 return result.endsWith(';') ? result : result + ';';
             }
@@ -241,8 +244,10 @@ export const compileDSLtoJS = (lines: LineInfo[], _inputs: string[], logger: Log
                         if (iy < 0) iy += h;
                         if (iy >= h) iy -= h;
 
-                        // Atomic add to write buffer (Float32)
-                        writeMap[iy * w + ix] = f(writeMap[iy * w + ix] + amt);
+                        // Emulate GPU fixed-point precision: amount * 1e6 -> i32 -> /1e6
+                        // This matches the WGSL atomicAdd with i32 conversion
+                        const fixedAmount = Math.trunc(amt * 1000000) / 1000000;
+                        writeMap[iy * w + ix] = f(writeMap[iy * w + ix] + f(fixedAmount));
                     };
 
 

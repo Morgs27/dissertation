@@ -15,6 +15,7 @@ export type AVAILABLE_COMMANDS =
     | 'borderBounce'
     | 'limitSpeed'
     | 'turn'
+    | 'turnPrecomputed'
     | 'moveForward'
     | 'sense'
     | 'deposit'
@@ -35,6 +36,7 @@ export const AVAILABLE_COMMANDS_LIST: AVAILABLE_COMMANDS[] = [
     'borderBounce',
     'limitSpeed',
     'turn',
+    'turnPrecomputed',
     'moveForward',
     'sense',
     'deposit',
@@ -42,7 +44,7 @@ export const AVAILABLE_COMMANDS_LIST: AVAILABLE_COMMANDS[] = [
     'print',
 ];
 
-export type CommandMap = Record<AVAILABLE_COMMANDS, string>;
+export type CommandMap = Record<AVAILABLE_COMMANDS | 'turnPrecomputed', string>;
 
 /**
  * Represents a parsed command with its name and argument
@@ -200,7 +202,13 @@ export class DSLParser {
      * Applies a command template by replacing {arg} placeholder
      */
     static applyCommandTemplate(template: string, argument: string): string {
-        return template.replace(/{arg}/g, argument);
+        // Support multiple arguments: split by comma and replace {arg0}, {arg1}, etc.
+        const args = argument.split(',').map(a => a.trim());
+        let result = template.replace(/{arg}/g, argument);
+        args.forEach((arg, i) => {
+            result = result.replace(new RegExp(`\\{arg${i}\\}`, 'g'), arg);
+        });
+        return result;
     }
 
     /**

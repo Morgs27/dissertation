@@ -55,8 +55,7 @@ export default class WebGPU {
     private trailMapBuffer2: GPUBuffer | null = null;
     private trailMapDeposits: GPUBuffer | null = null;
     private trailMapCapacity = 0;
-    private randomValuesBuffer: GPUBuffer | null = null;
-    private randomValuesCapacity = 0;
+    private randomValuesBuffer: GPUBuffer | undefined;
     private hasTrailMap = false;
     private trailMapGPUSeeded = false; // Track if trail map is initialized on GPU
 
@@ -194,71 +193,73 @@ export default class WebGPU {
      * This shader applies a 3x3 blur kernel with wrapping and decay, matching the CPU implementation.
      */
     private initDiffuseDecayPipeline(device: GPUDevice) {
-        // Shader that merges deposits and applies diffuse/decay
-        // Reads from: inputMap (previous frame state) + depositMap (new deposits)
-        // Writes to: outputMap (result with blur and decay)
         const DIFFUSE_DECAY_WGSL = `
-            struct DiffuseUniforms {
-                width: u32,
-                height: u32,
-                decayFactor: f32,
-                _pad: f32,
-            }
+        struct Inputs {
+            width: f32,
+            height: f32,
+            decayFactor: f32,
+        }
 
-            @group(0) @binding(0) var<storage, read> inputMap: array<f32>;
-            @group(0) @binding(1) var<storage, read_write> outputMap: array<f32>;
-            @group(0) @binding(2) var<uniform> uniforms: DiffuseUniforms;
-            @group(0) @binding(3) var<storage, read> depositMap: array<i32>;
+        @group(0) @binding(0) var<storage, read> inputMap: array<f32>;
+        @group(0) @binding(1) var<storage, read_write> outputMap: array<f32>;
+        @group(0) @binding(2) var<storage, read> trailMapDeposits: array<i32>;
+        @group(0) @binding(3) var<uniform> inputs: Inputs;
 
-            @compute @workgroup_size(${WORKGROUP_SIZE}, 1, 1)
-            fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
-                let idx = global_id.x;
-                let w = uniforms.width;
-                let h = uniforms.height;
-                let total = w * h;
+        @compute @workgroup_size(8, 8)
+        fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+            let width = i32(inputs.width);
+            let height = i32(inputs.height);
+            
+            if (i32(id.x) >= width || i32(id.y) >= height) { return; }
+            
+            let x = i32(id.x);
+            let y = i32(id.y);
+            let idx = u32(y * width + x);
 
-                if (idx >= total) { return; }
-
-                let x = idx % w;
-                let y = idx / w;
-
-                // First, merge deposits into the current value (convert fixed-point back to float)
-                let depositVal = f32(depositMap[idx]) / 10000.0;
-                let currentWithDeposits = inputMap[idx] + depositVal;
-
-                // 3x3 blur kernel with wrapping
-                var sum: f32 = 0.0;
-                var count: f32 = 0.0;
-
-                for (var dy: i32 = -1; dy <= 1; dy++) {
-                    for (var dx: i32 = -1; dx <= 1; dx++) {
-                        var nx = i32(x) + dx;
-                        var ny = i32(y) + dy;
-
-                        // Wrap around
-                        if (nx < 0) { nx += i32(w); }
-                        if (nx >= i32(w)) { nx -= i32(w); }
-                        if (ny < 0) { ny += i32(h); }
-                        if (ny >= i32(h)) { ny -= i32(h); }
-
-                        // Sample from merged value (inputMap + despositMap at that location)
-                        let neighborIdx = u32(ny) * w + u32(nx);
-                        let neighborDeposit = f32(depositMap[neighborIdx]) / 10000.0;
-                        sum += inputMap[neighborIdx] + neighborDeposit;
-                        count += 1.0;
-                    }
+            // Exactly match JS: sum += (inputMap[neighbor] + deposit[neighbor]) for all 9 neighbors
+            var sum: f32 = 0.0;
+            var count: f32 = 0.0;
+            
+            for(var dy: i32 = -1; dy <= 1; dy++) {
+                for(var dx: i32 = -1; dx <= 1; dx++) {
+                    var nx = x + dx;
+                    var ny = y + dy;
+                    
+                    // Wrap around
+                    if (nx < 0) { nx = nx + width; }
+                    if (nx >= width) { nx = nx - width; }
+                    if (ny < 0) { ny = ny + height; }
+                    if (ny >= height) { ny = ny - height; }
+                    
+                    let nidx = u32(ny * width + nx);
+                    
+                    // Get value with deposit added (matching JS where deposits were added first)
+                    let base = inputMap[nidx];
+                    let deposit = f32(trailMapDeposits[nidx]) / 1000000.0;
+                    let val = base + deposit;
+                    
+                    sum = sum + val;
+                    count = count + 1.0;
                 }
-
-                let blurred = sum / count;
-                
-                // Explicit steps to match JS fround() behavior and prevent FMA
-                let term1 = currentWithDeposits * 0.1;
-                let term2 = blurred * 0.9;
-                let diffused = term1 + term2;
-                
-                let decayMult = 1.0 - uniforms.decayFactor;
-                outputMap[idx] = diffused * decayMult;
             }
+            
+            let blurred = sum / count;
+            
+            // Current value with deposit
+            let currentDeposit = f32(trailMapDeposits[idx]) / 1000000.0;
+            let current = inputMap[idx] + currentDeposit;
+
+            // Formula: diffused = current * 0.1 + blurred * 0.9
+            let term1 = current * 0.1;
+            let term2 = blurred * 0.9;
+            let diffused = term1 + term2;
+            
+            // Decay
+            let decayMult = 1.0 - inputs.decayFactor;
+            let decayed = diffused * decayMult;
+            
+            outputMap[idx] = decayed;
+        }
         `;
 
         const diffuseModule = device.createShaderModule({ code: DIFFUSE_DECAY_WGSL });
@@ -267,8 +268,8 @@ export default class WebGPU {
             entries: [
                 { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } },
                 { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } },
-                { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } },
-                { binding: 3, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } }, // deposit map
+                { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: "read-only-storage" } }, // deposits
+                { binding: 3, visibility: GPUShaderStage.COMPUTE, buffer: { type: "uniform" } },
             ],
         });
 
@@ -280,70 +281,38 @@ export default class WebGPU {
         this.Logger.info("Diffuse/decay GPU compute pipeline initialized.");
     }
 
-    /**
-     * Run the diffuse and decay effect on the GPU trail map.
-     * Merges deposits from trailMapDeposits into trailMapBuffer, applies blur+decay,
-     * writes result to trailMapBuffer2, then swaps buffers and clears deposits.
-     */
-    private runDiffuseDecayGPU(device: GPUDevice, width: number, height: number, decayFactor: number) {
-        if (!this.diffuseDecayPipeline || !this.diffuseDecayBindGroupLayout) return;
-        if (!this.trailMapBuffer || !this.trailMapBuffer2 || !this.trailMapDeposits) return;
+    private prepareDiffuseDecayPass(encoder: GPUCommandEncoder, device: GPUDevice, width: number, height: number, decayFactor: number): void {
+        const trailMapSize = width * height * 4;
 
-        const uniformSize = 16; // 4 x 4 bytes (u32, u32, f32, f32)
-        const uniformData = new ArrayBuffer(uniformSize);
-        const uniformView = new DataView(uniformData);
-        uniformView.setUint32(0, width, true);
-        uniformView.setUint32(4, height, true);
-        uniformView.setFloat32(8, decayFactor, true);
-        uniformView.setFloat32(12, 0, true); // padding
+        if (!this.diffuseDecayBindGroupLayout || !this.trailMapBuffer || !this.trailMapBuffer2 || !this.trailMapDeposits) return;
 
-        // Create a small uniform buffer for diffuse/decay params
-        const uniformBuffer = this.gpuHelper.createEmptyBuffer(
-            device,
-            uniformSize,
-            GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-            "DiffuseDecayUniforms"
-        );
+        const uniformBuffer = device.createBuffer({
+            size: 16,
+            usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        });
+        const uniformData = new Float32Array([width, height, decayFactor, 0]);
         device.queue.writeBuffer(uniformBuffer, 0, uniformData);
 
-        // Bind group:
-        // binding 0: inputMap (trailMapBuffer - previous frame state)
-        // binding 1: outputMap (trailMapBuffer2 - result)
-        // binding 2: uniforms
-        // binding 3: depositMap (trailMapDeposits - this frame's deposits)
         const bindGroup = device.createBindGroup({
             layout: this.diffuseDecayBindGroupLayout,
             entries: [
                 { binding: 0, resource: { buffer: this.trailMapBuffer } },
                 { binding: 1, resource: { buffer: this.trailMapBuffer2 } },
-                { binding: 2, resource: { buffer: uniformBuffer } },
-                { binding: 3, resource: { buffer: this.trailMapDeposits } },
+                { binding: 2, resource: { buffer: this.trailMapDeposits } },
+                { binding: 3, resource: { buffer: uniformBuffer } },
             ],
         });
 
-        const encoder = device.createCommandEncoder();
         const pass = encoder.beginComputePass();
-        pass.setPipeline(this.diffuseDecayPipeline);
+        pass.setPipeline(this.diffuseDecayPipeline!);
         pass.setBindGroup(0, bindGroup);
-
-        const totalPixels = width * height;
-        const workgroups = Math.ceil(totalPixels / WORKGROUP_SIZE);
-        pass.dispatchWorkgroups(workgroups);
+        pass.dispatchWorkgroups(Math.ceil(width / 8), Math.ceil(height / 8));
         pass.end();
 
-        const trailMapSize = width * height * FLOAT_SIZE;
-
-        // After diffuse/decay, swap: copy trailMapBuffer2 → trailMapBuffer so it becomes the new read buffer
         encoder.copyBufferToBuffer(this.trailMapBuffer2, 0, this.trailMapBuffer, 0, trailMapSize);
-
-        // Clear the deposits buffer for next frame
         encoder.clearBuffer(this.trailMapDeposits, 0, trailMapSize);
-
-        device.queue.submit([encoder.finish()]);
-
-        // Clean up the temporary uniform buffer
-        uniformBuffer.destroy();
     }
+
 
     public async runGPU(agents: Agent[], inputs: InputValues): Promise<WebGPUComputeResult> {
         return this._compute(agents, inputs, false);
@@ -426,17 +395,28 @@ export default class WebGPU {
             entries: bindGroupEntries,
         });
 
+        const copySize = this.byteSizeForAgents(this.agentCount);
+
+        // Create command encoder for all operations in the frame
         const encoder = device.createCommandEncoder();
+
+        // Pass 1: Agent Compute (Move, Sense, Deposit)
         const pass = encoder.beginComputePass();
         pass.setPipeline(pipeline);
         pass.setBindGroup(0, bindGroup);
-
         const totalWorkgroups = Math.ceil(this.agentCount / WORKGROUP_SIZE);
         const [dx, dy, dz] = this.computeDispatchDimensions(totalWorkgroups);
         if (dx > 0) pass.dispatchWorkgroups(dx, dy, dz);
         pass.end();
 
-        const copySize = this.byteSizeForAgents(this.agentCount);
+        // Pass 2: Diffuse and Decay (Blur trails)
+        if (this.hasTrailMap && this.diffuseDecayPipeline) {
+            const width = typeof inputs.width === 'number' ? inputs.width : 0;
+            const height = typeof inputs.height === 'number' ? inputs.height : 0;
+            const decayFactor = typeof inputs.decayFactor === 'number' ? inputs.decayFactor : 0.05;
+
+            this.prepareDiffuseDecayPass(encoder, device, width, height, decayFactor);
+        }
 
         // Skip unnecessary copies: only copy to vertex buffer when readback === false (GPU rendering)
         if (!readback && copySize > 0) {
@@ -444,7 +424,7 @@ export default class WebGPU {
             encoder.copyBufferToBuffer(this.agentStorageBuffer!, 0, this.agentVertexBuffer!, 0, copySize);
         }
 
-        // CPU readback path: storage -> staging (reused)
+        // Handle agent readback if requested (copy from agentsBuffer to stagingReadbackBuffer)
         let doReadback = false;
         if (readback && copySize > 0) {
             encoder.copyBufferToBuffer(this.agentStorageBuffer!, 0, this.stagingReadbackBuffer!, 0, copySize);
@@ -456,6 +436,7 @@ export default class WebGPU {
             doReadback = true;
         }
 
+        // Submit all commands in a single batch
         device.queue.submit([encoder.finish()]);
 
         // Clear log buffer for next frame immediately after submit (or could be done at start of frame)
@@ -463,15 +444,6 @@ export default class WebGPU {
             const clearEncoder = device.createCommandEncoder();
             clearEncoder.clearBuffer(this.agentLogBuffer!, 0, this.agentCount * 2 * FLOAT_SIZE);
             device.queue.submit([clearEncoder.finish()]);
-        }
-
-        // Run diffuse and decay on the GPU always if we have a trail map
-        // This ensures the GPU state (trailMapBuffer) is updated for the next frame
-        if (this.hasTrailMap) {
-            const width = typeof inputs.width === 'number' ? inputs.width : 0;
-            const height = typeof inputs.height === 'number' ? inputs.height : 0;
-            const decayFactor = typeof inputs.decayFactor === 'number' ? inputs.decayFactor : 0.1;
-            this.runDiffuseDecayGPU(device, width, height, decayFactor);
         }
 
         const dispatchEnd = performance.now();
@@ -497,7 +469,7 @@ export default class WebGPU {
                     updatedAgents[i].vy = data[base + 4];
                 }
 
-                this.Logger.log(`Readback complete: Agent[0] updated to x=${updatedAgents[0].x.toFixed(2)}, y=${updatedAgents[0].y.toFixed(2)}`);
+                this.Logger.info(`Readback complete: Agent[0] updated to x=${updatedAgents[0].x.toFixed(4)}, y=${updatedAgents[0].y.toFixed(4)}`);
             } finally {
                 this.stagingReadbackBuffer!.unmap(); // reuse next call
             }
@@ -524,6 +496,18 @@ export default class WebGPU {
 
                 await stagingTrail.mapAsync(GPUMapMode.READ);
                 const src = new Float32Array(stagingTrail.getMappedRange());
+
+                // Debug trail map stats
+                let nonZero = 0;
+                let maxVal = 0;
+                for (let i = 0; i < src.length; i++) {
+                    if (src[i] > 0) {
+                        nonZero++;
+                        maxVal = Math.max(maxVal, src[i]);
+                    }
+                }
+                this.Logger.info(`Trail Map Readback: nonZero=${nonZero}, maxVal=${maxVal.toFixed(6)}`);
+
                 trailMap.set(src);
                 stagingTrail.unmap();
                 stagingTrail.destroy();
@@ -593,7 +577,7 @@ export default class WebGPU {
 
     private ensureAndWriteInputs(device: GPUDevice, inputs: InputValues) {
         const values = this.inputsExpected
-            .filter(n => n !== 'trailMap') // don't put trailMap in uniform buffer
+            .filter(n => n !== 'trailMap' && n !== 'randomValues') // don't put buffer types in uniform buffer
             .map((n) => {
                 const value = inputs[n];
                 // Only convert numeric inputs, default to 0 for non-numeric
@@ -614,8 +598,8 @@ export default class WebGPU {
             this.inputUniformCapacity = aligned;
         }
 
-        const f32 = new Float32Array(values);
-        device.queue.writeBuffer(this.inputUniformBuffer!, 0, f32.buffer, f32.byteOffset, byteLen);
+        const f32Buffer = new Float32Array(values);
+        device.queue.writeBuffer(this.inputUniformBuffer!, 0, f32Buffer.buffer, f32Buffer.byteOffset, byteLen);
 
         // Handle TrailMap - only upload from CPU on first frame
         // After initial seeding, the trail map lives entirely on GPU
@@ -668,20 +652,16 @@ export default class WebGPU {
         // Handle RandomValues
         if (inputs.randomValues) {
             const randomValues = inputs.randomValues as Float32Array;
-            const size = randomValues.byteLength;
-
-            if (!this.randomValuesBuffer || this.randomValuesCapacity < size) {
+            const size = Math.max(randomValues.byteLength, 4); // Min 4 bytes
+            if (!this.randomValuesBuffer || this.randomValuesBuffer.size < size) {
                 if (this.randomValuesBuffer) this.randomValuesBuffer.destroy();
-                this.randomValuesBuffer = this.gpuHelper.createEmptyBuffer(
-                    device,
+                this.randomValuesBuffer = device.createBuffer({
                     size,
-                    GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-                    "RandomValues"
-                );
-                this.randomValuesCapacity = size;
+                    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+                    label: "RandomValues"
+                });
             }
-
-            device.queue.writeBuffer(this.randomValuesBuffer!, 0, randomValues.buffer, randomValues.byteOffset, randomValues.byteLength);
+            device.queue.writeBuffer(this.randomValuesBuffer, 0, randomValues.buffer, randomValues.byteOffset, randomValues.byteLength);
         }
     }
 

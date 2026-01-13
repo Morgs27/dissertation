@@ -85,7 +85,7 @@ function getDefaultInputs(
 }
 
 // Compare two agent arrays and compute differences
-function compareAgents(agents1: Agent[], agents2: Agent[]): {
+function compareAgents(agents1: Agent[], agents2: Agent[], frame: number = 0, tolerance: number = 0): {
     maxPosDiff: number;
     avgPosDiff: number;
     maxVelDiff: number;
@@ -109,7 +109,10 @@ function compareAgents(agents1: Agent[], agents2: Agent[]): {
         maxVelDiff = Math.max(maxVelDiff, velDiff);
         totalPosDiff += posDiff;
 
-        if (posDiff > 0 || velDiff > 0) {
+        if (posDiff > tolerance || velDiff > tolerance) {
+            console.log(`[DIVERGENCE] Frame ${frame} Agent ${agents1[i].id}: posDiff=${posDiff}, velDiff=${velDiff}`);
+            console.log(`  JS: x=${agents2[i].x}, y=${agents2[i].y}, vx=${agents2[i].vx}, vy=${agents2[i].vy}`);
+            console.log(`  GPU: x=${agents1[i].x}, y=${agents1[i].y}, vx=${agents1[i].vx}, vy=${agents1[i].vy}`);
             agentDiffs.push({ id: agents1[i].id, posDiff, velDiff });
         }
     }
@@ -278,7 +281,7 @@ describe('Compute Cross-Method Comparison', () => {
                         // Verify agent count matches
                         expect(methodAgents.length).toBe(jsAgents.length);
 
-                        const comparison = compareAgents(jsAgents, methodAgents);
+                        const comparison = compareAgents(jsAgents, methodAgents, frame, tolerance);
 
                         // Calculate min position diff for agents that have any diff
                         const agentsWithDiff = comparison.agentDiffs.filter(d => d.posDiff > 0);
