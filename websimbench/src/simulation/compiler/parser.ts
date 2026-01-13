@@ -19,6 +19,7 @@ export type AVAILABLE_COMMANDS =
     | 'sense'
     | 'deposit'
     | 'enableTrails'
+    | 'print'
 
 export const AVAILABLE_COMMANDS_LIST: AVAILABLE_COMMANDS[] = [
     'moveUp',
@@ -38,6 +39,7 @@ export const AVAILABLE_COMMANDS_LIST: AVAILABLE_COMMANDS[] = [
     'sense',
     'deposit',
     'enableTrails',
+    'print',
 ];
 
 export type CommandMap = Record<AVAILABLE_COMMANDS, string>;

@@ -40,6 +40,8 @@ export default class WebGPU {
     private agentsReadBuffer: GPUBuffer | null = null;        // STORAGE (read-only snapshot for neighbor queries)
     private stagingReadbackBuffer: GPUBuffer | null = null;   // COPY_DST | MAP_READ
     private agentVertexBuffer: GPUBuffer | null = null;       // VERTEX | COPY_DST (lazy, only if needed)
+    private agentLogBuffer: GPUBuffer | null = null;          // STORAGE | COPY_SRC | COPY_DST
+    private stagingLogBuffer: GPUBuffer | null = null;        // COPY_DST | MAP_READ
 
     // Reused uniform buffer (grow-only)
     private inputUniformBuffer: GPUBuffer | null = null;
@@ -117,6 +119,13 @@ export default class WebGPU {
             buffer: { type: "read-only-storage" }
         });
 
+        // agentLogs: binding 6, read-write for logging
+        bindGroupEntries.push({
+            binding: 6,
+            visibility: GPUShaderStage.COMPUTE,
+            buffer: { type: "storage" }
+        });
+
         this.bindGroupLayout = device.createBindGroupLayout({
             entries: bindGroupEntries,
         });
@@ -155,6 +164,21 @@ export default class WebGPU {
             AGENT_BUFFER_SIZE,
             GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
             "StagingReadback"
+        );
+
+        const LOG_BUFFER_SIZE = agentCount * 2 * FLOAT_SIZE; // vec2<f32> per agent
+        this.agentLogBuffer = this.gpuHelper.createEmptyBuffer(
+            device,
+            LOG_BUFFER_SIZE,
+            GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
+            "AgentLogBuffer"
+        );
+
+        this.stagingLogBuffer = this.gpuHelper.createEmptyBuffer(
+            device,
+            LOG_BUFFER_SIZE,
+            GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+            "StagingLogReadback"
         );
 
         this.device = device;
@@ -380,6 +404,7 @@ export default class WebGPU {
         const bindGroupEntries: GPUBindGroupEntry[] = [
             { binding: 0, resource: { buffer: this.agentStorageBuffer! } },
             { binding: 1, resource: { buffer: this.inputUniformBuffer! } },
+            { binding: 6, resource: { buffer: this.agentLogBuffer! } },
         ];
 
         if (this.hasTrailMap && this.trailMapBuffer && this.trailMapDeposits) {
@@ -423,10 +448,22 @@ export default class WebGPU {
         let doReadback = false;
         if (readback && copySize > 0) {
             encoder.copyBufferToBuffer(this.agentStorageBuffer!, 0, this.stagingReadbackBuffer!, 0, copySize);
+
+            // Also copy log buffer if in readback mode
+            const logCopySize = this.agentCount * 2 * FLOAT_SIZE;
+            encoder.copyBufferToBuffer(this.agentLogBuffer!, 0, this.stagingLogBuffer!, 0, logCopySize);
+
             doReadback = true;
         }
 
         device.queue.submit([encoder.finish()]);
+
+        // Clear log buffer for next frame immediately after submit (or could be done at start of frame)
+        if (readback) {
+            const clearEncoder = device.createCommandEncoder();
+            clearEncoder.clearBuffer(this.agentLogBuffer!, 0, this.agentCount * 2 * FLOAT_SIZE);
+            device.queue.submit([clearEncoder.finish()]);
+        }
 
         // Run diffuse and decay on the GPU always if we have a trail map
         // This ensures the GPU state (trailMapBuffer) is updated for the next frame
@@ -490,6 +527,22 @@ export default class WebGPU {
                 trailMap.set(src);
                 stagingTrail.unmap();
                 stagingTrail.destroy();
+            }
+
+            // Readback logs
+            const logCopySize = this.agentCount * 2 * FLOAT_SIZE;
+            await this.stagingLogBuffer!.mapAsync(GPUMapMode.READ, 0, logCopySize);
+            try {
+                const logData = new Float32Array(this.stagingLogBuffer!.getMappedRange(0, logCopySize));
+                for (let i = 0; i < this.agentCount; i++) {
+                    const isEnabled = logData[i * 2];
+                    const value = logData[i * 2 + 1];
+                    if (isEnabled > 0.5) {
+                        this.Logger.info(`AGENT[${agents[i].id}] PRINT:`, value);
+                    }
+                }
+            } finally {
+                this.stagingLogBuffer!.unmap();
             }
         }
 

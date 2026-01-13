@@ -23,6 +23,15 @@ const WorkerScript = `
             inputValues.trailMapWrite = depositDelta;
         }
         
+        // Inject print function for workers
+        inputValues.print = (id, val) => {
+            self.postMessage({ 
+                type: 'log', 
+                level: 'info', 
+                message: \`AGENT[\${id}] PRINT: \${val}\` 
+            });
+        };
+        
         const start = performance.now();
         const updatedAgents = agents.map(agent => func(agent, inputValues));
         const end = performance.now();
@@ -79,8 +88,17 @@ class WebWorkers {
                 const agentsSlice = agents.slice(start, end);
 
                 worker.onmessage = (event) => {
+                    const data = event.data;
+
+                    if (data.type === 'log') {
+                        if (data.level === 'info') this.Logger.info(data.message);
+                        else if (data.level === 'warn') this.Logger.warn(data.message);
+                        else if (data.level === 'error') this.Logger.error(data.message);
+                        return;
+                    }
+
                     // event.data now returns depositDelta (not full trailMap)
-                    const { agents: workerAgents, depositDelta, executionTime } = event.data;
+                    const { agents: workerAgents, depositDelta, executionTime } = data;
 
                     results.push({ index, agents: workerAgents, depositDelta, time: executionTime });
                     maxWorkerTime = Math.max(maxWorkerTime, executionTime);

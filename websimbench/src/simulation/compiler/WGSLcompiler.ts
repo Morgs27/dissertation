@@ -21,6 +21,7 @@ const COMMANDS: CommandMap = {
     deposit: '_deposit(agent.x, agent.y, {arg});',
     sense: '_sense(agent.x, agent.y, agent.vx, agent.vy, {arg})', // Templated call
     enableTrails: '', // Configuration only
+    print: 'agentLogs[i] = vec2<f32>(1.0, {arg});',
 };
 
 const WGSL_HELPERS = `
@@ -501,7 +502,8 @@ struct Agent {
 };
 
 @group(0) @binding(0) var<storage, read_write> agents : array<Agent>;
-@group(0) @binding(5) var<storage, read> agentsRead : array<Agent>;`.trim();
+@group(0) @binding(5) var<storage, read> agentsRead : array<Agent>;
+@group(0) @binding(6) var<storage, read_write> agentLogs : array<vec2<f32>>;`.trim();
 
     // Separate trail map bindings for double-buffering
     const trailMapReadBinding = hasTrailMap

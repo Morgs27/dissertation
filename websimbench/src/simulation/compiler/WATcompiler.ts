@@ -26,6 +26,7 @@ const COMMANDS: Record<
   deposit: { target: "x", op: "complex" },
   sense: { target: "x", op: "complex" },
   enableTrails: { target: "x", op: "complex" },
+  print: { target: "x", op: "complex" },
 };
 
 /**
@@ -501,6 +502,9 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
           return `(call $sense ${normalizeWASMExpression(args[0], randomInputs)} ${normalizeWASMExpression(args[1], randomInputs)})`;
         } else if (parsed.command === "enableTrails") {
           return `nop`;
+        } else if (parsed.command === "print") {
+          const argExpr = normalizeWASMExpression(parsed.argument, randomInputs);
+          return `(call $print (local.get $_agent_id) ${argExpr})`;
         }
         return `;; TODO: ${parsed.command} not yet implemented in WASM`;
       } else {
@@ -699,6 +703,7 @@ export const compileDSLtoWAT = (
     (import "env" "cos" (func $cos (param f32) (result f32)))
     (import "env" "atan2" (func $atan2 (param f32 f32) (result f32)))
     (import "env" "random" (func $random_js (result f32)))
+    (import "env" "print" (func $print (param f32 f32)))
 
     ${inputGlobals}
     ${inputs.includes('trailMap') ? `(global $trailMapReadPtr (export "trailMapReadPtr") (mut i32) (i32.const 0))

@@ -98,42 +98,11 @@
 
 
         // Execute DSL code
-        let nearbyAgents = _neighbors(f(inputs.perceptionRadius)); 
-        if (inputs.print) inputs.print(id, nearbyAgents.length);
-        if ((nearbyAgents.length > f(0))) {
-    
-        let avgVx = _mean(nearbyAgents, 'vx'); 
-        let avgVy = _mean(nearbyAgents, 'vy'); 
-        vx = f(vx + f(f(avgVx - vx) * f(inputs.alignmentFactor))); 
-        vy = f(vy + f(f(avgVy - vy) * f(inputs.alignmentFactor))); 
-        }
-        if ((nearbyAgents.length > f(0))) {
-    
-        let avgX = _mean(nearbyAgents, 'x'); 
-        let avgY = _mean(nearbyAgents, 'y'); 
-        vx = f(vx + f(f(avgX - x) * f(inputs.cohesionFactor))); 
-        vy = f(vy + f(f(avgY - y) * f(inputs.cohesionFactor))); 
-        }
-        let separationX = f(0); 
-        let separationY = f(0); 
-        for (let i = 0; (i < nearbyAgents.length); i++) {
-                
-        let neighbor_x = f(nearbyAgents[i].x); 
-        let neighbor_y = f(nearbyAgents[i].y); 
-        let dx = f(x - neighbor_x); 
-        let dy = f(y - neighbor_y); 
-        let dist2 = f(f(dx * dx) + f(dy * dy)); 
-        if (((dist2 < f(f(inputs.separationDist) * f(inputs.separationDist))) && (dist2 > f(0)))) {
-    
-        separationX = f(separationX + f(dx / dist2)); 
-        separationY = f(separationY + f(dy / dist2)); 
-        vx = f(vx + f(separationX * f(inputs.separationFactor))); 
-        vy = f(vy + f(separationY * f(inputs.separationFactor))); 
-        }
-        }
-        const __speed2 = f(f(vx*vx) + f(vy*vy)); if (__speed2 > f(f(inputs.maxSpeed)*f(inputs.maxSpeed))) { const __scale = f(Math.sqrt(f(f(f(inputs.maxSpeed)*f(inputs.maxSpeed)) / __speed2))); vx = f(vx * __scale); vy = f(vy * __scale); };
-        if (x < 0) x = f(x + f(inputs.width)); if (x > f(inputs.width)) x = f(x - f(inputs.width)); if (y < 0) y = f(y + f(inputs.height)); if (y > f(inputs.height)) y = f(y - f(inputs.height));
-        x = f(x + f(vx * f(inputs.dt))); y = f(y + f(vy * f(inputs.dt)));
+        if (inputs.print) inputs.print(id, f(inputs.gravity));
+        
+        let sL = _sense(f(inputs.sensorAngle), f(inputs.sensorDist)); 
+        if (inputs.print) inputs.print(id, sL);
+        _deposit(f(inputs.depositAmount));
 
                     // Return updated agent (ensure Float32 values)
                     return { id, x: f(x), y: f(y), vx: f(vx), vy: f(vy) };

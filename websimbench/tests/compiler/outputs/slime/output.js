@@ -102,6 +102,9 @@
         let sL = _sense(f(inputs.sensorAngle), f(inputs.sensorDist)); 
         let sF = _sense(f(0), f(inputs.sensorDist)); 
         let sR = _sense(f(-f(inputs.sensorAngle)), f(inputs.sensorDist)); 
+        if (inputs.print) inputs.print(id, sL);
+        if (inputs.print) inputs.print(id, sF);
+        if (inputs.print) inputs.print(id, sR);
         if (((sF < sL) && (sF < sR))) {
     
         if ((r < f(0.5))) {

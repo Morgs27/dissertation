@@ -204,6 +204,15 @@ export class ComputeEngine {
             inputValues.trailMapWrite = this.trailMapWrite!;
         }
 
+        // Inject print function for debugging (used by JS backend)
+        // For WASM, it's handled via imports in webAssembly.ts
+        // For WebWorkers, we don't inject it to avoid cloning errors (workers don't support print yet)
+        if (method !== "WebWorkers") {
+            inputValues.print = (id: number, val: number) => {
+                this.Logger.info(`AGENT[${id}] PRINT:`, val);
+            };
+        }
+
         let result: Agent[];
 
         switch (method) {
