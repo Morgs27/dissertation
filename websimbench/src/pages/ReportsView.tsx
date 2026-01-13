@@ -177,13 +177,13 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ reports, onClear, onRe
             r.agentCount,
             r.workerCount ?? 'N/A',
             r.workgroupSize ?? 'N/A',
-            r.avgExecutionTime.toFixed(3),
-            r.minExecutionTime.toFixed(3),
-            r.maxExecutionTime.toFixed(3),
-            r.avgSetupTime.toFixed(3),
-            r.avgComputeTime.toFixed(3),
-            r.avgRenderTime.toFixed(3),
-            r.avgReadbackTime.toFixed(3),
+            r.avgExecutionTime?.toFixed(3) ?? '0.000',
+            r.minExecutionTime?.toFixed(3) ?? '0.000',
+            r.maxExecutionTime?.toFixed(3) ?? '0.000',
+            r.avgSetupTime?.toFixed(3) ?? '0.000',
+            r.avgComputeTime?.toFixed(3) ?? '0.000',
+            r.avgRenderTime?.toFixed(3) ?? '0.000',
+            r.avgReadbackTime?.toFixed(3) ?? '0.000',
             r.avgCompileTime?.toFixed(3) ?? 'N/A',
             r.frameCount
         ]);
@@ -471,11 +471,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ reports, onClear, onRe
                                                             <TableCell className="text-right">{result.agentCount.toLocaleString()}</TableCell>
                                                             <TableCell className="text-right">{result.workerCount ?? '-'}</TableCell>
                                                             <TableCell className="text-right">{result.workgroupSize ?? '-'}</TableCell>
-                                                            <TableCell className="text-right font-bold">{result.avgExecutionTime.toFixed(2)}</TableCell>
-                                                            <TableCell className="text-right text-gray-400">{result.avgSetupTime.toFixed(2)}</TableCell>
-                                                            <TableCell className="text-right text-blue-400">{result.avgComputeTime.toFixed(2)}</TableCell>
-                                                            <TableCell className="text-right text-green-400">{result.avgRenderTime.toFixed(2)}</TableCell>
-                                                            <TableCell className="text-right text-orange-400">{result.avgReadbackTime.toFixed(2)}</TableCell>
+                                                            <TableCell className="text-right font-bold">{result.avgExecutionTime?.toFixed(2) ?? '0.00'}</TableCell>
+                                                            <TableCell className="text-right text-gray-400">{result.avgSetupTime?.toFixed(2) ?? '0.00'}</TableCell>
+                                                            <TableCell className="text-right text-blue-400">{result.avgComputeTime?.toFixed(2) ?? '0.00'}</TableCell>
+                                                            <TableCell className="text-right text-green-400">{result.avgRenderTime?.toFixed(2) ?? '0.00'}</TableCell>
+                                                            <TableCell className="text-right text-orange-400">{result.avgReadbackTime?.toFixed(2) ?? '0.00'}</TableCell>
                                                             <TableCell className="text-right text-gray-500">{result.frameCount}</TableCell>
                                                         </TableRow>
                                                     ))}
@@ -503,7 +503,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ reports, onClear, onRe
                                                                 {result.specificStats && Object.entries(result.specificStats).map(([key, value]) => (
                                                                     <div key={key} className="flex justify-between text-[11px]">
                                                                         <span className="text-gray-300">{key}</span>
-                                                                        <span className="font-bold">{value.toFixed(3)} ms</span>
+                                                                        <span className="font-bold">{typeof value === 'number' ? value.toFixed(3) : '0.000'} ms</span>
                                                                     </div>
                                                                 ))}
                                                                 {result.avgCompileTime && (
