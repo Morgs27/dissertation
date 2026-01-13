@@ -1,13 +1,33 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    Box, Button, Flex, Heading, Text, VStack, HStack, Icon, IconButton,
-    Input, useToast, Tabs, TabList, Tab, TabPanels, TabPanel, Table,
-    Thead, Tbody, Tr, Th, Td, Badge, Accordion, AccordionItem,
-    AccordionButton, AccordionPanel, AccordionIcon, Select, Grid
-} from '@chakra-ui/react';
-import { FaChartBar, FaCalendarAlt, FaTrash, FaEdit, FaCheck, FaTimes, FaTable, FaImage, FaDownload } from 'react-icons/fa';
+    Button,
+    Input,
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+    Badge,
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui';
+
+import { ChartBar, Calendar, Trash, PencilSimple, Check, X, Table as TableIcon, Image as ImageIcon, DownloadSimple } from "@phosphor-icons/react";
 import { Grapher, BenchmarkReport, BenchmarkResult } from '../simulation/helpers/grapher';
 import html2canvas from 'html2canvas';
+import { toast } from "sonner";
 
 interface ReportsViewProps {
     reports: BenchmarkReport[];
@@ -59,7 +79,7 @@ const BenchmarkGraph: React.FC<{ results: BenchmarkResult[], id: string, chartTy
     }, [results, chartType, agentCount]);
 
     return (
-        <Box w="100%" h="400px" bg="black" position="relative" borderRadius="md" overflow="hidden" mb={4}>
+        <div className="w-full h-[400px] bg-black relative rounded-md overflow-hidden mb-4">
             <canvas
                 id={`graph-${chartType}-${id}`}
                 ref={canvasRef}
@@ -69,7 +89,7 @@ const BenchmarkGraph: React.FC<{ results: BenchmarkResult[], id: string, chartTy
                     display: 'block',
                 }}
             />
-        </Box>
+        </div>
     );
 };
 
@@ -79,7 +99,6 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ reports, onClear, onRe
     const [editName, setEditName] = useState('');
     const [selectedAgentCount, setSelectedAgentCount] = useState<number | undefined>(undefined);
     const tableRef = useRef<HTMLDivElement>(null);
-    const toast = useToast();
 
     useEffect(() => {
         if (!selectedReportId && reports.length > 0) {
@@ -94,10 +113,9 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ reports, onClear, onRe
         ? Array.from(new Set(selectedReport.results.map(r => r.agentCount))).sort((a, b) => a - b)
         : [];
 
-    const handleStartEdit = (report: BenchmarkReport, e: React.MouseEvent) => {
-        e.stopPropagation();
-        setEditingId(report.id);
-        setEditName(report.name || new Date(report.timestamp).toLocaleString());
+    const handleStartEdit = (id: string, name: string) => {
+        setEditingId(id);
+        setEditName(name);
     };
 
     const handleSaveEdit = (e: React.MouseEvent) => {
@@ -139,7 +157,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ reports, onClear, onRe
             link.click();
         } catch (e) {
             console.error(e);
-            toast({ title: "Error downloading table", status: "error" });
+            toast.error("Error downloading table");
         }
     };
 
@@ -182,123 +200,130 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ reports, onClear, onRe
     };
 
     return (
-        <Flex h="100%" w="100%" bg="rgba(0,0,0,0.2)">
+        <div className="flex h-full w-full bg-[#16262b]">
             {/* Sidebar: Report List */}
-            <Flex direction="column" w="300px" borderRight="1px solid" borderColor="cerulean" bg="rgba(0,0,0,0.1)">
-                <Box p={4} borderBottom="1px solid" borderColor="cerulean">
-                    <Flex justify="space-between" align="center">
-                        <Heading size="sm" color="tropicalTeal">Reports</Heading>
-                        <Button
-                            size="xs"
-                            colorScheme="red"
-                            variant="ghost"
-                            onClick={onClear}
-                            isDisabled={reports.length === 0}
-                            title="Clear All Reports"
-                        >
-                            <Icon as={FaTrash} />
-                        </Button>
-                    </Flex>
-                </Box>
-                <VStack align="stretch" spacing={0} overflowY="auto" flex="1">
+            <div className="flex flex-col w-[320px] border-r border-white/10 bg-black/40">
+                <div className="h-16 flex px-6 items-center justify-between border-b border-white/10 shrink-0">
+                    <div className="flex items-center gap-2">
+                        <ChartBar className="text-tropicalTeal" size={20} weight="bold" />
+                        <h2 className="text-sm font-bold uppercase tracking-widest text-white">Reports</h2>
+                    </div>
+                    <Button
+                        size="xs"
+                        variant="ghost"
+                        className="text-gray-500 hover:text-red-400 hover:bg-red-500/10 h-8 w-8 p-0"
+                        onClick={onClear}
+                        disabled={reports.length === 0}
+                        title="Clear All Reports"
+                    >
+                        <Trash size={16} />
+                    </Button>
+                </div>
+                <div className="flex-1 overflow-y-auto py-2">
                     {reports.length === 0 && (
-                        <Box p={4}>
-                            <Text fontSize="sm" color="gray.500">No reports available.</Text>
-                        </Box>
+                        <div className="p-8 text-center space-y-2 opacity-40">
+                            <ChartBar className="mx-auto" size={32} weight="thin" />
+                            <p className="text-xs font-medium">No reports yet.</p>
+                        </div>
                     )}
-                    {reports.map((report) => (
-                        <Box
-                            key={report.id}
-                            p={3}
-                            cursor="pointer"
-                            bg={selectedReportId === report.id ? 'rgba(0, 200, 200, 0.1)' : 'transparent'}
-                            _hover={{ bg: 'rgba(0, 200, 200, 0.05)' }}
-                            onClick={() => setSelectedReportId(report.id)}
-                            borderBottom="1px solid"
-                            borderColor="rgba(255,255,255,0.05)"
-                        >
-                            {editingId === report.id ? (
-                                <HStack onClick={(e) => e.stopPropagation()}>
-                                    <Input
-                                        size="xs"
-                                        value={editName}
-                                        onChange={(e) => setEditName(e.target.value)}
-                                        autoFocus
-                                    />
-                                    <IconButton aria-label="Save" icon={<FaCheck />} size="xs" colorScheme="green" onClick={handleSaveEdit} />
-                                    <IconButton aria-label="Cancel" icon={<FaTimes />} size="xs" onClick={handleCancelEdit} />
-                                </HStack>
-                            ) : (
-                                <Flex justify="space-between" align="center">
-                                    <HStack spacing={3} overflow="hidden">
-                                        <Icon as={FaCalendarAlt} color="gray.400" minW="14px" />
-                                        <Box overflow="hidden">
-                                            <Text fontSize="sm" fontWeight="bold" noOfLines={1}>
-                                                {report.name || new Date(report.timestamp).toLocaleString()}
-                                            </Text>
-                                            <Text fontSize="xs" color="gray.400">
-                                                {new Date(report.timestamp).toLocaleTimeString()}
-                                            </Text>
-                                        </Box>
-                                    </HStack>
-                                    <IconButton
-                                        aria-label="Rename"
-                                        icon={<FaEdit />}
-                                        size="xs"
-                                        variant="ghost"
-                                        opacity={0.5}
-                                        _hover={{ opacity: 1 }}
-                                        onClick={(e) => handleStartEdit(report, e)}
-                                    />
-                                </Flex>
-                            )}
-                        </Box>
-                    ))}
-                </VStack>
-            </Flex>
+                    <div className="px-3 space-y-1">
+                        {reports.map((report) => (
+                            <div
+                                key={report.id}
+                                className={`group p-3 cursor-pointer rounded-xl transition-all duration-200 border ${selectedReportId === report.id
+                                    ? 'bg-tropicalTeal/10 border-tropicalTeal/30 text-white shadow-lg shadow-black/20'
+                                    : 'bg-transparent border-transparent hover:bg-white/5 text-gray-400 hover:text-gray-200'
+                                    }`}
+                                onClick={() => setSelectedReportId(report.id)}
+                            >
+                                {editingId === report.id ? (
+                                    <div className="flex gap-2" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                                        <Input
+                                            className="h-8 text-xs bg-black/40 border-tropicalTeal/50 focus:ring-1 focus:ring-tropicalTeal/30"
+                                            value={editName}
+                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditName(e.target.value)}
+                                            autoFocus
+                                        />
+                                        <div className="flex gap-1">
+                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-green-500 hover:bg-green-500/10" onClick={handleSaveEdit}><Check size={14} weight="bold" /></Button>
+                                            <Button size="icon" variant="ghost" className="h-8 w-8 text-red-500 hover:bg-red-500/10" onClick={handleCancelEdit}><X size={14} weight="bold" /></Button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex justify-between items-center">
+                                        <div className="flex items-center gap-3 overflow-hidden">
+                                            <div className={`p-2 rounded-lg transition-colors ${selectedReportId === report.id ? 'bg-tropicalTeal text-jetBlack' : 'bg-black/40 group-hover:bg-black/60'}`}>
+                                                <Calendar size={16} weight={selectedReportId === report.id ? 'fill' : 'regular'} />
+                                            </div>
+                                            <div className="overflow-hidden">
+                                                <p className={`text-sm font-bold truncate ${selectedReportId === report.id ? 'text-white' : ''}`}>
+                                                    {report.name || `Session ${report.id.slice(0, 4)}`}
+                                                </p>
+                                                <p className="text-[10px] font-mono opacity-60">
+                                                    {new Date(report.timestamp).toLocaleTimeString([], { hour12: false })} • {report.results.length} results
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className={`h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/10 ${selectedReportId === report.id ? 'text-white' : 'text-gray-500'}`}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleStartEdit(report.id, report.name || '');
+                                            }}
+                                        >
+                                            <PencilSimple size={14} />
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
 
-            {/* Main Content: Selected Report Details */}
-            <Flex direction="column" flex="1" overflow="hidden">
+            {/* Main Content: Report Detail */}
+            <div className="flex-1 overflow-y-auto bg-black/5">
                 {selectedReport ? (
-                    <Box h="100%" display="flex" flexDirection="column">
+                    <div className="p-8 max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
                         {/* Header */}
-                        <Box p={4} borderBottom="1px solid" borderColor="cerulean">
-                            <Flex justify="space-between" align="center" mb={2}>
-                                <Heading size="md" color="tropicalTeal">
+                        <div className="p-4 border-b border-cerulean">
+                            <div className="flex justify-between items-center mb-2">
+                                <h2 className="text-lg font-bold text-tropicalTeal">
                                     {selectedReport.name || 'Benchmark Report'}
-                                </Heading>
-                                <HStack>
-                                    <Button leftIcon={<FaDownload />} size="sm" onClick={downloadCSV} variant="outline">
-                                        CSV
+                                </h2>
+                                <div className="flex gap-2">
+                                    <Button variant="outline" size="sm" className="h-8" onClick={downloadCSV}>
+                                        <DownloadSimple className="mr-2" size={14} /> CSV
                                     </Button>
-                                    <Button leftIcon={<FaTable />} size="sm" onClick={downloadTableAsImage} variant="outline">
-                                        Table PNG
+                                    <Button variant="outline" size="sm" className="h-8" onClick={downloadTableAsImage}>
+                                        <TableIcon className="mr-2" size={14} /> Table PNG
                                     </Button>
-                                </HStack>
-                            </Flex>
-                            <Text fontSize="sm" color="gray.400">
+                                </div>
+                            </div>
+                            <p className="text-xs text-gray-400">
                                 Generated on {new Date(selectedReport.timestamp).toLocaleString()}
-                            </Text>
-                        </Box>
+                            </p>
+                        </div>
 
                         {/* Tabs for different views */}
-                        <Tabs flex="1" display="flex" flexDirection="column" overflow="hidden" colorScheme="teal">
-                            <TabList px={4} bg="rgba(0,0,0,0.2)">
-                                <Tab fontSize="sm">Overview</Tab>
-                                <Tab fontSize="sm">Charts</Tab>
-                                <Tab fontSize="sm">Data Tables</Tab>
-                                <Tab fontSize="sm">Device Info</Tab>
-                            </TabList>
+                        <Tabs defaultValue="overview" className="flex-1 flex flex-col overflow-hidden">
+                            <TabsList className="bg-black/20 px-4 justify-start h-auto rounded-none border-b border-white/5">
+                                <TabsTrigger value="overview" className="text-xs data-[state=active]:bg-teal-600 data-[state=active]:text-white">Overview</TabsTrigger>
+                                <TabsTrigger value="charts" className="text-xs data-[state=active]:bg-teal-600 data-[state=active]:text-white">Charts</TabsTrigger>
+                                <TabsTrigger value="data-tables" className="text-xs data-[state=active]:bg-teal-600 data-[state=active]:text-white">Data Tables</TabsTrigger>
+                                <TabsTrigger value="device-info" className="text-xs data-[state=active]:bg-teal-600 data-[state=active]:text-white">Device Info</TabsTrigger>
+                            </TabsList>
 
-                            <TabPanels flex="1" overflowY="auto">
-                                {/* Overview Tab */}
-                                <TabPanel>
-                                    <VStack align="stretch" spacing={4}>
-                                        <HStack justify="flex-end">
-                                            <Button size="sm" leftIcon={<FaImage />} onClick={() => downloadGraph('overview')}>
-                                                Save Chart
+                            <div className="flex-1 overflow-y-auto">
+                                <TabsContent value="overview" className="p-4 m-0">
+                                    <div className="flex flex-col gap-4">
+                                        <div className="flex justify-end">
+                                            <Button size="sm" variant="outline" className="h-8" onClick={() => downloadGraph('overview')}>
+                                                <ImageIcon className="mr-2" size={14} /> Save Chart
                                             </Button>
-                                        </HStack>
+                                        </div>
                                         <BenchmarkGraph
                                             results={selectedReport.results}
                                             id={selectedReport.id}
@@ -306,354 +331,303 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ reports, onClear, onRe
                                         />
 
                                         {/* Quick Stats */}
-                                        <Box bg="rgba(0,0,0,0.3)" p={4} borderRadius="md">
-                                            <Heading size="sm" mb={3}>Quick Statistics</Heading>
-                                            <Grid templateColumns="repeat(3, 1fr)" gap={4}>
-                                                <Box>
-                                                    <Text fontSize="xs" color="gray.400">Methods Tested</Text>
-                                                    <Text fontSize="lg" fontWeight="bold">
+                                        <div className="bg-black/30 p-4 rounded-md">
+                                            <h3 className="text-sm font-bold mb-3">Quick Statistics</h3>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div>
+                                                    <p className="text-[10px] text-gray-400 uppercase tracking-wider">Methods Tested</p>
+                                                    <p className="text-lg font-bold">
                                                         {new Set(selectedReport.results.map(r => r.method)).size}
-                                                    </Text>
-                                                </Box>
-                                                <Box>
-                                                    <Text fontSize="xs" color="gray.400">Agent Counts</Text>
-                                                    <Text fontSize="lg" fontWeight="bold">
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] text-gray-400 uppercase tracking-wider">Agent Counts</p>
+                                                    <p className="text-lg font-bold">
                                                         {new Set(selectedReport.results.map(r => r.agentCount)).size}
-                                                    </Text>
-                                                </Box>
-                                                <Box>
-                                                    <Text fontSize="xs" color="gray.400">Total Tests</Text>
-                                                    <Text fontSize="lg" fontWeight="bold">
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] text-gray-400 uppercase tracking-wider">Total Tests</p>
+                                                    <p className="text-lg font-bold">
                                                         {selectedReport.results.length}
-                                                    </Text>
-                                                </Box>
-                                            </Grid>
-                                        </Box>
-                                    </VStack>
-                                </TabPanel>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </TabsContent>
 
-                                {/* Charts Tab */}
-                                <TabPanel>
-                                    <VStack align="stretch" spacing={6}>
-                                        {/* Readback vs Agents */}
-                                        <Box>
-                                            <HStack justify="space-between" mb={2}>
-                                                <Heading size="sm">Readback Time vs Agent Count</Heading>
-                                                <Button size="sm" leftIcon={<FaImage />} onClick={() => downloadGraph('readback')}>
-                                                    Save
-                                                </Button>
-                                            </HStack>
-                                            <BenchmarkGraph
-                                                results={selectedReport.results}
-                                                id={selectedReport.id}
-                                                chartType="readback"
-                                            />
-                                        </Box>
-
-                                        {/* Compute vs Agents */}
-                                        <Box>
-                                            <HStack justify="space-between" mb={2}>
-                                                <Heading size="sm">Compute Time vs Agent Count</Heading>
-                                                <Button size="sm" leftIcon={<FaImage />} onClick={() => downloadGraph('compute')}>
-                                                    Save
-                                                </Button>
-                                            </HStack>
-                                            <BenchmarkGraph
-                                                results={selectedReport.results}
-                                                id={selectedReport.id}
-                                                chartType="compute"
-                                            />
-                                        </Box>
-
-                                        {/* Render vs Agents */}
-                                        <Box>
-                                            <HStack justify="space-between" mb={2}>
-                                                <Heading size="sm">Render Time vs Agent Count</Heading>
-                                                <Button size="sm" leftIcon={<FaImage />} onClick={() => downloadGraph('render')}>
-                                                    Save
-                                                </Button>
-                                            </HStack>
-                                            <BenchmarkGraph
-                                                results={selectedReport.results}
-                                                id={selectedReport.id}
-                                                chartType="render"
-                                            />
-                                        </Box>
+                                <TabsContent value="charts" className="p-4 m-0">
+                                    <div className="flex flex-col gap-8">
+                                        {[
+                                            { title: 'Readback Time vs Agent Count', type: 'readback' },
+                                            { title: 'Compute Time vs Agent Count', type: 'compute' },
+                                            { title: 'Render Time vs Agent Count', type: 'render' },
+                                        ].map(chart => (
+                                            <div key={chart.type}>
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <h3 className="text-sm font-bold">{chart.title}</h3>
+                                                    <Button size="sm" variant="outline" className="h-7" onClick={() => downloadGraph(chart.type)}>
+                                                        <ImageIcon className="mr-2" size={14} /> Save
+                                                    </Button>
+                                                </div>
+                                                <BenchmarkGraph
+                                                    results={selectedReport.results}
+                                                    id={selectedReport.id}
+                                                    chartType={chart.type as ChartType}
+                                                />
+                                            </div>
+                                        ))}
 
                                         {/* Setup & Overhead Comparison */}
-                                        <Box>
-                                            <HStack justify="space-between" mb={2}>
-                                                <Heading size="sm">Setup & Overhead Comparison</Heading>
-                                                <HStack>
-                                                    <Select
-                                                        size="sm"
-                                                        w="200px"
-                                                        value={selectedAgentCount ?? agentCounts[agentCounts.length - 1]}
-                                                        onChange={(e) => setSelectedAgentCount(Number(e.target.value))}
-                                                    >
-                                                        {agentCounts.map(count => (
-                                                            <option key={count} value={count}>
-                                                                {count.toLocaleString()} agents
-                                                            </option>
-                                                        ))}
+                                        <div>
+                                            <div className="flex justify-between items-center mb-2">
+                                                <h3 className="text-sm font-bold">Setup & Overhead Comparison</h3>
+                                                <div className="flex gap-2">
+                                                    <Select value={String(selectedAgentCount ?? agentCounts[agentCounts.length - 1])} onValueChange={(v: string) => setSelectedAgentCount(Number(v))}>
+                                                        <SelectTrigger className="h-7 w-[160px] text-xs">
+                                                            <SelectValue placeholder="Select Agent Count" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {agentCounts.map(count => (
+                                                                <SelectItem key={count} value={String(count)}>
+                                                                    {count.toLocaleString()} agents
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
                                                     </Select>
-                                                    <Button size="sm" leftIcon={<FaImage />} onClick={() => downloadGraph('setupOverhead')}>
-                                                        Save
+                                                    <Button size="sm" variant="outline" className="h-7" onClick={() => downloadGraph('setupOverhead')}>
+                                                        <ImageIcon className="mr-2" size={14} /> Save
                                                     </Button>
-                                                </HStack>
-                                            </HStack>
+                                                </div>
+                                            </div>
                                             <BenchmarkGraph
                                                 results={selectedReport.results}
                                                 id={selectedReport.id}
                                                 chartType="setupOverhead"
                                                 agentCount={selectedAgentCount ?? agentCounts[agentCounts.length - 1]}
                                             />
-                                        </Box>
+                                        </div>
 
                                         {/* Method Comparison */}
-                                        <Box>
-                                            <HStack justify="space-between" mb={2}>
-                                                <Heading size="sm">Method Comparison</Heading>
-                                                <HStack>
-                                                    <Select
-                                                        size="sm"
-                                                        w="200px"
-                                                        value={selectedAgentCount ?? agentCounts[agentCounts.length - 1]}
-                                                        onChange={(e) => setSelectedAgentCount(Number(e.target.value))}
-                                                    >
-                                                        {agentCounts.map(count => (
-                                                            <option key={count} value={count}>
-                                                                {count.toLocaleString()} agents
-                                                            </option>
-                                                        ))}
+                                        <div>
+                                            <div className="flex justify-between items-center mb-2">
+                                                <h3 className="text-sm font-bold">Method Comparison</h3>
+                                                <div className="flex gap-2">
+                                                    <Select value={String(selectedAgentCount ?? agentCounts[agentCounts.length - 1])} onValueChange={(v: string) => setSelectedAgentCount(Number(v))}>
+                                                        <SelectTrigger className="h-7 w-[160px] text-xs">
+                                                            <SelectValue placeholder="Select Agent Count" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {agentCounts.map(count => (
+                                                                <SelectItem key={count} value={String(count)}>
+                                                                    {count.toLocaleString()} agents
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
                                                     </Select>
-                                                    <Button size="sm" leftIcon={<FaImage />} onClick={() => downloadGraph('comparison')}>
-                                                        Save
+                                                    <Button size="sm" variant="outline" className="h-7" onClick={() => downloadGraph('comparison')}>
+                                                        <ImageIcon className="mr-2" size={14} /> Save
                                                     </Button>
-                                                </HStack>
-                                            </HStack>
+                                                </div>
+                                            </div>
                                             <BenchmarkGraph
                                                 results={selectedReport.results}
                                                 id={selectedReport.id}
                                                 chartType="comparison"
                                                 agentCount={selectedAgentCount ?? agentCounts[agentCounts.length - 1]}
                                             />
-                                        </Box>
-                                    </VStack>
-                                </TabPanel>
+                                        </div>
+                                    </div>
+                                </TabsContent>
 
-                                {/* Data Tables Tab */}
-                                <TabPanel>
-                                    <Box ref={tableRef}>
-                                        <Heading size="sm" mb={4}>Complete Benchmark Results</Heading>
-                                        <Box overflowX="auto" bg="rgba(0,0,0,0.3)" borderRadius="md">
-                                            <Table size="sm" variant="simple">
-                                                <Thead>
-                                                    <Tr>
-                                                        <Th color="gray.300">Method</Th>
-                                                        <Th color="gray.300" isNumeric>Agents</Th>
-                                                        <Th color="gray.300" isNumeric>Workers</Th>
-                                                        <Th color="gray.300" isNumeric>WG Size</Th>
-                                                        <Th color="gray.300" isNumeric>Avg Exec (ms)</Th>
-                                                        <Th color="gray.300" isNumeric>Setup (ms)</Th>
-                                                        <Th color="gray.300" isNumeric>Compute (ms)</Th>
-                                                        <Th color="gray.300" isNumeric>Render (ms)</Th>
-                                                        <Th color="gray.300" isNumeric>Readback (ms)</Th>
-                                                        <Th color="gray.300" isNumeric>Frames</Th>
-                                                    </Tr>
-                                                </Thead>
-                                                <Tbody>
+                                <TabsContent value="data-tables" className="p-4 m-0">
+                                    <div ref={tableRef}>
+                                        <h3 className="text-sm font-bold mb-4">Complete Benchmark Results</h3>
+                                        <div className="overflow-x-auto bg-black/30 rounded-md border border-white/10">
+                                            <Table className="text-xs">
+                                                <TableHeader>
+                                                    <TableRow className="bg-white/5 hover:bg-white/5 border-white/10">
+                                                        <TableHead className="text-gray-300">Method</TableHead>
+                                                        <TableHead className="text-gray-300 text-right">Agents</TableHead>
+                                                        <TableHead className="text-gray-300 text-right">Workers</TableHead>
+                                                        <TableHead className="text-gray-300 text-right">WG Size</TableHead>
+                                                        <TableHead className="text-gray-300 text-right font-bold">Avg Exec (ms)</TableHead>
+                                                        <TableHead className="text-gray-300 text-right">Setup (ms)</TableHead>
+                                                        <TableHead className="text-gray-300 text-right">Compute (ms)</TableHead>
+                                                        <TableHead className="text-gray-300 text-right">Render (ms)</TableHead>
+                                                        <TableHead className="text-gray-300 text-right">Readback (ms)</TableHead>
+                                                        <TableHead className="text-gray-300 text-right">Frames</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
                                                     {selectedReport.results.map((result, idx) => (
-                                                        <Tr key={idx} _hover={{ bg: 'rgba(0,200,200,0.05)' }}>
-                                                            <Td>
-                                                                <Badge colorScheme="teal" fontSize="xs">
+                                                        <TableRow key={idx} className="hover:bg-teal-500/5 border-white/5">
+                                                            <TableCell>
+                                                                <Badge className="bg-teal-600/80 hover:bg-teal-600 text-[10px] py-0 h-4">
                                                                     {result.method}
                                                                 </Badge>
-                                                            </Td>
-                                                            <Td isNumeric>{result.agentCount.toLocaleString()}</Td>
-                                                            <Td isNumeric>{result.workerCount ?? '-'}</Td>
-                                                            <Td isNumeric>{result.workgroupSize ?? '-'}</Td>
-                                                            <Td isNumeric fontWeight="bold">
-                                                                {result.avgExecutionTime.toFixed(2)}
-                                                            </Td>
-                                                            <Td isNumeric color="gray.400">
-                                                                {result.avgSetupTime.toFixed(2)}
-                                                            </Td>
-                                                            <Td isNumeric color="blue.300">
-                                                                {result.avgComputeTime.toFixed(2)}
-                                                            </Td>
-                                                            <Td isNumeric color="green.300">
-                                                                {result.avgRenderTime.toFixed(2)}
-                                                            </Td>
-                                                            <Td isNumeric color="orange.300">
-                                                                {result.avgReadbackTime.toFixed(2)}
-                                                            </Td>
-                                                            <Td isNumeric color="gray.500">{result.frameCount}</Td>
-                                                        </Tr>
+                                                            </TableCell>
+                                                            <TableCell className="text-right">{result.agentCount.toLocaleString()}</TableCell>
+                                                            <TableCell className="text-right">{result.workerCount ?? '-'}</TableCell>
+                                                            <TableCell className="text-right">{result.workgroupSize ?? '-'}</TableCell>
+                                                            <TableCell className="text-right font-bold">{result.avgExecutionTime.toFixed(2)}</TableCell>
+                                                            <TableCell className="text-right text-gray-400">{result.avgSetupTime.toFixed(2)}</TableCell>
+                                                            <TableCell className="text-right text-blue-400">{result.avgComputeTime.toFixed(2)}</TableCell>
+                                                            <TableCell className="text-right text-green-400">{result.avgRenderTime.toFixed(2)}</TableCell>
+                                                            <TableCell className="text-right text-orange-400">{result.avgReadbackTime.toFixed(2)}</TableCell>
+                                                            <TableCell className="text-right text-gray-500">{result.frameCount}</TableCell>
+                                                        </TableRow>
                                                     ))}
-                                                </Tbody>
+                                                </TableBody>
                                             </Table>
-                                        </Box>
+                                        </div>
 
                                         {/* Detailed Stats Accordion */}
-                                        <Accordion allowToggle mt={6}>
+                                        <Accordion type="single" collapsible className="mt-6 space-y-2">
                                             {selectedReport.results.map((result, idx) => {
                                                 const hasSpecificStats = result.specificStats && Object.keys(result.specificStats).length > 0;
                                                 if (!hasSpecificStats) return null;
 
                                                 return (
-                                                    <AccordionItem key={idx} border="1px solid" borderColor="whiteAlpha.200" mb={2} borderRadius="md">
-                                                        <AccordionButton _hover={{ bg: 'rgba(0,200,200,0.1)' }}>
-                                                            <Box flex="1" textAlign="left">
-                                                                <Text fontWeight="bold">
-                                                                    {result.method} - {result.agentCount.toLocaleString()} agents
-                                                                    {result.workerCount !== undefined && ` (${result.workerCount} workers)`}
-                                                                    {result.workgroupSize && ` (WG: ${result.workgroupSize})`}
-                                                                </Text>
-                                                            </Box>
-                                                            <AccordionIcon />
-                                                        </AccordionButton>
-                                                        <AccordionPanel pb={4} bg="rgba(0,0,0,0.2)">
-                                                            <VStack align="stretch" spacing={2}>
+                                                    <AccordionItem key={idx} value={`item-${idx}`} className="border border-white/10 rounded-md px-1 overflow-hidden">
+                                                        <AccordionTrigger className="hover:no-underline py-2 px-3 text-xs font-bold text-left hover:bg-teal-500/10 transition-colors">
+                                                            <div className="flex-1">
+                                                                {result.method} - {result.agentCount.toLocaleString()} agents
+                                                                {result.workerCount !== undefined && ` (${result.workerCount} workers)`}
+                                                                {result.workgroupSize && ` (WG: ${result.workgroupSize})`}
+                                                            </div>
+                                                        </AccordionTrigger>
+                                                        <AccordionContent className="px-3 pb-3 bg-black/20">
+                                                            <div className="flex flex-col gap-1 pt-2">
                                                                 {result.specificStats && Object.entries(result.specificStats).map(([key, value]) => (
-                                                                    <HStack key={key} justify="space-between">
-                                                                        <Text fontSize="sm" color="gray.300">{key}</Text>
-                                                                        <Text fontSize="sm" fontWeight="bold">{value.toFixed(3)} ms</Text>
-                                                                    </HStack>
+                                                                    <div key={key} className="flex justify-between text-[11px]">
+                                                                        <span className="text-gray-300">{key}</span>
+                                                                        <span className="font-bold">{value.toFixed(3)} ms</span>
+                                                                    </div>
                                                                 ))}
                                                                 {result.avgCompileTime && (
-                                                                    <HStack justify="space-between">
-                                                                        <Text fontSize="sm" color="gray.300">Compile Time</Text>
-                                                                        <Text fontSize="sm" fontWeight="bold">{result.avgCompileTime.toFixed(3)} ms</Text>
-                                                                    </HStack>
+                                                                    <div className="flex justify-between text-[11px] border-t border-white/5 mt-1 pt-1">
+                                                                        <span className="text-gray-300">Compile Time</span>
+                                                                        <span className="font-bold">{result.avgCompileTime.toFixed(3)} ms</span>
+                                                                    </div>
                                                                 )}
-                                                            </VStack>
-                                                        </AccordionPanel>
+                                                            </div>
+                                                        </AccordionContent>
                                                     </AccordionItem>
                                                 );
                                             })}
                                         </Accordion>
-                                    </Box>
-                                </TabPanel>
+                                    </div>
+                                </TabsContent>
 
-                                {/* Device Info Tab */}
-                                <TabPanel>
-                                    <VStack align="stretch" spacing={4}>
+                                <TabsContent value="device-info" className="p-4 m-0">
+                                    <div className="flex flex-col gap-4">
                                         {selectedReport.deviceInfo ? (
                                             <>
-                                                <Box bg="rgba(0,0,0,0.3)" p={4} borderRadius="md">
-                                                    <Heading size="sm" mb={3}>System Information</Heading>
-                                                    <VStack align="stretch" spacing={2}>
-                                                        <HStack justify="space-between">
-                                                            <Text fontSize="sm" color="gray.400">Platform</Text>
-                                                            <Text fontSize="sm">{selectedReport.deviceInfo.platform}</Text>
-                                                        </HStack>
-                                                        <HStack justify="space-between">
-                                                            <Text fontSize="sm" color="gray.400">Hardware Concurrency</Text>
-                                                            <Text fontSize="sm">{selectedReport.deviceInfo.hardwareConcurrency} threads</Text>
-                                                        </HStack>
+                                                <div className="bg-black/30 p-4 rounded-md">
+                                                    <h3 className="text-sm font-bold mb-3 border-b border-white/10 pb-2 text-tropicalTeal">System Information</h3>
+                                                    <div className="flex flex-col gap-2">
+                                                        <div className="flex justify-between text-xs">
+                                                            <span className="text-gray-400">Platform</span>
+                                                            <span>{selectedReport.deviceInfo.platform}</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-xs">
+                                                            <span className="text-gray-400">Hardware Concurrency</span>
+                                                            <span>{selectedReport.deviceInfo.hardwareConcurrency} threads</span>
+                                                        </div>
                                                         {selectedReport.deviceInfo.deviceMemory && (
-                                                            <HStack justify="space-between">
-                                                                <Text fontSize="sm" color="gray.400">Device Memory</Text>
-                                                                <Text fontSize="sm">{selectedReport.deviceInfo.deviceMemory} GB</Text>
-                                                            </HStack>
+                                                            <div className="flex justify-between text-xs">
+                                                                <span className="text-gray-400">Device Memory</span>
+                                                                <span>{selectedReport.deviceInfo.deviceMemory} GB</span>
+                                                            </div>
                                                         )}
-                                                        <Box pt={2}>
-                                                            <Text fontSize="xs" color="gray.500">User Agent</Text>
-                                                            <Text fontSize="xs" color="gray.400" mt={1}>
+                                                        <div className="pt-2">
+                                                            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">User Agent</p>
+                                                            <p className="text-[10px] text-gray-400 leading-relaxed font-mono bg-black/20 p-2 rounded">
                                                                 {selectedReport.deviceInfo.userAgent}
-                                                            </Text>
-                                                        </Box>
-                                                    </VStack>
-                                                </Box>
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
 
                                                 {selectedReport.deviceInfo.gpuInfo && (
-                                                    <Box bg="rgba(0,0,0,0.3)" p={4} borderRadius="md">
-                                                        <Heading size="sm" mb={3}>GPU Information</Heading>
-                                                        <VStack align="stretch" spacing={2}>
-                                                            <HStack justify="space-between">
-                                                                <Text fontSize="sm" color="gray.400">Vendor</Text>
-                                                                <Text fontSize="sm">{selectedReport.deviceInfo.gpuInfo.vendor}</Text>
-                                                            </HStack>
-                                                            <HStack justify="space-between">
-                                                                <Text fontSize="sm" color="gray.400">Architecture</Text>
-                                                                <Text fontSize="sm">{selectedReport.deviceInfo.gpuInfo.architecture}</Text>
-                                                            </HStack>
-                                                            <HStack justify="space-between">
-                                                                <Text fontSize="sm" color="gray.400">Description</Text>
-                                                                <Text fontSize="sm">{selectedReport.deviceInfo.gpuInfo.description}</Text>
-                                                            </HStack>
-                                                            <HStack justify="space-between">
-                                                                <Text fontSize="sm" color="gray.400">Max Buffer Size</Text>
-                                                                <Text fontSize="sm">
-                                                                    {(selectedReport.deviceInfo.gpuInfo.maxBufferSize / (1024 * 1024)).toFixed(2)} MB
-                                                                </Text>
-                                                            </HStack>
-                                                            <HStack justify="space-between">
-                                                                <Text fontSize="sm" color="gray.400">Max Workgroups Per Dim</Text>
-                                                                <Text fontSize="sm">
-                                                                    {selectedReport.deviceInfo.gpuInfo.maxComputeWorkgroupsPerDimension.toLocaleString()}
-                                                                </Text>
-                                                            </HStack>
-                                                            <HStack justify="space-between">
-                                                                <Text fontSize="sm" color="gray.400">Max Invocations Per WG</Text>
-                                                                <Text fontSize="sm">
-                                                                    {selectedReport.deviceInfo.gpuInfo.maxComputeInvocationsPerWorkgroup.toLocaleString()}
-                                                                </Text>
-                                                            </HStack>
-                                                        </VStack>
-                                                    </Box>
+                                                    <div className="bg-black/30 p-4 rounded-md">
+                                                        <h3 className="text-sm font-bold mb-3 border-b border-white/10 pb-2 text-tropicalTeal">GPU Information</h3>
+                                                        <div className="flex flex-col gap-2">
+                                                            <div className="flex justify-between text-xs">
+                                                                <span className="text-gray-400">Vendor</span>
+                                                                <span>{selectedReport.deviceInfo.gpuInfo.vendor}</span>
+                                                            </div>
+                                                            <div className="flex justify-between text-xs">
+                                                                <span className="text-gray-400">Architecture</span>
+                                                                <span>{selectedReport.deviceInfo.gpuInfo.architecture}</span>
+                                                            </div>
+                                                            <div className="flex justify-between text-xs">
+                                                                <span className="text-gray-400">Description</span>
+                                                                <span>{selectedReport.deviceInfo.gpuInfo.description}</span>
+                                                            </div>
+                                                            <div className="flex justify-between text-xs">
+                                                                <span className="text-gray-400">Max Buffer Size</span>
+                                                                <span>{(selectedReport.deviceInfo.gpuInfo.maxBufferSize / (1024 * 1024)).toFixed(2)} MB</span>
+                                                            </div>
+                                                            <div className="flex justify-between text-xs">
+                                                                <span className="text-gray-400">Max Workgroups Per Dim</span>
+                                                                <span>{selectedReport.deviceInfo.gpuInfo.maxComputeWorkgroupsPerDimension.toLocaleString()}</span>
+                                                            </div>
+                                                            <div className="flex justify-between text-xs">
+                                                                <span className="text-gray-400">Max Invocations Per WG</span>
+                                                                <span>{selectedReport.deviceInfo.gpuInfo.maxComputeInvocationsPerWorkgroup.toLocaleString()}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 )}
 
                                                 {selectedReport.configuration && (
-                                                    <Box bg="rgba(0,0,0,0.3)" p={4} borderRadius="md">
-                                                        <Heading size="sm" mb={3}>Benchmark Configuration</Heading>
-                                                        <VStack align="stretch" spacing={2}>
-                                                            <HStack justify="space-between">
-                                                                <Text fontSize="sm" color="gray.400">Frames Per Test</Text>
-                                                                <Text fontSize="sm">{selectedReport.configuration.framesPerTest}</Text>
-                                                            </HStack>
-                                                            <HStack justify="space-between">
-                                                                <Text fontSize="sm" color="gray.400">Warmup Run</Text>
-                                                                <Text fontSize="sm">{selectedReport.configuration.warmupRun ? 'Yes' : 'No'}</Text>
-                                                            </HStack>
+                                                    <div className="bg-black/30 p-4 rounded-md">
+                                                        <h3 className="text-sm font-bold mb-3 border-b border-white/10 pb-2 text-tropicalTeal">Benchmark Configuration</h3>
+                                                        <div className="flex flex-col gap-2 text-xs">
+                                                            <div className="flex justify-between">
+                                                                <span className="text-gray-400">Frames Per Test</span>
+                                                                <span>{selectedReport.configuration.framesPerTest}</span>
+                                                            </div>
+                                                            <div className="flex justify-between">
+                                                                <span className="text-gray-400">Warmup Run</span>
+                                                                <span>{selectedReport.configuration.warmupRun ? 'Yes' : 'No'}</span>
+                                                            </div>
                                                             {selectedReport.configuration.workerCounts && (
-                                                                <HStack justify="space-between">
-                                                                    <Text fontSize="sm" color="gray.400">Worker Counts Tested</Text>
-                                                                    <Text fontSize="sm">
-                                                                        {selectedReport.configuration.workerCounts.join(', ')}
-                                                                    </Text>
-                                                                </HStack>
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-gray-400">Worker Counts Tested</span>
+                                                                    <span>{selectedReport.configuration.workerCounts.join(', ')}</span>
+                                                                </div>
                                                             )}
                                                             {selectedReport.configuration.workgroupSizes && (
-                                                                <HStack justify="space-between">
-                                                                    <Text fontSize="sm" color="gray.400">Workgroup Sizes Tested</Text>
-                                                                    <Text fontSize="sm">
-                                                                        {selectedReport.configuration.workgroupSizes.join(', ')}
-                                                                    </Text>
-                                                                </HStack>
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-gray-400">Workgroup Sizes Tested</span>
+                                                                    <span>{selectedReport.configuration.workgroupSizes.join(', ')}</span>
+                                                                </div>
                                                             )}
-                                                        </VStack>
-                                                    </Box>
+                                                        </div>
+                                                    </div>
                                                 )}
                                             </>
                                         ) : (
-                                            <Box bg="rgba(0,0,0,0.3)" p={4} borderRadius="md">
-                                                <Text color="gray.500">Device information not available for this report.</Text>
-                                            </Box>
+                                            <div className="bg-black/30 p-4 rounded-md text-center py-8">
+                                                <span className="text-gray-500 text-sm">Device information not available for this report.</span>
+                                            </div>
                                         )}
-                                    </VStack>
-                                </TabPanel>
-                            </TabPanels>
+                                    </div>
+                                </TabsContent>
+                            </div>
                         </Tabs>
-                    </Box>
+                    </div>
                 ) : (
-                    <Flex flex="1" align="center" justify="center" direction="column">
-                        <Icon as={FaChartBar} boxSize={12} color="gray.600" mb={4} />
-                        <Text color="gray.500">Select a report from the list to view details.</Text>
-                    </Flex>
+                    <div className="flex-1 flex flex-col items-center justify-center">
+                        <ChartBar size={48} className="text-gray-600 mb-4" />
+                        <span className="text-gray-500">Select a report from the list to view details.</span>
+                    </div>
                 )}
-            </Flex>
-        </Flex>
+            </div>
+        </div>
     );
 };

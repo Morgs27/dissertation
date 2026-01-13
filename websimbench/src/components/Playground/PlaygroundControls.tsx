@@ -1,9 +1,8 @@
 import { Method, RenderMode, InputDefinition } from '../../simulation/types';
 import { Controls } from './Controls';
-import { Canvas } from './Canvas';
 import { Inputs } from './Inputs';
 
-interface PlaygroundViewProps {
+interface PlaygroundControlsProps {
     method: Method;
     setMethod: (m: Method) => void;
     renderMode: RenderMode;
@@ -11,14 +10,12 @@ interface PlaygroundViewProps {
     isRunning: boolean;
     handleRun: () => void;
     fps: number;
-    canvasRef: React.RefObject<HTMLCanvasElement>;
-    gpuCanvasRef: React.RefObject<HTMLCanvasElement>;
     inputs: Record<string, number>;
     definedInputs: InputDefinition[];
     handleInputChange: (key: string, value: number) => void;
 }
 
-export const PlaygroundView = ({
+export const PlaygroundControls = ({
     method,
     setMethod,
     renderMode,
@@ -26,14 +23,12 @@ export const PlaygroundView = ({
     isRunning,
     handleRun,
     fps,
-    canvasRef,
-    gpuCanvasRef,
     inputs,
     definedInputs,
     handleInputChange
-}: PlaygroundViewProps) => {
+}: PlaygroundControlsProps) => {
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col gap-6">
             <Controls
                 method={method}
                 setMethod={setMethod}
@@ -43,17 +38,11 @@ export const PlaygroundView = ({
                 handleRun={handleRun}
                 fps={fps}
             />
-            <Canvas
-                ref={canvasRef}
-                gpuRef={gpuCanvasRef}
-                renderMode={renderMode}
-            >
-                <Inputs
-                    inputs={inputs}
-                    definedInputs={definedInputs}
-                    handleInputChange={handleInputChange}
-                />
-            </Canvas>
+            <Inputs
+                inputs={inputs}
+                definedInputs={definedInputs}
+                handleInputChange={handleInputChange}
+            />
         </div>
     );
 };

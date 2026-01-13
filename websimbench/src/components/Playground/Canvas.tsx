@@ -1,4 +1,3 @@
-import { Box } from '@chakra-ui/react';
 import { forwardRef, ReactNode } from 'react';
 import { RenderMode } from '../../simulation/types';
 
@@ -10,7 +9,7 @@ interface CanvasProps {
 
 export const Canvas = forwardRef<HTMLCanvasElement, CanvasProps>(({ renderMode, gpuRef, children }, ref) => {
   return (
-    <Box flex="1" bg="black" position="relative">
+    <div className="flex-1 bg-black relative">
       {/* CPU Canvas */}
       <canvas
         ref={ref}
@@ -46,6 +45,6 @@ export const Canvas = forwardRef<HTMLCanvasElement, CanvasProps>(({ renderMode, 
       />
 
       {children}
-    </Box>
+    </div>
   );
 });

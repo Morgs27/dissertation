@@ -1,4 +1,4 @@
-import { Box, Heading, Grid, GridItem, Flex, Text, Slider, SliderTrack, SliderFilledTrack, SliderThumb } from '@chakra-ui/react';
+import { Slider } from "@/components/ui/slider";
 import { InputDefinition } from '../../simulation/types';
 
 interface InputsProps {
@@ -9,72 +9,45 @@ interface InputsProps {
 
 export const Inputs = ({ inputs, definedInputs, handleInputChange }: InputsProps) => {
   return (
-    <Box
-      position="absolute"
-      bottom={0}
-      left={0}
-      right={0}
-      bg="rgba(31, 54, 61, 0.9)"
-      p={4}
-      maxH="30%"
-      overflowY="auto"
-      borderTop="1px solid"
-      borderColor="cerulean"
-      zIndex={10}
-    >
-      <Heading size="xs" mb={4}>Simulation Inputs</Heading>
-      <Grid templateColumns="repeat(2, 1fr)" gap={6}>
+    <div className="space-y-4">
+      <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">Parameters</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
         {/* Show default agent count slider only if not defined in DSL */}
         {!definedInputs.some(d => d.name === 'agentCount') && (
-          <GridItem>
-            <Flex direction="column">
-              <Flex justify="space-between" mb={1}>
-                <Text fontSize="xs">agentCount</Text>
-                <Text fontSize="xs">{inputs.agentCount || 1000}</Text>
-              </Flex>
-              <Slider
-                aria-label="agentCount"
-                value={inputs.agentCount || 1000}
-                min={10}
-                max={100000}
-                step={10}
-                onChange={(val) => handleInputChange('agentCount', val)}
-              >
-                <SliderTrack bg="mutedTeal">
-                  <SliderFilledTrack bg="cerulean" />
-                </SliderTrack>
-                <SliderThumb />
-              </Slider>
-            </Flex>
-          </GridItem>
+          <div className="flex flex-col gap-3">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-medium text-gray-300">agentCount</span>
+              <span className="text-[11px] font-mono bg-black/40 px-2 py-0.5 rounded text-tropicalTeal">{inputs.agentCount || 1000}</span>
+            </div>
+            <Slider
+              value={[inputs.agentCount || 1000]}
+              min={10}
+              max={100000}
+              step={10}
+              onValueChange={(vals) => handleInputChange('agentCount', vals[0])}
+              className="py-1"
+            />
+          </div>
         )}
 
         {/* Dynamic sliders from defined inputs */}
         {definedInputs.map((def) => (
-          <GridItem key={def.name}>
-            <Flex direction="column">
-              <Flex justify="space-between" mb={1}>
-                <Text fontSize="xs">{def.name}</Text>
-                <Text fontSize="xs">{inputs[def.name] ?? def.defaultValue}</Text>
-              </Flex>
-              <Slider
-                aria-label={def.name}
-                value={inputs[def.name] ?? def.defaultValue}
-                min={def.min ?? 0}
-                max={def.max ?? 100}
-                step={(def.max && def.max <= 1) ? 0.001 : 1}
-                onChange={(val) => handleInputChange(def.name, val)}
-              >
-                <SliderTrack bg="mutedTeal">
-                  <SliderFilledTrack bg="cerulean" />
-                </SliderTrack>
-                <SliderThumb />
-              </Slider>
-            </Flex>
-          </GridItem>
+          <div key={def.name} className="flex flex-col gap-3">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-medium text-gray-300">{def.name}</span>
+              <span className="text-[11px] font-mono bg-black/40 px-2 py-0.5 rounded text-tropicalTeal">{inputs[def.name] ?? def.defaultValue}</span>
+            </div>
+            <Slider
+              value={[inputs[def.name] ?? def.defaultValue]}
+              min={def.min ?? 0}
+              max={def.max ?? 100}
+              step={(def.max && def.max <= 1) ? 0.001 : 0.01}
+              onValueChange={(vals) => handleInputChange(def.name, vals[0])}
+              className="py-1"
+            />
+          </div>
         ))}
-      </Grid>
-    </Box>
+      </div>
+    </div>
   );
 };
-

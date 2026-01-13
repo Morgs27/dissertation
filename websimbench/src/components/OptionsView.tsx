@@ -1,6 +1,18 @@
-import { Box, FormControl, FormLabel, Input, Grid, GridItem, Heading, Slider, SliderTrack, SliderFilledTrack, SliderThumb, Flex, Select, Text, Button, Switch } from '@chakra-ui/react';
+import {
+  Button,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Slider,
+  Switch,
+  Label,
+} from '@/components/ui';
 import { SimulationAppearanceOptions, AgentShape, UpdateOptionFn } from '../hooks/useSimulationOptions';
 import { LogLevel } from '../simulation/helpers/logger';
+import { Gear, Palette, Monitor, ShootingStar, Info } from "@phosphor-icons/react";
 
 interface OptionsViewProps {
   options: SimulationAppearanceOptions;
@@ -10,154 +22,180 @@ interface OptionsViewProps {
 
 export const OptionsView = ({ options, updateOption, resetOptions }: OptionsViewProps) => {
   return (
-    <Flex direction="column" h="100%" w="100%" bg="rgba(0,0,0,0.2)" p={6}>
-      <Box p={4} borderBottom="1px solid" borderColor="cerulean" mb={4}>
-        <Flex justify="space-between" align="center">
-          <Heading size="md" color="tropicalTeal">Simulation Options</Heading>
-          <Button size="sm" colorScheme="red" variant="outline" onClick={resetOptions}>
-            Reset Defaults
-          </Button>
-        </Flex>
-      </Box>
+    <div className="flex flex-col h-full w-full bg-[#16262b]">
+      <div className="h-16 flex items-center justify-between px-8 bg-black/40 border-b border-white/10 shrink-0">
+        <div className="flex items-center gap-3">
+          <Gear className="text-tropicalTeal" size={24} weight="fill" />
+          <h2 className="text-xl font-bold text-white tracking-tight">System Configuration</h2>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-red-400 border-red-400/30 hover:bg-red-500/10 hover:border-red-400 transition-all font-bold"
+          onClick={resetOptions}
+        >
+          Reset to Defaults
+        </Button>
+      </div>
 
-      <Grid templateColumns="repeat(2, 1fr)" gap={8}>
-        <GridItem>
-          <Heading size="sm" mb={4} color="gray.300">Appearance</Heading>
-          <FormControl mb={4}>
-            <FormLabel>Agent Color</FormLabel>
-            <Flex align="center">
-              <Input
-                type="color"
-                w="60px"
-                h="40px"
-                p={0}
-                mr={2}
-                value={options.agentColor}
-                onChange={(e) => updateOption('agentColor', e.target.value)}
-                bg="transparent"
-                border="none"
-              />
-              <Input
-                type="text"
-                w="120px"
-                value={options.agentColor}
-                onChange={(e) => updateOption('agentColor', e.target.value)}
-              />
-            </Flex>
-          </FormControl>
+      <div className="flex-1 overflow-y-auto p-8 max-w-6xl mx-auto w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+          {/* Appearance Section */}
+          <section className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex items-center gap-2 pb-2 border-b border-white/5">
+              <Palette className="text-tropicalTeal" size={20} />
+              <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-gray-400">Appearance</h3>
+            </div>
 
-          <FormControl mb={4}>
-            <FormLabel>Background Color</FormLabel>
-            <Flex align="center">
-              <Input
-                type="color"
-                w="60px"
-                h="40px"
-                p={0}
-                mr={2}
-                value={options.backgroundColor}
-                onChange={(e) => updateOption('backgroundColor', e.target.value)}
-                bg="transparent"
-                border="none"
-              />
-              <Input
-                type="text"
-                w="120px"
-                value={options.backgroundColor}
-                onChange={(e) => updateOption('backgroundColor', e.target.value)}
-              />
-            </Flex>
-          </FormControl>
+            <div className="grid gap-8">
+              <div className="space-y-3">
+                <Label className="text-xs font-bold text-gray-400 flex items-center gap-2">
+                  Agent Color
+                </Label>
+                <div className="flex items-center gap-4 bg-black/20 p-3 rounded-xl border border-white/5 focus-within:border-tropicalTeal/30 transition-all">
+                  <div className="relative w-10 h-10 shrink-0 rounded-lg overflow-hidden border border-white/10 shadow-lg">
+                    <Input
+                      type="color"
+                      className="absolute inset-[-10px] w-[200%] h-[200%] cursor-pointer border-none p-0"
+                      value={options.agentColor}
+                      onChange={(e) => updateOption('agentColor', e.target.value)}
+                    />
+                  </div>
+                  <Input
+                    type="text"
+                    className="flex-1 h-10 bg-transparent border-none text-sm font-mono focus:ring-0"
+                    value={options.agentColor}
+                    onChange={(e) => updateOption('agentColor', e.target.value)}
+                  />
+                </div>
+              </div>
 
-          {options.showTrails && (
-            <FormControl mb={4}>
-              <FormLabel>Trail Color</FormLabel>
-              <Flex align="center">
-                <Input
-                  type="color"
-                  w="60px"
-                  h="40px"
-                  p={0}
-                  mr={2}
-                  value={options.trailColor}
-                  onChange={(e) => updateOption('trailColor', e.target.value)}
-                  bg="transparent"
-                  border="none"
+              <div className="space-y-3">
+                <Label className="text-xs font-bold text-gray-400">Background Color</Label>
+                <div className="flex items-center gap-4 bg-black/20 p-3 rounded-xl border border-white/5 focus-within:border-tropicalTeal/30 transition-all">
+                  <div className="relative w-10 h-10 shrink-0 rounded-lg overflow-hidden border border-white/10 shadow-lg">
+                    <Input
+                      type="color"
+                      className="absolute inset-[-10px] w-[200%] h-[200%] cursor-pointer border-none p-0"
+                      value={options.backgroundColor}
+                      onChange={(e) => updateOption('backgroundColor', e.target.value)}
+                    />
+                  </div>
+                  <Input
+                    type="text"
+                    className="flex-1 h-10 bg-transparent border-none text-sm font-mono focus:ring-0"
+                    value={options.backgroundColor}
+                    onChange={(e) => updateOption('backgroundColor', e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {options.showTrails && (
+                <div className="space-y-3 animate-in fade-in duration-300">
+                  <Label className="text-xs font-bold text-gray-400 flex items-center gap-2">
+                    <ShootingStar size={14} /> Trail Color
+                  </Label>
+                  <div className="flex items-center gap-4 bg-black/20 p-3 rounded-xl border border-white/5 focus-within:border-tropicalTeal/30 transition-all">
+                    <div className="relative w-10 h-10 shrink-0 rounded-lg overflow-hidden border border-white/10 shadow-lg">
+                      <Input
+                        type="color"
+                        className="absolute inset-[-10px] w-[200%] h-[200%] cursor-pointer border-none p-0"
+                        value={options.trailColor}
+                        onChange={(e) => updateOption('trailColor', e.target.value)}
+                      />
+                    </div>
+                    <Input
+                      type="text"
+                      className="flex-1 h-10 bg-transparent border-none text-sm font-mono focus:ring-0"
+                      value={options.trailColor}
+                      onChange={(e) => updateOption('trailColor', e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Configuration Section */}
+          <section className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-150">
+            <div className="flex items-center gap-2 pb-2 border-b border-white/5">
+              <Monitor className="text-tropicalTeal" size={20} />
+              <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-gray-400">Simulation Config</h3>
+            </div>
+
+            <div className="grid gap-8">
+              <div className="space-y-4 bg-black/20 p-6 rounded-2xl border border-white/5">
+                <div className="flex justify-between items-center mb-2">
+                  <Label className="text-sm font-medium">Agent Size (px)</Label>
+                  <span className="text-xs font-mono bg-tropicalTeal/10 text-tropicalTeal px-2 py-1 rounded-md">{options.agentSize}</span>
+                </div>
+                <Slider
+                  min={1}
+                  max={20}
+                  step={0.5}
+                  value={[options.agentSize]}
+                  onValueChange={(val) => updateOption('agentSize', val[0])}
+                  className="py-2"
                 />
-                <Input
-                  type="text"
-                  w="120px"
-                  value={options.trailColor}
-                  onChange={(e) => updateOption('trailColor', e.target.value)}
-                />
-              </Flex>
-            </FormControl>
-          )}
-        </GridItem>
+              </div>
 
-        <GridItem>
-          <Heading size="sm" mb={4} color="gray.300">Configuration</Heading>
-          <FormControl mb={6}>
-            <FormLabel>Agent Size (px)</FormLabel>
-            <Flex align="center">
-              <Slider
-                flex="1"
-                mr={4}
-                min={1}
-                max={20}
-                step={0.5}
-                value={options.agentSize}
-                onChange={(val) => updateOption('agentSize', val)}
-              >
-                <SliderTrack bg="mutedTeal">
-                  <SliderFilledTrack bg="cerulean" />
-                </SliderTrack>
-                <SliderThumb />
-              </Slider>
-              <Text w="40px">{options.agentSize}</Text>
-            </Flex>
-          </FormControl>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-3 bg-black/20 p-5 rounded-2xl border border-white/5">
+                  <Label className="text-xs font-bold text-gray-400">Agent Shape</Label>
+                  <Select
+                    value={options.agentShape}
+                    onValueChange={(v) => updateOption('agentShape', v as AgentShape)}
+                  >
+                    <SelectTrigger className="bg-black/20 border-white/5 h-11">
+                      <SelectValue placeholder="Select Shape" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#1a2e33] border-white/10">
+                      <SelectItem value="circle">Circle</SelectItem>
+                      <SelectItem value="square">Square</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-          <FormControl mb={6}>
-            <FormLabel>Agent Shape</FormLabel>
-            <Select
-              value={options.agentShape}
-              onChange={(e) => updateOption('agentShape', e.target.value as AgentShape)}
-              bg="jetBlack"
-            >
-              <option value="circle">Circle</option>
-              <option value="square">Square</option>
-            </Select>
-          </FormControl>
+                <div className="space-y-3 bg-black/20 p-5 rounded-2xl border border-white/5 flex flex-col justify-between">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="show-trails" className="text-xs font-bold text-gray-400 cursor-pointer">
+                      Render Trails
+                    </Label>
+                    <Switch
+                      id="show-trails"
+                      checked={options.showTrails}
+                      onCheckedChange={(checked) => updateOption('showTrails', checked)}
+                    />
+                  </div>
+                  <p className="text-[10px] text-gray-500 leading-tight pr-4 flex items-start gap-1">
+                    <Info size={12} className="shrink-0 mt-0.5" />
+                    Enables persistent visual paths for agents. Note: high performance cost.
+                  </p>
+                </div>
+              </div>
 
-          <FormControl mb={6} display="flex" alignItems="center">
-            <FormLabel htmlFor="show-trails" mb="0">
-              Show Trails
-            </FormLabel>
-            <Switch
-              id="show-trails"
-              isChecked={options.showTrails}
-              onChange={(e) => updateOption('showTrails', e.target.checked)}
-              colorScheme="teal"
-            />
-          </FormControl>
-
-          <FormControl mb={6}>
-            <FormLabel>Log Verbosity</FormLabel>
-            <Select
-              value={options.logLevel}
-              onChange={(e) => updateOption('logLevel', parseInt(e.target.value) as LogLevel)}
-              bg="jetBlack"
-            >
-              <option value={LogLevel.None}>None</option>
-              <option value={LogLevel.Error}>Error</option>
-              <option value={LogLevel.Warning}>Warning</option>
-              <option value={LogLevel.Info}>Info</option>
-              <option value={LogLevel.Verbose}>Verbose</option>
-            </Select>
-          </FormControl>
-        </GridItem>
-      </Grid>
-    </Flex>
+              <div className="space-y-3 bg-black/20 p-5 rounded-2xl border border-white/5">
+                <Label className="text-xs font-bold text-gray-400">Log Verbosity</Label>
+                <Select
+                  value={String(options.logLevel)}
+                  onValueChange={(v) => updateOption('logLevel', parseInt(v) as LogLevel)}
+                >
+                  <SelectTrigger className="bg-black/20 border-white/5 h-11">
+                    <SelectValue placeholder="Select Level" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1a2e33] border-white/10">
+                    <SelectItem value={String(LogLevel.None)}>None - Quiet Mode</SelectItem>
+                    <SelectItem value={String(LogLevel.Error)}>Error - Critical failures</SelectItem>
+                    <SelectItem value={String(LogLevel.Warning)}>Warning - Potential issues</SelectItem>
+                    <SelectItem value={String(LogLevel.Info)}>Info - Standard output</SelectItem>
+                    <SelectItem value={String(LogLevel.Verbose)}>Verbose - Full Debug</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
   );
 };
