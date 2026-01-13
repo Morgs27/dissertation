@@ -138,9 +138,9 @@ function transpileExpression(expr: string, context: WGSLContext): string {
     result = result.replace(/(\w+)\.length/g, (_, varName) => {
         const varInfo = context.variables.get(varName);
         if (varInfo?.type === 'neighbors') {
-            return `${varName} _count`;
+            return `${varName}_count`;
         }
-        return `${varName} _count`;
+        return `${varName}_count`;
     });
 
     // Handle sqrt() function - WGSL has native sqrt support
