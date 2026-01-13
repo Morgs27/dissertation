@@ -5,6 +5,7 @@
     (import "env" "cos" (func $cos (param f32) (result f32)))
     (import "env" "atan2" (func $atan2 (param f32 f32) (result f32)))
     (import "env" "random" (func $random_js (result f32)))
+    (import "env" "print" (func $print (param f32 f32)))
 
     (global $inputs_perceptionRadius (export "inputs_perceptionRadius") (mut f32) (f32.const 0))
   (global $inputs_alignmentFactor (export "inputs_alignmentFactor") (mut f32) (f32.const 0))
@@ -103,6 +104,7 @@
         (br $_neighbor_loop)
       )
     )
+    (call $print (local.get $_agent_id) (local.get $nearbyAgents_length))
     (if (f32.gt (local.get $nearbyAgents_count) (f32.const 0)) (then
     (local.set $avgVx (f32.div (local.get $nearbyAgents_sum_vx) (local.get $nearbyAgents_count)))
     (local.set $avgVy (f32.div (local.get $nearbyAgents_sum_vy) (local.get $nearbyAgents_count)))
@@ -252,6 +254,7 @@
         (br $_neighbor_loop)
       )
     )
+    (call $print (local.get $_agent_id) (local.get $nearbyAgents_length))
     (if (f32.gt (local.get $nearbyAgents_count) (f32.const 0)) (then
     (local.set $avgVx (f32.div (local.get $nearbyAgents_sum_vx) (local.get $nearbyAgents_count)))
     (local.set $avgVy (f32.div (local.get $nearbyAgents_sum_vy) (local.get $nearbyAgents_count)))

@@ -11,12 +11,11 @@ struct Agent {
 @group(0) @binding(6) var<storage, read_write> agentLogs : array<vec2<f32>>;
 
 struct Inputs {
+    gravity: f32,
     depositAmount: f32,
     decayFactor: f32,
     sensorAngle: f32,
     sensorDist: f32,
-    turnAngle: f32,
-    speed: f32,
     width: f32,
     height: f32,
 };
@@ -27,7 +26,7 @@ struct Inputs {
 
 @group(0) @binding(4) var<storage, read_write> trailMapWrite : array<atomic<i32>>;
 
-@group(0) @binding(3) var<storage, read> randomValues : array<f32>;
+
 
 
 
@@ -91,31 +90,12 @@ fn main(
         var agent = agents[i];
         
         // Load random values
-        var r = randomValues[i];
         
+        
+        agentLogs[i] = vec2<f32>(1.0, inputs.gravity);
         
         var sL: f32 = _sense(agent.x, agent.y, agent.vx, agent.vy, inputs.sensorAngle, inputs.sensorDist);
-        var sF: f32 = _sense(agent.x, agent.y, agent.vx, agent.vy, 0, inputs.sensorDist);
-        var sR: f32 = _sense(agent.x, agent.y, agent.vx, agent.vy, -inputs.sensorAngle, inputs.sensorDist);
         agentLogs[i] = vec2<f32>(1.0, sL);
-        agentLogs[i] = vec2<f32>(1.0, sF);
-        agentLogs[i] = vec2<f32>(1.0, sR);
-        if (sF < sL && sF < sR) {
-            if (r < 0.5) {
-                let _c = cos(inputs.turnAngle); let _s = sin(inputs.turnAngle); let _vx = agent.vx * _c - agent.vy * _s; agent.vy = agent.vx * _s + agent.vy * _c; agent.vx = _vx;
-            }
-            else if (r >= 0.5) {
-                let _c = cos(-inputs.turnAngle); let _s = sin(-inputs.turnAngle); let _vx = agent.vx * _c - agent.vy * _s; agent.vy = agent.vx * _s + agent.vy * _c; agent.vx = _vx;
-            }
-        }
-        if (sL > sR) {
-            let _c = cos(inputs.turnAngle); let _s = sin(inputs.turnAngle); let _vx = agent.vx * _c - agent.vy * _s; agent.vy = agent.vx * _s + agent.vy * _c; agent.vx = _vx;
-        }
-        if (sR > sL) {
-            let _c = cos(-inputs.turnAngle); let _s = sin(-inputs.turnAngle); let _vx = agent.vx * _c - agent.vy * _s; agent.vy = agent.vx * _s + agent.vy * _c; agent.vx = _vx;
-        }
-        agent.x += agent.vx * inputs.speed; agent.y += agent.vy * inputs.speed;
-        if (agent.x < 0) { agent.x += inputs.width; } if (agent.x > inputs.width) { agent.x -= inputs.width; } if (agent.y < 0) { agent.y += inputs.height; } if (agent.y > inputs.height) { agent.y -= inputs.height; }
         _deposit(agent.x, agent.y, inputs.depositAmount);
         
         agents[i] = agent;

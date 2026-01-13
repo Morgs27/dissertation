@@ -22,6 +22,7 @@ const COMMANDS: CommandMap = {
     deposit: '_deposit({arg});',
     sense: '', // Handled as expression
     enableTrails: '',
+    print: 'if (inputs.print) inputs.print(id, {arg});',
 };
 
 /**

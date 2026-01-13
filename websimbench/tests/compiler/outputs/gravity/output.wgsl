@@ -8,6 +8,7 @@ struct Agent {
 
 @group(0) @binding(0) var<storage, read_write> agents : array<Agent>;
 @group(0) @binding(5) var<storage, read> agentsRead : array<Agent>;
+@group(0) @binding(6) var<storage, read_write> agentLogs : array<vec2<f32>>;
 
 struct Inputs {
     gravity: f32,

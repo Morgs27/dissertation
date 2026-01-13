@@ -10,6 +10,8 @@ input dt = 1; // [0, 100]
 // Find nearby neighbors
 var nearbyAgents = neighbors(inputs.perceptionRadius);
 
+print(nearbyAgents.length);
+
 // Rule 1: Alignment - steer toward average neighbor velocity
 if (nearbyAgents.length > 0) {
   var avgVx = mean(nearbyAgents.vx);

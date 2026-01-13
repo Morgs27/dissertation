@@ -1,4 +1,5 @@
-
+[Verbose] [ComputeEngine] Running Compute: WebAssembly
+[Verbose] [WebAssemblyCompute] Initializing WebAssemblyCompute with code: 
   (module
     (import "env" "memory" (memory 1))
     (import "env" "sin" (func $sin (param f32) (result f32)))
@@ -78,3 +79,14 @@
       )
     )
   )
+[Verbose] [WebAssemblyCompute] Compiled WAT to WASM module
+[Verbose] [WebAssemblyCompute] Initializing WebAssembly memory with 2 pages
+[Verbose] [ComputeEngine] Running Compute: WebAssembly
+[Verbose] [ComputeEngine] Running Compute: WebAssembly
+[Verbose] [ComputeEngine] Running Compute: WebAssembly
+[Verbose] [ComputeEngine] Running Compute: WebAssembly
+[Verbose] [ComputeEngine] Running Compute: WebAssembly
+[Verbose] [ComputeEngine] Running Compute: WebAssembly
+[Verbose] [ComputeEngine] Running Compute: WebAssembly
+[Verbose] [ComputeEngine] Running Compute: WebAssembly
+[Verbose] [ComputeEngine] Running Compute: WebAssembly

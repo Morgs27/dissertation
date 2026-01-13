@@ -21,7 +21,7 @@ export type SimulationAppearance = {
 }
 
 export type InputValues = {
-    [key: string]: number | Agent[] | Float32Array | Uint32Array;
+    [key: string]: number | Agent[] | Float32Array | Uint32Array | Function;
 }
 
 export type InputDefinition = {

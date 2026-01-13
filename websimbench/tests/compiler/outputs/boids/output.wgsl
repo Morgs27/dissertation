@@ -8,6 +8,7 @@ struct Agent {
 
 @group(0) @binding(0) var<storage, read_write> agents : array<Agent>;
 @group(0) @binding(5) var<storage, read> agentsRead : array<Agent>;
+@group(0) @binding(6) var<storage, read_write> agentLogs : array<vec2<f32>>;
 
 struct Inputs {
     perceptionRadius: f32,
@@ -68,6 +69,7 @@ fn main(
                 nearbyAgents_sum_vy += other.vy;
             }
         }
+        agentLogs[i] = vec2<f32>(1.0, /* ERROR: Cannot access nearbyAgents.length directly in WGSL */);
         if (nearbyAgents_count > 0u) {
             var avgVx: f32 = 0.0;
             if (nearbyAgents_count > 0u) {

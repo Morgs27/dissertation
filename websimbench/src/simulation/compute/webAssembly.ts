@@ -67,7 +67,8 @@ export class WebAssemblyCompute {
         cos: Math.cos,
         atan2: Math.atan2,
         random: Math.random, // Fallback if we don't use internal RNG
-        log: (x: number) => console.log('WASM Log:', x) // Debug helper
+        print: (id: number, val: number) => this.Logger.info(`AGENT[${id}] PRINT:`, val), // Main log function
+        log: (id: number, val: number) => console.log('WASM Log:', id, val) // Debug helper
       }
     });
 

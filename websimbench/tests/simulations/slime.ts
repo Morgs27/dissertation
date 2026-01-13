@@ -13,6 +13,10 @@ var sL = sense(inputs.sensorAngle, inputs.sensorDist);
 var sF = sense(0, inputs.sensorDist);
 var sR = sense(-inputs.sensorAngle, inputs.sensorDist);
 
+print(sL);
+print(sF);
+print(sR);
+
 if (sF < sL && sF < sR) {
     if (inputs.r < 0.5) {
         turn(inputs.turnAngle);

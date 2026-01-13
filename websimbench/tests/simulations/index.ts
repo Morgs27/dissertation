@@ -11,5 +11,5 @@ import { GRAVITY_SIMULATION } from './gravity';
 export const SIMULATIONS: Record<string, string> = {
     boids: BOIDS_SIMULATION,
     slime: SLIME_SIMULATION,
-    gravity: GRAVITY_SIMULATION
+    gravity: GRAVITY_SIMULATION,
 };

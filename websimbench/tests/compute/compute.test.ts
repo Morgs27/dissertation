@@ -6,6 +6,7 @@ import { PerformanceMonitor } from '../../src/simulation/performance';
 import type { Agent, Method, InputValues, CompilationResult } from '../../src/simulation/types';
 import { SIMULATIONS } from '../simulations';
 import GPU from '../../src/simulation/helpers/gpu';
+import Logger, { LogLevel } from '../../src/simulation/helpers/logger';
 
 // Test configuration
 const NUM_FRAMES = 10;  // Increased from 5 for more thorough testing
@@ -188,14 +189,30 @@ describe('Compute Cross-Method Comparison', () => {
                     const trailMap = new Float32Array(WIDTH * HEIGHT);
                     const frames: Agent[][] = [];
 
-                    // Run frames
-                    for (let frame = 0; frame < NUM_FRAMES; frame++) {
-                        const inputs = getDefaultInputs(compilationResult, WIDTH, HEIGHT, agents, frame);
-                        inputs.trailMap = trailMap;
+                    // Setup log capturing
+                    const capturedLogs: string[] = [];
+                    const logListener = (level: LogLevel, context: string, message: string) => {
+                        const levelStr = LogLevel[level] || 'INFO';
+                        capturedLogs.push(`[${levelStr}] [${context}] ${message}`);
+                    };
+                    Logger.addListener(logListener);
 
-                        agents = await computeEngine.runFrame(method, agents, inputs, 'cpu');
-                        frames.push(cloneAgents(agents));
+                    try {
+                        // Run frames
+                        for (let frame = 0; frame < NUM_FRAMES; frame++) {
+                            const inputs = getDefaultInputs(compilationResult, WIDTH, HEIGHT, agents, frame);
+                            inputs.trailMap = trailMap;
+
+                            agents = await computeEngine.runFrame(method, agents, inputs, 'cpu');
+                            frames.push(cloneAgents(agents));
+                        }
+                    } finally {
+                        Logger.removeListener(logListener);
                     }
+
+                    // Write logs to file
+                    const logPath = `tests/compute/outputs/${simulationName}/${method}_logs.txt`;
+                    await writeOutputFile(logPath, capturedLogs.join('\n'));
 
                     results.set(method, { method, frames, available: true });
                 }
