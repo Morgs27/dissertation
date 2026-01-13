@@ -212,6 +212,17 @@ function normalizeWASMExpression(expr: string, randomInputs: Set<string>): strin
   r = r.replace(/(\w+(?:\.\w+)?)\s*\^2/g, "$1 * $1");
   r = r.replace(/(\w+(?:\.\w+)?)\s*\*\*2/g, "$1 * $1");
 
+  // Handle object properties (e.g. neighbor.x -> neighbor_x)
+  r = r.replace(/(\w+)\.(?!length|count)(\w+)/g, (match, obj, prop) => {
+    if (obj === 'inputs') return match; // Handled later
+    if (obj === 'nearbyAgents') return match; // Handled by array match
+    return `${obj}_${prop}`;
+  });
+
+  // Handle .length or .count property for neighbors
+  r = r.replace(/nearbyAgents\.length/g, "nearbyAgents_count");
+  r = r.replace(/nearbyAgents\.count/g, "nearbyAgents_count");
+
   // Handle neighbors()
   if (r.includes("neighbors(")) {
     const match = r.match(/neighbors\(([^)]+)\)/);
@@ -445,19 +456,16 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
         return `
     ;; Foreach loop over nearbyAgents
     (local.set $_foreach_idx (i32.const 0))
-    (local.set $_foreach_ptr (i32.const 0))
+    (local.set $_foreach_ptr (global.get $agentsReadPtr))
     (block $_foreach_exit
       (loop $_foreach_loop
         (br_if $_foreach_exit (i32.ge_u (local.get $_foreach_idx) (global.get $agent_count)))
-        (if (i32.ne (local.get $_foreach_idx) (i32.trunc_f32_u (local.get $_agent_id))) (then
+        (if (i32.const 1) (then
           (local.set $${parsed.varName}_x (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 4))))
           (local.set $${parsed.varName}_y (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 8))))
           (local.set $${parsed.varName}_vx (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 12))))
           (local.set $${parsed.varName}_vy (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 16))))
-          (local.set $_foreach_dx (f32.sub (local.get $x) (local.get $${parsed.varName}_x)))
-          (local.set $_foreach_dy (f32.sub (local.get $y) (local.get $${parsed.varName}_y)))
-          (local.set $_foreach_dist (f32.sqrt (f32.add (f32.mul (local.get $_foreach_dx) (local.get $_foreach_dx)) (f32.mul (local.get $_foreach_dy) (local.get $_foreach_dy)))))
-          (if (f32.lt (local.get $_foreach_dist) (global.get $inputs_perceptionRadius)) (then
+          (if (i32.const 1) (then
             ;; Loop body will be inserted here by subsequent lines`;
       }
       return `;; TODO: foreach loops only supported for nearbyAgents`;
@@ -547,7 +555,7 @@ export const compileDSLtoWAT = (
   // { type: 'nearby', internalIfs: 2 } or { type: 'standard', var: string }
   // internalIfs tracks how many ifs the loop opens internally (skip-self, nearby-check)
   // openStructuresAtEntry tracks the openStructures count when loop was entered
-  const loopStack: { type: 'nearby' | 'standard', var?: string, internalIfs: number, openStructuresAtEntry: number }[] = [];
+  const loopStack: { type: 'nearby' | 'standard' | 'foreach', var?: string, internalIfs: number, openStructuresAtEntry: number }[] = [];
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -602,7 +610,11 @@ export const compileDSLtoWAT = (
         loopStack.push({ type: 'standard', var: varName, internalIfs: 0, openStructuresAtEntry: openStructures });
       }
 
-      if (transpiled.includes(";; Foreach loop over")) foreachDepth++;
+      if (transpiled.includes(";; Foreach loop over")) {
+        foreachDepth++;
+        loopStack.push({ type: 'foreach', internalIfs: 2, openStructuresAtEntry: openStructures });
+        openStructures += 2;
+      }
 
       // Count net open ifs: (if ... (then) opens, )) closes
       // Only increment openStructures by the NET count of unclosed ifs
@@ -620,38 +632,30 @@ export const compileDSLtoWAT = (
       }
 
       if (transpiled === "))" || (transpiled.startsWith("))") && pendingClosures > 0)) {
-        if (forDepth > 0 && openStructures === 0) {
-          forDepth--;
-          const loopInfo = loopStack.pop();
+        let loopClosed = false;
+        if (loopStack.length > 0) {
+          const loopInfo = loopStack[loopStack.length - 1];
+          // Check if we are at the right nesting/structure level to close this loop
+          if (openStructures === loopInfo.openStructuresAtEntry + loopInfo.internalIfs) {
+            loopStack.pop();
+            loopClosed = true;
 
-          if (loopInfo && loopInfo.type === 'nearby') {
-            // Close 2 ifs, then loop update, then loop/block
-            statements.push(`          ))\n        ))\n        (local.set $_for_idx (i32.add (local.get $_for_idx) (i32.const 1)))\n        (local.set $_for_ptr (i32.add (local.get $_for_ptr) (i32.const 20)))\n        (br $_for_loop)\n      )\n    )`);
-          } else if (loopInfo && loopInfo.type === 'standard') {
-            // Standard loop: No ifs to close (usually), just loop update and close loop/block
-            // Wait, transpiled is "))". If we use it, we close 2 things.
-            // But Standard loop didn't open IFs.
-            // So we should NOT emit "))" at start of closer.
-            // We just emit loop update and close loop/block.
-            const varName = loopInfo.var;
-            // Increment loop var: $i++
-            // Assuming it's f32 (since we default to f32 for user vars) or i32?
-            // In transpileLine: "localVars.add(loopVar)".
-            // In declaration: i32Vars = Set(["_loop_idx", ...]). User vars are usually f32.
-            // But loop counter strictly should probably be checked.
-            // If we initialized it with "0" (f32) -> f32.
-            // If "0" (i32) -> i32.
-            // normalizeWASMExpression returns (f32.const 0) for numbers.
-            // so it's f32.
-            // So we use f32.add.
-            statements.push(`        (local.set $${varName} (f32.add (local.get $${varName}) (f32.const 1)))\n        (br $_for_loop)\n      )\n    )`);
-          } else {
-            // Fallback (shouldn't happen)
-            statements.push(transpiled);
+            if (loopInfo.type === 'nearby') {
+              // Close 2 ifs, then loop update, then loop/block
+              statements.push(`          ))\n        ))\n        (local.set $_for_idx (i32.add (local.get $_for_idx) (i32.const 1)))\n        (local.set $_for_ptr (i32.add (local.get $_for_ptr) (i32.const 20)))\n        (br $_for_loop)\n      )\n    )`);
+            } else if (loopInfo.type === 'foreach') {
+              // Close 2 ifs, then loop update, then loop/block (using foreach vars)
+              statements.push(`          ))\n        ))\n        (local.set $_foreach_idx (i32.add (local.get $_foreach_idx) (i32.const 1)))\n        (local.set $_foreach_ptr (i32.add (local.get $_foreach_ptr) (i32.const 20)))\n        (br $_foreach_loop)\n      )\n    )`);
+            } else if (loopInfo.type === 'standard') {
+              const varName = loopInfo.var;
+              // Standard loop update
+              statements.push(`        (local.set $${varName} (f32.add (local.get $${varName}) (f32.const 1)))\n        (br $_for_loop)\n      )\n    )`);
+            }
           }
-        } else if (foreachDepth > 0 && openStructures === 0) {
-          foreachDepth--;
-          statements.push(`          ))\n        ))\n        (local.set $_foreach_idx (i32.add (local.get $_foreach_idx) (i32.const 1)))\n        (local.set $_foreach_ptr (i32.add (local.get $_foreach_ptr) (i32.const 20)))\n        (br $_foreach_loop)\n      )\n    )`);
+        }
+
+        if (loopClosed) {
+          // handled
         } else if (openStructures > 0) {
           openStructures--;
           statements.push(transpiled);
