@@ -1,6 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { CircleNotch, FloppyDisk, UploadSimple, Cube, FileJs, GraphicsCard, PencilLine } from "@phosphor-icons/react";
+import { CircleNotch, FloppyDisk, UploadSimple, Cube, FileJs, GraphicsCard, PencilLine, PencilLineIcon, CubeIcon, FileJsIcon, GraphicsCardIcon } from "@phosphor-icons/react";
 import Editor from 'react-simple-code-editor';
 import { highlight, languages } from 'prismjs';
 import 'prismjs/components/prism-clike';
@@ -37,19 +37,19 @@ export const EditorPanel = ({
       <div className="h-12 flex items-center justify-between px-3 bg-black/40 border-b border-white/5 shrink-0">
         <TabsList className="bg-transparent h-8 p-0 gap-1">
           <TabsTrigger value="sim-code" className="h-8 px-4 data-[state=active]:bg-white/10 data-[state=active]:text-white rounded-md text-xs font-bold transition-all flex items-center gap-2">
-            <PencilLine size={14} />
+            <PencilLineIcon />
             Editor
           </TabsTrigger>
           <TabsTrigger value="wasm" className="h-8 px-4 data-[state=active]:bg-white/10 data-[state=active]:text-white rounded-md text-xs font-bold transition-all flex items-center gap-2">
-            <Cube size={14} />
+            <CubeIcon size={18} />
             WASM
           </TabsTrigger>
           <TabsTrigger value="javascript" className="h-8 px-4 data-[state=active]:bg-white/10 data-[state=active]:text-white rounded-md text-xs font-bold transition-all flex items-center gap-2">
-            <FileJs size={14} />
+            <FileJsIcon size={18} />
             JS
           </TabsTrigger>
           <TabsTrigger value="wgsl" className="h-8 px-4 data-[state=active]:bg-white/10 data-[state=active]:text-white rounded-md text-xs font-bold transition-all flex items-center gap-2">
-            <GraphicsCard size={14} />
+            <GraphicsCardIcon size={18} />
             WGSL
           </TabsTrigger>
         </TabsList>
@@ -57,35 +57,13 @@ export const EditorPanel = ({
         <div className="flex gap-2">
           {isCompiling && (
             <div className="flex items-center gap-2 px-3 py-1 bg-tropicalTeal/10 text-tropicalTeal rounded-md text-[10px] font-bold uppercase tracking-wider">
-              <CircleNotch size={14} className="animate-spin" />
+              <CircleNotch size={18} className="animate-spin" />
               Compiling...
             </div>
           )}
-          <Button
-            size="xs"
-            variant="ghost"
-            onClick={handleSaveCode}
-            className="text-gray-400 hover:text-white hover:bg-white/5 transition-colors flex items-center gap-1.5"
-          >
-            <FloppyDisk size={14} />
-            Save
-          </Button>
-          <div className="relative">
-            <Button
-              size="xs"
-              variant="ghost"
-              className="text-gray-400 hover:text-white hover:bg-white/5 transition-colors flex items-center gap-1.5"
-            >
-              <UploadSimple size={14} />
-              Load
-            </Button>
-            <input
-              type="file"
-              className="absolute inset-0 opacity-0 cursor-pointer"
-              accept=".js,.txt"
-              onChange={handleLoadCode}
-            />
-          </div>
+
+          {/* Save Button Here */}
+          {/* Load button Here */}
         </div>
       </div>
 
