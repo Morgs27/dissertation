@@ -100,7 +100,7 @@ export class Renderer {
         const bgB = bgRgb.b * 255;
 
         for (let i = 0; i < trailMap.length; i++) {
-            const intensity = trailMap[i]; // 0 to 1
+            const intensity = trailMap[i] * (this.appearance.trailOpacity ?? 1.0); // 0 to 1
 
             // Optimization: if intensity is 0, just write background color
             // (Since putImageData replaces, we must write BG color for empty pixels too, 
@@ -251,7 +251,7 @@ export class Renderer {
                 colorR: f32,
                 colorG: f32,
                 colorB: f32,
-                _pad: f32,
+                opacity: f32,
             }
             @group(0) @binding(0) var<storage, read> trailMap: array<f32>;
             @group(0) @binding(1) var<uniform> uniforms: TrailUniforms;
@@ -282,7 +282,7 @@ export class Renderer {
 
                 // Using pre-multiplied alpha or just alpha?
                 // Visual preference: use color with alpha = intensity
-                return vec4<f32>(uniforms.colorR, uniforms.colorG, uniforms.colorB, val);
+                return vec4<f32>(uniforms.colorR, uniforms.colorG, uniforms.colorB, val * uniforms.opacity);
             }
         `;
 
@@ -401,7 +401,8 @@ export class Renderer {
             const trailUniformData = new Float32Array([
                 this.canvas.width,
                 this.canvas.height,
-                r, g, b, 0
+                r, g, b,
+                this.appearance.trailOpacity ?? 1.0
             ]);
             const trailUniformBuffer = this.gpuHelper.createBuffer(
                 device,
