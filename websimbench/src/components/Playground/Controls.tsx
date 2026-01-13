@@ -1,5 +1,6 @@
-import { Flex, Select, Button, HStack, Icon, Text } from '@chakra-ui/react';
-import { FaPlay, FaStop, FaTachometerAlt } from 'react-icons/fa';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Play, Stop, Speedometer } from "@phosphor-icons/react";
 import { Method, RenderMode } from '../../simulation/types';
 
 interface ControlsProps {
@@ -22,47 +23,49 @@ export const Controls = ({
   fps
 }: ControlsProps) => {
   return (
-    <Flex p={4} align="center" gap={4} bg="rgba(0,0,0,0.2)" borderBottom="1px solid" borderColor="cerulean">
-      <Select
-        w="150px"
-        value={method}
-        onChange={(e) => setMethod(e.target.value as Method)}
-        size="sm"
-        bg="jetBlack"
-      >
-        <option value="JavaScript">JavaScript</option>
-        <option value="WebAssembly">WebAssembly</option>
-        <option value="WebGPU">WebGPU</option>
-        <option value="WebWorkers">WebWorkers</option>
-      </Select>
+    <div className="flex items-center gap-4 bg-black/10 p-3 rounded-xl border border-white/5">
+      <div className="flex items-center gap-2">
+        <Select value={method} onValueChange={(v) => setMethod(v as Method)}>
+          <SelectTrigger className="w-[140px] h-9 bg-black/40 border-none focus:ring-1 focus:ring-tropicalTeal/50 text-xs font-bold">
+            <SelectValue placeholder="Method" />
+          </SelectTrigger>
+          <SelectContent className="bg-[#1a2e33] border-white/10">
+            <SelectItem value="JavaScript">JavaScript</SelectItem>
+            <SelectItem value="WebAssembly">WebAssembly</SelectItem>
+            <SelectItem value="WebGPU">WebGPU</SelectItem>
+            <SelectItem value="WebWorkers">WebWorkers</SelectItem>
+          </SelectContent>
+        </Select>
 
-      <Select
-        w="120px"
-        value={renderMode}
-        onChange={(e) => setRenderMode(e.target.value as RenderMode)}
-        size="sm"
-        bg="jetBlack"
-      >
-        <option value="cpu">CPU Render</option>
-        <option value="gpu">GPU Render</option>
-      </Select>
+        <Select value={renderMode} onValueChange={(v) => setRenderMode(v as RenderMode)}>
+          <SelectTrigger className="w-[110px] h-9 bg-black/40 border-none focus:ring-1 focus:ring-tropicalTeal/50 text-xs font-bold">
+            <SelectValue placeholder="Render" />
+          </SelectTrigger>
+          <SelectContent className="bg-[#1a2e33] border-white/10">
+            <SelectItem value="cpu">CPU Render</SelectItem>
+            <SelectItem value="gpu">GPU Render</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
       <Button
-        leftIcon={isRunning ? <FaStop /> : <FaPlay />}
-        colorScheme={isRunning ? "red" : "green"}
         onClick={handleRun}
         size="sm"
+        className={`h-9 px-6 font-bold transition-all duration-300 ${isRunning
+            ? "bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20"
+            : "bg-teal-600 hover:bg-teal-700 text-white shadow-lg shadow-teal-500/20"
+          }`}
       >
-        {isRunning ? "Stop" : "Run"}
+        {isRunning ? <Stop className="mr-2" size={16} weight="bold" /> : <Play className="mr-2" size={16} weight="bold" />}
+        {isRunning ? "Stop" : "Run Sim"}
       </Button>
 
-      <HStack ml="auto" spacing={4}>
-        <Flex align="center">
-          <Icon as={FaTachometerAlt} mr={2} />
-          <Text>{fps} FPS</Text>
-        </Flex>
-      </HStack>
-    </Flex>
+      <div className="ml-auto flex items-center bg-black/30 px-3 py-1.5 rounded-lg border border-white/5">
+        <Speedometer className="mr-2 text-tropicalTeal" size={18} />
+        <span className="text-xs font-mono font-bold tracking-tight">
+          {fps} <span className="text-gray-500 text-[10px] uppercase ml-0.5">FPS</span>
+        </span>
+      </div>
+    </div>
   );
 };
-

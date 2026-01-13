@@ -1,30 +1,28 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
-import { Compiler } from '../simulation/compiler/compiler';
-import { ComputeEngine } from '../simulation/compute/compute';
-import { PerformanceMonitor } from '../simulation/performance';
-import type { Agent, Method, InputDefinition } from '../simulation/types';
+import { Compiler } from '../../simulation/compiler/compiler';
+import { ComputeEngine } from '../../simulation/compute/compute';
+import { PerformanceMonitor } from '../../simulation/performance';
+import type { Agent, Method, InputDefinition } from '../../simulation/types';
 
-interface CompareViewProps {
+interface CompareControlsProps {
     code: string;
     definedInputs: InputDefinition[];
+    canvasRef: React.RefObject<HTMLCanvasElement>;
 }
 
-// Colors for each compute method
 const METHOD_COLORS: Record<Method, string> = {
-    'JavaScript': '#00ff00',  // Green
-    'WebWorkers': '#ffff00',  // Yellow
-    'WebAssembly': '#ff00ff', // Magenta
-    'WebGPU': '#00ffff',      // Cyan
-    'WebGL': '#ff8800',       // Orange (unused but included for completeness)
+    'JavaScript': '#00ff00',
+    'WebWorkers': '#ffff00',
+    'WebAssembly': '#ff00ff',
+    'WebGPU': '#00ffff',
+    'WebGL': '#ff8800',
 };
 
 const AVAILABLE_METHODS: Method[] = ['JavaScript', 'WebWorkers', 'WebAssembly', 'WebGPU'];
 
-export const CompareView = ({ code, definedInputs }: CompareViewProps) => {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
+export const CompareControls = ({ code, definedInputs, canvasRef }: CompareControlsProps) => {
     const [isRunning, setIsRunning] = useState(false);
     const [selectedMethods, setSelectedMethods] = useState<Method[]>(['JavaScript', 'WebAssembly']);
     const [agentsByMethod, setAgentsByMethod] = useState<Record<Method, Agent[]>>({} as Record<Method, Agent[]>);
@@ -33,7 +31,6 @@ export const CompareView = ({ code, definedInputs }: CompareViewProps) => {
     const animationRef = useRef<number | null>(null);
     const isRunningRef = useRef(false);
 
-    // Generate random agents deterministically
     const generateAgents = useCallback((count: number, width: number, height: number, seed: number): Agent[] => {
         const agents: Agent[] = [];
         let x = seed;
@@ -53,12 +50,10 @@ export const CompareView = ({ code, definedInputs }: CompareViewProps) => {
         return agents;
     }, []);
 
-    // Clone agents for each method
     const cloneAgents = (agents: Agent[]): Agent[] => {
         return agents.map(a => ({ ...a }));
     };
 
-    // Build inputs object from definedInputs
     const buildInputs = useCallback((
         width: number,
         height: number,
@@ -78,10 +73,9 @@ export const CompareView = ({ code, definedInputs }: CompareViewProps) => {
             }
         });
 
-        // Add seeded random values if required
         if (requiredInputs.includes('randomValues')) {
             const randomValues = new Float32Array(numAgents);
-            let seed = 12345 + frameNum; // Different seed per frame, but consistent across methods
+            let seed = 12345 + frameNum;
             for (let i = 0; i < numAgents; i++) {
                 seed = (seed * 1103515245 + 12345) & 0x7fffffff;
                 randomValues[i] = seed / 0x7fffffff;
@@ -103,21 +97,16 @@ export const CompareView = ({ code, definedInputs }: CompareViewProps) => {
         const height = canvasRef.current?.height || 600;
         const numAgents = 500;
 
-        // Compile code
         const compiler = new Compiler();
         const compiled = compiler.compileAgentCode(code);
         const requiredInputs = compiled.requiredInputs;
-
-        // Generate initial agents
         const seedAgents = generateAgents(numAgents, width, height, 12345);
 
-        // Initialize compute engines for each selected method
         const engines: Record<Method, ComputeEngine> = {} as Record<Method, ComputeEngine>;
         const methodAgents: Record<Method, Agent[]> = {} as Record<Method, Agent[]>;
         const methodTrailMaps: Record<Method, Float32Array> = {} as Record<Method, Float32Array>;
         const perfMonitor = new PerformanceMonitor();
 
-        // Request GPU device if WebGPU is selected
         let gpuDevice: GPUDevice | null = null;
         if (selectedMethods.includes('WebGPU') && navigator.gpu) {
             try {
@@ -130,20 +119,15 @@ export const CompareView = ({ code, definedInputs }: CompareViewProps) => {
             }
         }
 
-        // Check if simulation needs trail map
         const needsTrailMap = requiredInputs.includes('trailMap');
 
         for (const method of selectedMethods) {
             const engine = new ComputeEngine(compiled, perfMonitor, numAgents);
-
-            // Initialize WebGPU device if this engine will use WebGPU
             if (method === 'WebGPU' && gpuDevice) {
                 engine.initGPU(gpuDevice);
             }
-
             engines[method] = engine;
             methodAgents[method] = cloneAgents(seedAgents);
-
             if (needsTrailMap) {
                 methodTrailMaps[method] = new Float32Array(width * height);
             }
@@ -152,39 +136,30 @@ export const CompareView = ({ code, definedInputs }: CompareViewProps) => {
         computeEnginesRef.current = engines;
         setAgentsByMethod(methodAgents);
 
-        // Animation loop
         let currentFrame = 0;
         const animate = async () => {
-            // Check if we should stop
             if (!isRunningRef.current) return;
-
             const newAgentsByMethod: Record<Method, Agent[]> = {} as Record<Method, Agent[]>;
-
             for (const method of selectedMethods) {
                 const engine = engines[method];
                 const agents = methodAgents[method];
                 const inputs = buildInputs(width, height, agents, numAgents, currentFrame, requiredInputs);
-
                 if (needsTrailMap && methodTrailMaps[method]) {
                     inputs.trailMap = methodTrailMaps[method];
                 }
-
                 const result = await engine.runFrame(method, agents, inputs, 'cpu');
                 if (result) {
                     methodAgents[method] = result;
                     newAgentsByMethod[method] = result;
                 }
             }
-
             setAgentsByMethod({ ...newAgentsByMethod });
             currentFrame++;
             setFrame(currentFrame);
-
             animationRef.current = requestAnimationFrame(animate);
         };
-
         animationRef.current = requestAnimationFrame(animate);
-    }, [code, selectedMethods, generateAgents, buildInputs]);
+    }, [code, selectedMethods, generateAgents, buildInputs, canvasRef]);
 
     const handleStop = useCallback(() => {
         isRunningRef.current = false;
@@ -195,35 +170,28 @@ export const CompareView = ({ code, definedInputs }: CompareViewProps) => {
         setIsRunning(false);
     }, []);
 
-    // Render agents on canvas
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        // Clear canvas
         ctx.fillStyle = '#1a1a2e';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Render each method's agents with their color
         for (const method of selectedMethods) {
             const agents = agentsByMethod[method];
             if (!agents) continue;
-
             ctx.fillStyle = METHOD_COLORS[method];
             const radius = 2;
-
             agents.forEach(agent => {
                 ctx.beginPath();
                 ctx.arc(agent.x, agent.y, radius, 0, Math.PI * 2);
                 ctx.fill();
             });
         }
-    }, [agentsByMethod, selectedMethods]);
+    }, [agentsByMethod, selectedMethods, canvasRef]);
 
-    // Cleanup on unmount
     useEffect(() => {
         return () => {
             if (animationRef.current) {
@@ -241,9 +209,8 @@ export const CompareView = ({ code, definedInputs }: CompareViewProps) => {
     };
 
     return (
-        <div className="flex flex-col h-full bg-background p-4">
-            {/* Controls */}
-            <div className="flex flex-wrap mb-4 gap-4 items-center">
+        <div className="flex flex-col gap-4">
+            <div className="flex flex-wrap gap-4 items-center">
                 <Button
                     variant={isRunning ? "destructive" : "default"}
                     onClick={isRunning ? handleStop : handleRun}
@@ -252,52 +219,34 @@ export const CompareView = ({ code, definedInputs }: CompareViewProps) => {
                 >
                     {isRunning ? 'Stop' : 'Run Compare'}
                 </Button>
+                <span className="text-sm font-mono flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
+                    Frame: {frame}
+                </span>
+            </div>
 
-                <span className="text-sm">Frame: {frame}</span>
-
-                <div className="flex gap-4 items-center">
-                    {AVAILABLE_METHODS.map(method => (
-                        <div key={method} className="flex items-center space-x-2">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {AVAILABLE_METHODS.map(method => (
+                    <div
+                        key={method}
+                        className={`flex items-center justify-between p-2 rounded-md border transition-all ${selectedMethods.includes(method)
+                            ? 'bg-white/10 border-white/20'
+                            : 'bg-black/20 border-white/5 opacity-50'
+                            }`}
+                        onClick={() => !isRunning && toggleMethod(method)}
+                    >
+                        <div className="flex items-center gap-2">
                             <Checkbox
                                 id={`compare-${method}`}
                                 checked={selectedMethods.includes(method)}
-                                onCheckedChange={() => toggleMethod(method)}
+                                onCheckedChange={() => !isRunning && toggleMethod(method)}
                                 disabled={isRunning}
                             />
-                            <label
-                                htmlFor={`compare-${method}`}
-                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                            >
-                                <Badge
-                                    style={{ backgroundColor: METHOD_COLORS[method], color: 'black' }}
-                                    className="px-2 rounded-sm"
-                                >
-                                    {method}
-                                </Badge>
-                            </label>
+                            <label className="text-xs font-bold cursor-pointer">{method}</label>
                         </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* Legend */}
-            <div className="flex mb-2 gap-4">
-                {selectedMethods.map(method => (
-                    <div key={method} className="flex items-center gap-1">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: METHOD_COLORS[method] }} />
-                        <span className="text-xs">{method}</span>
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: METHOD_COLORS[method] }} />
                     </div>
                 ))}
-            </div>
-
-            {/* Canvas */}
-            <div className="flex-1 border border-border rounded-md overflow-hidden bg-black">
-                <canvas
-                    ref={canvasRef}
-                    width={800}
-                    height={600}
-                    className="w-full h-full object-contain"
-                />
             </div>
         </div>
     );

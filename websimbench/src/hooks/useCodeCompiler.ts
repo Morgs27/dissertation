@@ -33,14 +33,14 @@ export function useCodeCompiler() {
         if (result.definedInputs) {
           setDefinedInputs(result.definedInputs);
           setInputs(prev => {
-             const newInputs = { ...prev };
-             if (!newInputs.agentCount) newInputs.agentCount = 1000;
-             result.definedInputs.forEach(def => {
-               if (!(def.name in newInputs)) {
-                 newInputs[def.name] = def.defaultValue;
-               }
-             });
-             return newInputs;
+            const newInputs = { ...prev };
+            if (!newInputs.agentCount) newInputs.agentCount = 1000;
+            result.definedInputs.forEach(def => {
+              if (!(def.name in newInputs)) {
+                newInputs[def.name] = def.defaultValue;
+              }
+            });
+            return newInputs;
           });
         }
       } catch (e) {
@@ -76,8 +76,8 @@ export function useCodeCompiler() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => {
-        const content = e.target?.result as string;
-        if (content) setCode(content);
+      const content = e.target?.result as string;
+      if (content) setCode(content);
     };
     reader.readAsText(file);
   };

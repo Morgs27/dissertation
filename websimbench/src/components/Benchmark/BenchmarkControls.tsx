@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
 import {
     Button,
-    Checkbox,
     Input,
     Progress,
     Select,
@@ -13,24 +12,25 @@ import {
     Alert,
     AlertDescription,
     AlertTitle,
-    Separator,
     Label,
+    Checkbox
 } from '@/components/ui';
 import { toast } from "sonner";
-
-import { Simulation } from '../simulation/simulation';
-import { BenchmarkResult, BenchmarkConfiguration, DeviceInfo } from '../simulation/helpers/grapher';
-import { collectDeviceInfo } from '../simulation/helpers/deviceInfo';
-import { InputDefinition, Method, RenderMode } from '../simulation/types';
-import { SimulationAppearanceOptions } from '../hooks/useSimulationOptions';
-
 import { CheckCircle } from "@phosphor-icons/react";
 
-interface BenchmarkViewProps {
+import { Simulation } from '../../simulation/simulation';
+import { BenchmarkResult, BenchmarkConfiguration, DeviceInfo } from '../../simulation/helpers/grapher';
+import { collectDeviceInfo } from '../../simulation/helpers/deviceInfo';
+import { InputDefinition, Method, RenderMode } from '../../simulation/types';
+import { SimulationAppearanceOptions } from '../../hooks/useSimulationOptions';
+
+interface BenchmarkControlsProps {
     code: string;
     definedInputs: InputDefinition[];
     onComplete: (results: BenchmarkResult[], deviceInfo: DeviceInfo, config: BenchmarkConfiguration) => void;
     options: SimulationAppearanceOptions;
+    canvasRef: React.RefObject<HTMLCanvasElement>;
+    gpuCanvasRef: React.RefObject<HTMLCanvasElement>;
 }
 
 type MethodOption = {
@@ -48,15 +48,21 @@ const METHOD_OPTIONS: MethodOption[] = [
     { id: 'methodWebGPUGpu', label: 'WebGPU (GPU render)', method: 'WebGPU', renderMode: 'gpu' },
 ];
 
-export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInputs, onComplete, options }) => {
-    // Configuration State - Agent Range
+export const BenchmarkControls: React.FC<BenchmarkControlsProps> = ({
+    code,
+    definedInputs,
+    onComplete,
+    options,
+    canvasRef,
+    gpuCanvasRef
+}) => {
+    // Configuration State
     const [agentRangeMode, setAgentRangeMode] = useState<'manual' | 'range'>('manual');
     const [agentCountsInput, setAgentCountsInput] = useState('100, 500, 1000, 2000');
     const [agentStart, setAgentStart] = useState(100);
     const [agentEnd, setAgentEnd] = useState(5000);
     const [agentStep, setAgentStep] = useState(500);
 
-    // Configuration State - Method-specific
     const [testWorkerVariations, setTestWorkerVariations] = useState(false);
     const [workerCountsInput, setWorkerCountsInput] = useState('1, 2, 4, max');
     const [testWorkgroupVariations, setTestWorkgroupVariations] = useState(false);
@@ -71,9 +77,6 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
     const [progress, setProgress] = useState(0);
     const [showSuccess, setShowSuccess] = useState(false);
 
-    // Refs
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const gpuCanvasRef = useRef<HTMLCanvasElement>(null);
     const cancelledRef = useRef(false);
 
     const handleMethodToggle = (id: string) => {
@@ -89,7 +92,6 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
     const handleWorkerVariationsToggle = (enabled: boolean) => {
         setTestWorkerVariations(enabled);
         if (enabled) {
-            // Auto-enable WebWorkers method
             const newSelected = new Set(selectedMethods);
             newSelected.add('methodWebWorkers');
             setSelectedMethods(newSelected);
@@ -99,7 +101,6 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
     const handleWorkgroupVariationsToggle = (enabled: boolean) => {
         setTestWorkgroupVariations(enabled);
         if (enabled) {
-            // Auto-enable WebGPU methods
             const newSelected = new Set(selectedMethods);
             newSelected.add('methodWebGPUCpu');
             newSelected.add('methodWebGPUGpu');
@@ -112,13 +113,11 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
     const runBenchmark = async () => {
         if (!canvasRef.current || !gpuCanvasRef.current) return;
 
-        // Validation
         if (selectedMethods.size === 0) {
             toast.error("Please select at least one method to test");
             return;
         }
 
-        // Parse agent counts based on mode
         let agentCounts: number[] = [];
         if (agentRangeMode === 'manual') {
             agentCounts = agentCountsInput
@@ -127,7 +126,6 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
                 .filter(n => !isNaN(n) && n > 0)
                 .sort((a, b) => a - b);
         } else {
-            // Generate range
             if (agentStart >= agentEnd || agentStep <= 0) {
                 toast.error("Invalid agent range configuration");
                 return;
@@ -148,17 +146,15 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
         setStatusMessage('Collecting device information...');
         setProgress(0);
 
-        // Collect device info
         const deviceInfo = await collectDeviceInfo();
 
-        // Determine worker counts to test
         let workerCounts: number[] | undefined = undefined;
         if (testWorkerVariations) {
             const parsedCounts = workerCountsInput
                 .split(',')
                 .map(s => s.trim().toLowerCase())
                 .map(s => s === 'max' ? deviceInfo.hardwareConcurrency : parseInt(s))
-                .filter(n => !isNaN(n) && n >= 1); // Start from 1, not 0
+                .filter(n => !isNaN(n) && n >= 1);
 
             if (parsedCounts.length === 0) {
                 toast.error("Please enter valid worker counts (must be >= 1)");
@@ -168,14 +164,9 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
             workerCounts = parsedCounts;
         }
 
-        // Determine workgroup sizes to test (common powers of 2)
-        const workgroupSizes = testWorkgroupVariations
-            ? [64, 128, 256]
-            : undefined;
-
+        const workgroupSizes = testWorkgroupVariations ? [64, 128, 256] : undefined;
         const methodsToTest = METHOD_OPTIONS.filter(m => selectedMethods.has(m.id));
 
-        // Calculate total tests accounting for variations
         let totalTests = 0;
         for (const _agentCount of agentCounts) {
             for (const { method } of methodsToTest) {
@@ -191,14 +182,11 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
 
         let completedTests = 0;
         const newResults: BenchmarkResult[] = [];
-
-        // Prepare default inputs
         const defaultInputs: Record<string, number> = {};
         definedInputs.forEach(def => {
             defaultInputs[def.name] = def.defaultValue;
         });
 
-        // Construct appearance from options
         const appearance = {
             agentColor: options.agentColor,
             backgroundColor: options.backgroundColor,
@@ -211,13 +199,9 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
         try {
             for (const agentCount of agentCounts) {
                 if (cancelledRef.current) break;
-
                 for (const { method, renderMode, label } of methodsToTest) {
                     if (cancelledRef.current) break;
-
-                    // Determine variations to test for this method
                     let variations: Array<{ workerCount?: number, workgroupSize?: number }> = [{}];
-
                     if (method === 'WebWorkers' && workerCounts) {
                         variations = workerCounts.map(wc => ({ workerCount: wc }));
                     } else if (method === 'WebGPU' && workgroupSizes) {
@@ -226,7 +210,6 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
 
                     for (const variation of variations) {
                         if (cancelledRef.current) break;
-
                         const variationLabel = variation.workerCount !== undefined
                             ? ` (${variation.workerCount} workers)`
                             : variation.workgroupSize !== undefined
@@ -235,7 +218,6 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
 
                         setStatusMessage(`Testing ${label}${variationLabel} with ${agentCount} agents...`);
 
-                        // Create simulation
                         const simOptions: any = { agents: agentCount };
                         if (variation.workerCount !== undefined) {
                             simOptions.workers = variation.workerCount;
@@ -249,24 +231,17 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
                             appearance
                         });
 
-                        // Initialize GPU if needed
                         if (method === 'WebGPU') {
                             await sim.initGPU();
                         }
 
-                        // Prepare inputs for this run
                         const runInputs = { ...defaultInputs, agentCount };
-
-                        // Warmup
                         if (warmupRun) {
                             await sim.runFrame(method, runInputs, renderMode);
                             await sleep(50);
                         }
 
-                        // Reset performance monitor
                         sim.getPerformanceMonitor().reset();
-
-                        // Run frames
                         for (let i = 0; i < framesPerTest; i++) {
                             if (cancelledRef.current) break;
                             await sim.runFrame(method, runInputs, renderMode);
@@ -278,22 +253,19 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
                             break;
                         }
 
-                        // Collect results
                         const frames = sim.getPerformanceMonitor().frames;
                         if (frames.length > 0) {
                             const executionTimes = frames.map(f => f.totalExecutionTime);
-                            const avgTime = executionTimes.reduce((a, b: number) => a + b, 0) / executionTimes.length;
+                            const avgTime = executionTimes.reduce((a, b) => a + b, 0) / executionTimes.length;
                             const minTime = Math.min(...executionTimes);
                             const maxTime = Math.max(...executionTimes);
 
-                            // Calculate averages for detailed metrics
                             const avgSetup = frames.reduce((sum, f) => sum + (f.setupTime || 0), 0) / frames.length;
                             const avgCompute = frames.reduce((sum, f) => sum + (f.computeTime || 0), 0) / frames.length;
                             const avgRender = frames.reduce((sum, f) => sum + (f.renderTime || 0), 0) / frames.length;
                             const avgReadback = frames.reduce((sum, f) => sum + (f.readbackTime || 0), 0) / frames.length;
                             const avgCompile = frames.find(f => f.compileTime)?.compileTime;
 
-                            // Aggregate specific stats if available
                             const specificStats: Record<string, number> = {};
                             const firstFrame = frames[0];
                             if (firstFrame.specificStats) {
@@ -330,8 +302,6 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
             if (!cancelledRef.current) {
                 setStatusMessage('Benchmark complete!');
                 setShowSuccess(true);
-
-                // Build configuration object
                 const config: BenchmarkConfiguration = {
                     agentRange: agentRangeMode === 'range'
                         ? { start: agentStart, end: agentEnd, step: agentStep }
@@ -342,13 +312,10 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
                     framesPerTest,
                     warmupRun
                 };
-
-                // Notify parent to save report
                 onComplete(newResults, deviceInfo, config);
             } else {
                 setStatusMessage('Benchmark cancelled.');
             }
-
         } catch (e) {
             console.error(e);
             setStatusMessage(`Error: ${e instanceof Error ? e.message : String(e)} `);
@@ -363,18 +330,13 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
     };
 
     return (
-        <div className="flex flex-col h-full w-full bg-black/20">
-            {/* Configuration Panel */}
-            <div className="p-4 border-b border-cerulean max-h-[50vh] overflow-y-auto">
-                <h2 className="text-xl font-bold mb-4 text-tropicalTeal">Benchmark Configuration</h2>
-
-                {/* Agent Configuration */}
-                <div className="mb-4 p-3 bg-black/30 rounded-md">
-                    <h3 className="text-sm font-bold mb-3 text-gray-300">Agent Count Configuration</h3>
-                    <div className="mb-3 space-y-2">
-                        <Label>Mode</Label>
+        <div className="flex flex-col gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                    <div className="space-y-2">
+                        <Label className="text-xs uppercase font-bold text-gray-400">Agent Configuration</Label>
                         <Select value={agentRangeMode} onValueChange={(v: 'manual' | 'range') => setAgentRangeMode(v)}>
-                            <SelectTrigger className="h-8 bg-black/20 text-sm">
+                            <SelectTrigger className="h-9 bg-black/40">
                                 <SelectValue placeholder="Select mode" />
                             </SelectTrigger>
                             <SelectContent>
@@ -382,170 +344,92 @@ export const BenchmarkView: React.FC<BenchmarkViewProps> = ({ code, definedInput
                                 <SelectItem value="range">Range (start, end, step)</SelectItem>
                             </SelectContent>
                         </Select>
-                    </div>
-
-                    {agentRangeMode === 'manual' ? (
-                        <div className="space-y-2">
-                            <Label>Agent Counts</Label>
+                        {agentRangeMode === 'manual' ? (
                             <Input
                                 value={agentCountsInput}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAgentCountsInput(e.target.value)}
-                                placeholder="e.g. 100, 500, 1000, 2000"
-                                className="h-8 bg-black/20 border-cerulean text-sm"
+                                onChange={(e) => setAgentCountsInput(e.target.value)}
+                                placeholder="100, 500, 1000"
+                                className="h-9 bg-black/40"
                             />
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-3 gap-3">
-                            <div className="space-y-1">
-                                <Label className="text-xs">Start</Label>
-                                <Input type="number" value={agentStart} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAgentStart(parseInt(e.target.value))} className="h-8 shadow-none text-sm" />
+                        ) : (
+                            <div className="grid grid-cols-3 gap-2">
+                                <Input type="number" value={agentStart} onChange={(e) => setAgentStart(parseInt(e.target.value))} className="h-9 bg-black/40" placeholder="Start" />
+                                <Input type="number" value={agentEnd} onChange={(e) => setAgentEnd(parseInt(e.target.value))} className="h-9 bg-black/40" placeholder="End" />
+                                <Input type="number" value={agentStep} onChange={(e) => setAgentStep(parseInt(e.target.value))} className="h-9 bg-black/40" placeholder="Step" />
                             </div>
-                            <div className="space-y-1">
-                                <Label className="text-xs">End</Label>
-                                <Input type="number" value={agentEnd} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAgentEnd(parseInt(e.target.value))} className="h-8 shadow-none text-sm" />
-                            </div>
-                            <div className="space-y-1">
-                                <Label className="text-xs">Step</Label>
-                                <Input type="number" value={agentStep} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAgentStep(parseInt(e.target.value))} className="h-8 shadow-none text-sm" />
-                            </div>
-                        </div>
-                    )}
-                </div>
+                        )}
+                    </div>
 
-                {/* Method-Specific Variations */}
-                <div className="mb-4 p-3 bg-black/30 rounded-md">
-                    <h3 className="text-sm font-bold mb-3 text-gray-300">Method Variations</h3>
-                    <div className="flex flex-col gap-3">
-                        <div>
-                            <div className="flex justify-between items-center mb-2">
-                                <span className="text-sm">Test WebWorker counts</span>
-                                <Switch
-                                    checked={testWorkerVariations}
-                                    onCheckedChange={(checked: boolean) => handleWorkerVariationsToggle(checked)}
-                                />
+                    <div className="space-y-2">
+                        <Label className="text-xs uppercase font-bold text-gray-400">Variations</Label>
+                        <div className="bg-black/20 p-3 rounded-md space-y-4 border border-white/5">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm">WebWorker variations</span>
+                                <Switch checked={testWorkerVariations} onCheckedChange={handleWorkerVariationsToggle} />
                             </div>
                             {testWorkerVariations && (
-                                <div className="space-y-2">
-                                    <Label className="text-xs text-gray-400">Worker counts to test (use "max" for hardware max)</Label>
-                                    <Input
-                                        value={workerCountsInput}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setWorkerCountsInput(e.target.value)}
-                                        placeholder="e.g. 1, 2, 4, max"
-                                        className="h-8 bg-black/20 border-cerulean text-sm"
-                                    />
-                                    <p className="text-[10px] text-gray-500">
-                                        System max: {navigator.hardwareConcurrency} threads
-                                    </p>
-                                </div>
+                                <Input value={workerCountsInput} onChange={(e) => setWorkerCountsInput(e.target.value)} className="h-9 bg-black/40" placeholder="1, 2, 4, max" />
                             )}
-                        </div>
-
-                        <Separator className="bg-white/10" />
-
-                        <div>
-                            <div className="flex justify-between items-center mb-1">
-                                <span className="text-sm">Test GPU Workgroup sizes</span>
-                                <Switch
-                                    checked={testWorkgroupVariations}
-                                    onCheckedChange={(checked: boolean) => handleWorkgroupVariationsToggle(checked)}
-                                />
-                            </div>
-                            <p className="text-[10px] text-gray-500">
-                                When enabled, tests WebGPU with workgroup sizes: 64, 128, 256
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Test Parameters */}
-                <div className="mb-4 p-3 bg-black/30 rounded-md">
-                    <h3 className="text-sm font-bold mb-3 text-gray-300">Test Parameters</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <Label className="text-sm">Frames Per Test</Label>
-                            <Input type="number" value={framesPerTest} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFramesPerTest(parseInt(e.target.value))} className="h-8 text-sm" />
-                        </div>
-                        <div className="space-y-1 flex items-end">
-                            <div className="flex items-center space-x-2 pb-2">
-                                <Checkbox id="warmup" checked={warmupRun} onCheckedChange={(v: boolean) => setWarmupRun(!!v)} />
-                                <Label htmlFor="warmup" className="text-sm cursor-pointer">Warmup Run</Label>
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm">GPU Workgroup variations</span>
+                                <Switch checked={testWorkgroupVariations} onCheckedChange={handleWorkgroupVariationsToggle} />
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Method Selection */}
-                <div className="mb-4 p-3 bg-black/30 rounded-md">
-                    <h3 className="text-sm font-bold mb-3 text-gray-300">Methods to Test</h3>
+                <div className="space-y-4">
+                    <div className="space-y-2">
+                        <Label className="text-xs uppercase font-bold text-gray-400">Methods to Test</Label>
+                        <div className="grid grid-cols-2 gap-2 bg-black/20 p-3 rounded-md border border-white/5">
+                            {METHOD_OPTIONS.map(opt => (
+                                <div key={opt.id} className="flex items-center space-x-2">
+                                    <Checkbox id={opt.id} checked={selectedMethods.has(opt.id)} onCheckedChange={() => handleMethodToggle(opt.id)} />
+                                    <Label htmlFor={opt.id} className="text-xs cursor-pointer">{opt.label}</Label>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-2">
-                        {METHOD_OPTIONS.map(opt => (
-                            <div key={opt.id} className="flex items-center space-x-2">
-                                <Checkbox
-                                    id={opt.id}
-                                    checked={selectedMethods.has(opt.id)}
-                                    onCheckedChange={() => handleMethodToggle(opt.id)}
-                                />
-                                <Label htmlFor={opt.id} className="text-xs cursor-pointer">{opt.label}</Label>
+                        <div className="space-y-2">
+                            <Label className="text-xs">Frames/Test</Label>
+                            <Input type="number" value={framesPerTest} onChange={(e) => setFramesPerTest(parseInt(e.target.value))} className="h-9 bg-black/40" />
+                        </div>
+                        <div className="flex items-end pb-2">
+                            <div className="flex items-center space-x-2">
+                                <Checkbox id="warmup" checked={warmupRun} onCheckedChange={(v) => setWarmupRun(!!v)} />
+                                <Label htmlFor="warmup" className="text-xs cursor-pointer">Warmup</Label>
                             </div>
-                        ))}
+                        </div>
                     </div>
                 </div>
+            </div>
 
-                <div className="flex gap-4 items-center">
-                    <Button
-                        className="bg-teal-600 hover:bg-teal-700 h-8"
-                        onClick={runBenchmark}
-                        disabled={isRunning}
-                    >
-                        {isRunning ? "Running..." : "Run Benchmark"}
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="border-red-500 text-red-500 hover:bg-red-500/10 h-8"
-                        onClick={cancelBenchmark}
-                        disabled={!isRunning}
-                    >
-                        Cancel
-                    </Button>
-                    <div className="flex-1">
-                        {isRunning && <Progress value={progress} className="h-2" />}
+            <div className="flex items-center gap-4 bg-black/40 p-3 rounded-lg border border-white/5">
+                <Button
+                    className={`${isRunning ? 'bg-red-500 hover:bg-red-600' : 'bg-teal-600 hover:bg-teal-700'} h-10 px-6 font-bold`}
+                    onClick={isRunning ? cancelBenchmark : runBenchmark}
+                >
+                    {isRunning ? "Stop Benchmark" : "Execute Suite"}
+                </Button>
+                <div className="flex-1 space-y-2">
+                    <div className="flex justify-between text-[11px] font-mono text-gray-400">
+                        <span>{statusMessage}</span>
+                        {isRunning && <span>{Math.round(progress)}%</span>}
                     </div>
+                    <Progress value={progress} className="h-1.5" />
                 </div>
-                <p className="text-[10px] mt-2 text-gray-400">{statusMessage}</p>
-
-                {showSuccess && (
-                    <Alert className="mt-4 bg-teal-900/20 border-teal-500/50">
-                        <CheckCircle className="h-4 w-4" />
-                        <AlertTitle>Success</AlertTitle>
-                        <AlertDescription>
-                            Benchmark report has been generated in the Reports tab.
-                        </AlertDescription>
-                    </Alert>
-                )}
             </div>
 
-            {/* Hidden Canvas Area for Running Benchmark */}
-            <div className={`flex-1 bg-black relative overflow-hidden ${isRunning ? 'block' : 'hidden'}`}>
-                {/* CPU rendering canvas */}
-                <canvas
-                    ref={canvasRef}
-                    width={800}
-                    height={600}
-                    className="block absolute top-0 left-0 w-full h-full z-0"
-                />
-                {/* GPU rendering canvas */}
-                <canvas
-                    ref={gpuCanvasRef}
-                    width={800}
-                    height={600}
-                    className="block absolute top-0 left-0 w-full h-full z-0"
-                />
-            </div>
-
-            {!isRunning && (
-                <div className="flex-1 flex items-center justify-center bg-black/10">
-                    <span className="text-gray-500">Ready to benchmark.</span>
-                </div>
+            {showSuccess && (
+                <Alert className="bg-teal-900/20 border-teal-500/50">
+                    <CheckCircle className="h-4 w-4 text-teal-500" />
+                    <AlertTitle className="text-teal-500 font-bold">Benchmark Complete</AlertTitle>
+                    <AlertDescription className="text-xs opacity-80">
+                        Detailed results are now available in the Reports tab.
+                    </AlertDescription>
+                </Alert>
             )}
         </div>
     );

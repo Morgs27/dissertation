@@ -1,5 +1,6 @@
-import { Flex, Icon, Text, Button, VStack, Box, Select } from '@chakra-ui/react';
-import { FaBug } from 'react-icons/fa';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Trash, Terminal } from "@phosphor-icons/react";
 import { LogMessage } from '../../hooks/useLogger';
 import { useState } from 'react';
 import { LogLevel } from '../../simulation/helpers/logger';
@@ -14,8 +15,6 @@ export const LogsPanel = ({ logs, onClear }: LogsPanelProps) => {
 
   const filteredLogs = logs.filter(log => {
     if (filterLevel === 'All') return true;
-
-    // Map string representation back to LogLevel enum for comparison
     const logValues: Record<string, number> = {
       'Error': LogLevel.Error,
       'Warning': LogLevel.Warning,
@@ -23,64 +22,64 @@ export const LogsPanel = ({ logs, onClear }: LogsPanelProps) => {
       'Verbose': LogLevel.Verbose,
       'None': LogLevel.None
     };
-
     const filterValue = logValues[filterLevel] || LogLevel.Verbose;
     const currentLogValue = logValues[log.level] || LogLevel.Info;
-
-    // Show logs that are less than or equal to the selected verbosity
-    // But wait, user usually wants "Show errors only" or "Show everything".
-    // If filter is "Error", show Error.
-    // If filter is "Warning", show Error and Warning? Or just Warning?
-    // Usually a filter dropdown is inclusive of severity.
-    // But here, let's just do exact match if not 'All', or maybe inclusive severity.
-
-    // Let's implement inclusive filtering:
-    // If filter is Verbose (4), show everything (Error, Warning, Info, Verbose).
-    // If filter is Info (3), show Error, Warning, Info.
-    // If filter is Warning (2), show Error, Warning.
-    // If filter is Error (1), show Error.
-
-    // Wait, typical "Filter" behavior might just be "Show me this level and more severe".
-    // So if I select "Info", I want to see Info, Warnings and Errors.
-    // LogLevel: Error=1, Warning=2, Info=3, Verbose=4.
-    // So if currentLogValue <= filterValue, we show it.
-
     return currentLogValue <= filterValue;
   });
 
   return (
-    <Flex direction="column" h="100%" borderTop="1px solid" borderColor="cerulean" bg="rgba(0,0,0,0.3)">
-      <Flex px={4} py={2} align="center" bg="rgba(0,0,0,0.2)">
-        <Icon as={FaBug} mr={2} />
-        <Text fontWeight="bold" mr={4}>Logs & Errors</Text>
+    <div className="flex flex-col h-full bg-[#0d1619]">
+      <div className="h-10 flex px-4 items-center bg-black/40 border-b border-white/5 shrink-0">
+        <Terminal className="mr-2 text-tropicalTeal" size={16} />
+        <span className="font-bold mr-4 text-xs tracking-wider uppercase text-gray-400">Console</span>
 
-        <Select
-          size="xs"
-          width="120px"
-          value={filterLevel}
-          onChange={(e) => setFilterLevel(e.target.value)}
-          bg="rgba(0,0,0,0.3)"
-          borderColor="gray.600"
-          mr={2}
-        >
-          <option value="All">All Levels</option>
-          <option value="Verbose">Verbose</option>
-          <option value="Info">Info</option>
-          <option value="Warning">Warning</option>
-          <option value="Error">Error</option>
+        <Select value={filterLevel} onValueChange={setFilterLevel}>
+          <SelectTrigger className="w-[110px] h-7 text-[10px] bg-white/5 border-none focus:ring-0">
+            <SelectValue placeholder="All Levels" />
+          </SelectTrigger>
+          <SelectContent className="bg-[#1a2e33] border-white/10 text-xs">
+            <SelectItem value="All">All Levels</SelectItem>
+            <SelectItem value="Verbose">Verbose</SelectItem>
+            <SelectItem value="Info">Info</SelectItem>
+            <SelectItem value="Warning">Warning</SelectItem>
+            <SelectItem value="Error">Error</SelectItem>
+          </SelectContent>
         </Select>
 
-        <Button size="xs" ml="auto" onClick={onClear} colorScheme="red" variant="ghost">Clear</Button>
-      </Flex>
-      <VStack flex="1" overflowY="auto" align="start" spacing={0} p={2} fontFamily="monospace" fontSize="sm">
-        {filteredLogs.map((log, i) => (
-          <Box key={i} w="100%" color={log.level === 'Error' ? 'red.300' : log.level === 'Warning' ? 'orange.300' : 'gray.300'}>
-            <Text as="span" color="gray.500">[{new Date(log.timestamp).toLocaleTimeString()}]</Text>
-            <Text as="span" fontWeight="bold" mx={2}>[{log.context}]</Text>
-            {log.message}
-          </Box>
-        ))}
-      </VStack>
-    </Flex>
+        <Button
+          size="xs"
+          variant="ghost"
+          className="ml-auto text-gray-500 hover:text-red-400 hover:bg-red-500/10 h-7 px-2 flex items-center gap-1.5"
+          onClick={onClear}
+        >
+          <Trash size={14} />
+          <span className="text-[10px] font-bold uppercase">Clear</span>
+        </Button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-3 font-mono text-[13px] leading-relaxed">
+        {filteredLogs.length === 0 ? (
+          <div className="h-full flex items-center justify-center text-gray-600 italic text-xs">
+            No logs to display
+          </div>
+        ) : (
+          <div className="flex flex-col gap-1">
+            {filteredLogs.map((log, i) => (
+              <div key={i} className="group hover:bg-white/5 rounded px-1 transition-colors">
+                <span className="text-gray-600 text-[11px] mr-2">[{new Date(log.timestamp).toLocaleTimeString([], { hour12: false })}]</span>
+                <span className={`font-bold mr-2 text-[11px] uppercase ${log.level === 'Error' ? 'text-red-400' :
+                  log.level === 'Warning' ? 'text-orange-400' :
+                    'text-tropicalTeal'
+                  }`}>[{log.context}]</span>
+                <span className={`${log.level === 'Error' ? 'text-red-300' :
+                  log.level === 'Warning' ? 'text-orange-200' :
+                    'text-gray-300'
+                  }`}>{log.message}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
