@@ -213,7 +213,7 @@ function normalizeWASMExpression(expr: string, randomInputs: Set<string>): strin
   r = r.replace(/(\w+(?:\.\w+)?)\s*\*\*2/g, "$1 * $1");
 
   // Handle object properties (e.g. neighbor.x -> neighbor_x)
-  r = r.replace(/(\w+)\.(?!length|count)(\w+)/g, (match, obj, prop) => {
+  r = r.replace(/([a-zA-Z_]\w*)\.(?!length|count)(\w+)/g, (match, obj, prop) => {
     if (obj === 'inputs') return match; // Handled later
     if (obj === 'nearbyAgents') return match; // Handled by array match
     return `${obj}_${prop}`;

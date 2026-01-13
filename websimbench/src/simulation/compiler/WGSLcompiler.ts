@@ -112,6 +112,12 @@ function transpileExpression(expr: string, context: WGSLContext): string {
     result = result.replace(/([\w.]+)\^2/g, '($1)*($1)');
     result = result.replace(/\^/g, '**'); // Keep for potential pow() conversion
 
+    // Replace loop variable property access if active
+    if (context.currentLoopVar) {
+        const regex = new RegExp(`\\b${context.currentLoopVar}\\.(\\w+)`, 'g');
+        result = result.replace(regex, '_loop_other.$1');
+    }
+
     // Handle property access on tracked variables
     // e.g., nearbyAgents.vx -> this needs special handling
     const propAccessMatch = result.match(/^(\w+)\.(\w+)$/);
@@ -291,6 +297,30 @@ function transpileLine(line: string, context: WGSLContext): string[] {
             statements.push(`var ${parsed.name}: f32 = ${transpiled};`);
             context.variables.set(parsed.name, { type: 'scalar' });
             return statements;
+        }
+
+        case 'foreach': {
+            const collection = parsed.collection;
+            const loopVar = parsed.varName;
+            const collectionInfo = context.variables.get(collection);
+
+            if (collectionInfo?.type === 'neighbors') {
+                const radiusExpr = collectionInfo.radiusExpr!;
+
+                context.currentLoopVar = loopVar;
+                context.loopDepth++;
+
+                statements.push(`// Foreach over ${collection}`);
+                statements.push(`for (var _ni: u32 = 0u; _ni < u32(inputs.agentCount); _ni++) {`);
+                statements.push(`if (_ni == i) { continue; }`);
+                statements.push(`let _loop_other = agentsRead[_ni];`);
+                statements.push(`let _loop_dx = x - _loop_other.x;`);
+                statements.push(`let _loop_dy = y - _loop_other.y;`);
+                statements.push(`let _loop_dist = sqrt(_loop_dx*_loop_dx + _loop_dy*_loop_dy);`);
+                statements.push(`if (_loop_dist >= ${radiusExpr}) { continue; }`);
+                return statements;
+            }
+            return [];
         }
 
         case 'if': {
@@ -494,13 +524,11 @@ export const compileDSLtoWGSL = (lines: LineInfo[], inputs: string[], logger: Lo
     const hasRandomValues = inputs.includes('randomValues');
 
     // Generate structs
-    const inputFields =
-        scalarInputs.length > 0
-            ? scalarInputs.map(k => `    ${k}: f32,`).join('\n')
-            : '    dummy: f32,';
+    const inputFields = scalarInputs.map(k => `    ${k}: f32,`).join('\n');
 
     const inputStruct = `
 struct Inputs {
+    agentCount: f32,
 ${inputFields}
 };
 

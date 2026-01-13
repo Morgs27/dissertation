@@ -91,14 +91,14 @@
     (local.set $sF (call $sense (local.get $x) (local.get $y) (local.get $vx) (local.get $vy) (f32.const 0) (global.get $inputs_sensorDist)))
     (local.set $sR (call $sense (local.get $x) (local.get $y) (local.get $vx) (local.get $vy) (f32.neg (global.get $inputs_sensorAngle)) (global.get $inputs_sensorDist)))
     (if (i32.and (f32.lt (local.get $sF) (local.get $sL)) (f32.lt (local.get $sF) (local.get $sR))) (then
-    (if (f32.lt (local.get $r) (local.get $0_5)) (then
+    (if (f32.lt (local.get $r) (f32.const 0.5)) (then
     (local.set $__c (global.get $inputs_turnCos))
             (local.set $__s (global.get $inputs_turnSin))
             (local.set $__vx (f32.sub (f32.mul (local.get $vx) (local.get $__c)) (f32.mul (local.get $vy) (local.get $__s))))
             (local.set $vy (f32.add (f32.mul (local.get $vx) (local.get $__s)) (f32.mul (local.get $vy) (local.get $__c))))
             (local.set $vx (local.get $__vx))
     )
-    (else (if (f32.ge (local.get $r) (local.get $0_5)) (then
+    (else (if (f32.ge (local.get $r) (f32.const 0.5)) (then
     (local.set $__c (global.get $inputs_turnCos))
             (local.set $__s (f32.neg (global.get $inputs_turnSin)))
             (local.set $__vx (f32.sub (f32.mul (local.get $vx) (local.get $__c)) (f32.mul (local.get $vy) (local.get $__s))))
@@ -168,14 +168,14 @@
     (local.set $sF (call $sense (local.get $x) (local.get $y) (local.get $vx) (local.get $vy) (f32.const 0) (global.get $inputs_sensorDist)))
     (local.set $sR (call $sense (local.get $x) (local.get $y) (local.get $vx) (local.get $vy) (f32.neg (global.get $inputs_sensorAngle)) (global.get $inputs_sensorDist)))
     (if (i32.and (f32.lt (local.get $sF) (local.get $sL)) (f32.lt (local.get $sF) (local.get $sR))) (then
-    (if (f32.lt (local.get $r) (local.get $0_5)) (then
+    (if (f32.lt (local.get $r) (f32.const 0.5)) (then
     (local.set $__c (global.get $inputs_turnCos))
             (local.set $__s (global.get $inputs_turnSin))
             (local.set $__vx (f32.sub (f32.mul (local.get $vx) (local.get $__c)) (f32.mul (local.get $vy) (local.get $__s))))
             (local.set $vy (f32.add (f32.mul (local.get $vx) (local.get $__s)) (f32.mul (local.get $vy) (local.get $__c))))
             (local.set $vx (local.get $__vx))
     )
-    (else (if (f32.ge (local.get $r) (local.get $0_5)) (then
+    (else (if (f32.ge (local.get $r) (f32.const 0.5)) (then
     (local.set $__c (global.get $inputs_turnCos))
             (local.set $__s (f32.neg (global.get $inputs_turnSin)))
             (local.set $__vx (f32.sub (f32.mul (local.get $vx) (local.get $__c)) (f32.mul (local.get $vy) (local.get $__s))))

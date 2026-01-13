@@ -576,13 +576,15 @@ export default class WebGPU {
     }
 
     private ensureAndWriteInputs(device: GPUDevice, inputs: InputValues) {
-        const values = this.inputsExpected
+        const inputValues = this.inputsExpected
             .filter(n => n !== 'trailMap' && n !== 'randomValues') // don't put buffer types in uniform buffer
             .map((n) => {
                 const value = inputs[n];
                 // Only convert numeric inputs, default to 0 for non-numeric
                 return typeof value === 'number' ? value : 0;
             });
+
+        const values = [this.agentCount, ...inputValues];
         const byteLen = values.length * FLOAT_SIZE;
 
         if (!this.inputUniformBuffer || this.inputUniformCapacity < byteLen) {

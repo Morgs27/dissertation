@@ -91,8 +91,10 @@
                         if (iy < 0) iy += h;
                         if (iy >= h) iy -= h;
 
-                        // Atomic add to write buffer (Float32)
-                        writeMap[iy * w + ix] = f(writeMap[iy * w + ix] + amt);
+                        // Emulate GPU fixed-point precision: amount * 1e6 -> i32 -> /1e6
+                        // This matches the WGSL atomicAdd with i32 conversion
+                        const fixedAmount = Math.trunc(amt * 1000000) / 1000000;
+                        writeMap[iy * w + ix] = f(writeMap[iy * w + ix] + f(fixedAmount));
                     };
 
 

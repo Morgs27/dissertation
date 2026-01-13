@@ -159,13 +159,13 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ reports, onClear, onRe
             r.agentCount,
             r.workerCount ?? 'N/A',
             r.workgroupSize ?? 'N/A',
-            r.avgExecutionTime.toFixed(3),
-            r.minExecutionTime.toFixed(3),
-            r.maxExecutionTime.toFixed(3),
-            r.avgSetupTime.toFixed(3),
-            r.avgComputeTime.toFixed(3),
-            r.avgRenderTime.toFixed(3),
-            r.avgReadbackTime.toFixed(3),
+            (r.avgExecutionTime ?? 0).toFixed(3),
+            (r.minExecutionTime ?? 0).toFixed(3),
+            (r.maxExecutionTime ?? 0).toFixed(3),
+            (r.avgSetupTime ?? 0).toFixed(3),
+            (r.avgComputeTime ?? 0).toFixed(3),
+            (r.avgRenderTime ?? 0).toFixed(3),
+            (r.avgReadbackTime ?? 0).toFixed(3),
             r.avgCompileTime?.toFixed(3) ?? 'N/A',
             r.frameCount
         ]);
@@ -474,19 +474,19 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ reports, onClear, onRe
                                                             <Td isNumeric>{result.workerCount ?? '-'}</Td>
                                                             <Td isNumeric>{result.workgroupSize ?? '-'}</Td>
                                                             <Td isNumeric fontWeight="bold">
-                                                                {result.avgExecutionTime.toFixed(2)}
+                                                                {(result.avgExecutionTime ?? 0).toFixed(2)}
                                                             </Td>
                                                             <Td isNumeric color="gray.400">
-                                                                {result.avgSetupTime.toFixed(2)}
+                                                                {(result.avgSetupTime ?? 0).toFixed(2)}
                                                             </Td>
                                                             <Td isNumeric color="blue.300">
-                                                                {result.avgComputeTime.toFixed(2)}
+                                                                {(result.avgComputeTime ?? 0).toFixed(2)}
                                                             </Td>
                                                             <Td isNumeric color="green.300">
-                                                                {result.avgRenderTime.toFixed(2)}
+                                                                {(result.avgRenderTime ?? 0).toFixed(2)}
                                                             </Td>
                                                             <Td isNumeric color="orange.300">
-                                                                {result.avgReadbackTime.toFixed(2)}
+                                                                {(result.avgReadbackTime ?? 0).toFixed(2)}
                                                             </Td>
                                                             <Td isNumeric color="gray.500">{result.frameCount}</Td>
                                                         </Tr>

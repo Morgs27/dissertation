@@ -99,17 +99,25 @@ fn main(
         }
         var separationX: f32 = 0;
         var separationY: f32 = 0;
-        var neighbor_x: f32 = neighbor.x;
-        var neighbor_y: f32 = neighbor.y;
-        var dx: f32 = x - neighbor_x;
-        var dy: f32 = y - neighbor_y;
-        var dist2: f32 = dx*dx + dy*dy;
-        if (dist2 < (inputs.separationDist)*(inputs.separationDist) && dist2 > 0) {
-            separationX = separationX + dx / dist2;
-            separationY = separationY + dy / dist2;
-            vx = vx + separationX * inputs.separationFactor;
-            vy = vy + separationY * inputs.separationFactor;
-        }
+        // Foreach over nearbyAgents
+        for (var _ni: u32 = 0u; _ni < arrayLength(&agentsRead); _ni++) {
+            if (_ni == i) { continue; }
+            let _loop_other = agentsRead[_ni];
+            let _loop_dx = x - _loop_other.x;
+            let _loop_dy = y - _loop_other.y;
+            let _loop_dist = sqrt(_loop_dx*_loop_dx + _loop_dy*_loop_dy);
+            if (_loop_dist >= inputs.perceptionRadius) { continue; }
+            var neighbor_x: f32 = _loop_other.x;
+            var neighbor_y: f32 = _loop_other.y;
+            var dx: f32 = x - neighbor_x;
+            var dy: f32 = y - neighbor_y;
+            var dist2: f32 = dx*dx + dy*dy;
+            if (dist2 < (inputs.separationDist)*(inputs.separationDist) && dist2 > 0) {
+                separationX = separationX + dx / dist2;
+                separationY = separationY + dy / dist2;
+                vx = vx + separationX * inputs.separationFactor;
+                vy = vy + separationY * inputs.separationFactor;
+            }
         }
         let _spd_ls = inputs.maxSpeed; let _spd_ls2 = _spd_ls * _spd_ls; let _vx2_ls = vx * vx; let _vy2_ls = vy * vy; let _cur_ls2 = _vx2_ls + _vy2_ls; if (_cur_ls2 > _spd_ls2) { let _scale_ls = sqrt(_spd_ls2 / _cur_ls2); vx = vx * _scale_ls; vy = vy * _scale_ls; }
         if (x < 0.0) { x = x + inputs.width; } if (x >= inputs.width) { x = x - inputs.width; } if (y < 0.0) { y = y + inputs.height; } if (y >= inputs.height) { y = y - inputs.height; }

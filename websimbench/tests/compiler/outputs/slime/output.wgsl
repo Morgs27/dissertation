@@ -11,6 +11,7 @@ struct Agent {
 @group(0) @binding(6) var<storage, read_write> agentLogs : array<vec2<f32>>;
 
 struct Inputs {
+    agentCount: f32,
     depositAmount: f32,
     decayFactor: f32,
     sensorAngle: f32,
