@@ -1,31 +1,151 @@
 [Verbose] [ComputeEngine] Running Compute: WebGPU
 [Info] [WebGPUCompute] Initialized. Preallocated for 100,000 agents (~0 MB per buffer).
-[Verbose] [WebGPUCompute] Starting WebGPU compute for 100 agents (readback: true)
-[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=0.0000, y=0.0000
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=117.1358, y=52.7203
 [Verbose] [ComputeEngine] Running Compute: WebGPU
-[Verbose] [WebGPUCompute] Starting WebGPU compute for 100 agents (readback: true)
-[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=0.0000, y=0.0000
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=117.6363, y=53.5861
 [Verbose] [ComputeEngine] Running Compute: WebGPU
-[Verbose] [WebGPUCompute] Starting WebGPU compute for 100 agents (readback: true)
-[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=0.0000, y=0.0000
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=117.7154, y=54.0685
 [Verbose] [ComputeEngine] Running Compute: WebGPU
-[Verbose] [WebGPUCompute] Starting WebGPU compute for 100 agents (readback: true)
-[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=0.0000, y=0.0000
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=117.3690, y=54.0670
 [Verbose] [ComputeEngine] Running Compute: WebGPU
-[Verbose] [WebGPUCompute] Starting WebGPU compute for 100 agents (readback: true)
-[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=0.0000, y=0.0000
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=117.0648, y=53.9973
 [Verbose] [ComputeEngine] Running Compute: WebGPU
-[Verbose] [WebGPUCompute] Starting WebGPU compute for 100 agents (readback: true)
-[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=0.0000, y=0.0000
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=116.8136, y=53.8476
 [Verbose] [ComputeEngine] Running Compute: WebGPU
-[Verbose] [WebGPUCompute] Starting WebGPU compute for 100 agents (readback: true)
-[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=0.0000, y=0.0000
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=116.4828, y=53.6914
 [Verbose] [ComputeEngine] Running Compute: WebGPU
-[Verbose] [WebGPUCompute] Starting WebGPU compute for 100 agents (readback: true)
-[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=0.0000, y=0.0000
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=116.0318, y=53.6168
 [Verbose] [ComputeEngine] Running Compute: WebGPU
-[Verbose] [WebGPUCompute] Starting WebGPU compute for 100 agents (readback: true)
-[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=0.0000, y=0.0000
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=115.5533, y=53.5894
 [Verbose] [ComputeEngine] Running Compute: WebGPU
-[Verbose] [WebGPUCompute] Starting WebGPU compute for 100 agents (readback: true)
-[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=0.0000, y=0.0000
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=115.1922, y=53.4794
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=115.1306, y=53.2596
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=115.4393, y=52.9647
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=116.0869, y=52.7285
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=116.9865, y=52.5676
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=117.7833, y=52.4730
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=118.2858, y=52.4007
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=118.4298, y=52.4516
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=118.2641, y=52.5444
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=117.8788, y=52.6195
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=117.3202, y=52.8192
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=116.7569, y=53.1010
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=116.3385, y=53.4868
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=116.1754, y=53.8009
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=116.3693, y=53.9381
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=116.7670, y=53.9472
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=117.2693, y=53.8110
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=117.8353, y=53.5947
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=118.2414, y=53.3293
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=118.3732, y=53.0012
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=118.1804, y=52.5814
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=117.7412, y=52.1112
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=117.2305, y=51.7053
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=116.9064, y=51.3627
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=116.7421, y=51.0427
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=116.7304, y=50.7820
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=116.8602, y=50.5490
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=117.0303, y=50.4610
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=117.1457, y=50.5229
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=117.1874, y=50.7697
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=117.1746, y=51.2037
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=117.1269, y=51.8145
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=117.1248, y=52.4774
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=117.1595, y=53.0586
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=117.3255, y=53.4221
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=117.4305, y=53.3410
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=117.4671, y=52.9816
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=117.4095, y=52.6522
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=117.2748, y=52.4907
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=117.1271, y=52.5290
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=117.0966, y=52.8445

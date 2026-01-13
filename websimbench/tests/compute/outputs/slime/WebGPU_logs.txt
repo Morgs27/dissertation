@@ -1,43 +1,203 @@
 [Verbose] [ComputeEngine] Running Compute: WebGPU
 [Info] [WebGPUCompute] Diffuse/decay GPU compute pipeline initialized.
 [Info] [WebGPUCompute] Initialized. Preallocated for 100,000 agents (~0 MB per buffer).
-[Verbose] [WebGPUCompute] Starting WebGPU compute for 100 agents (readback: true)
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
 [Info] [WebGPUCompute] Trail map seeded to GPU (first frame only)
-[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=467.5058, y=312.6861
-[Info] [WebGPUCompute] Trail Map Readback: nonZero=900, maxVal=0.380000
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=118.1213, y=52.7767
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=4087, maxVal=0.950000
 [Verbose] [ComputeEngine] Running Compute: WebGPU
-[Verbose] [WebGPUCompute] Starting WebGPU compute for 100 agents (readback: true)
-[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=469.1656, y=313.4809
-[Info] [WebGPUCompute] Trail Map Readback: nonZero=2670, maxVal=0.596600
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=119.7810, y=53.5716
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=9788, maxVal=1.455400
 [Verbose] [ComputeEngine] Running Compute: WebGPU
-[Verbose] [WebGPUCompute] Starting WebGPU compute for 100 agents (readback: true)
-[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=470.8253, y=314.2758
-[Info] [WebGPUCompute] Trail Map Readback: nonZero=5338, maxVal=0.704629
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=121.4408, y=54.3664
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=14748, maxVal=1.677933
 [Verbose] [ComputeEngine] Running Compute: WebGPU
-[Verbose] [WebGPUCompute] Starting WebGPU compute for 100 agents (readback: true)
-[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=472.4851, y=315.0706
-[Info] [WebGPUCompute] Trail Map Readback: nonZero=8906, maxVal=0.788035
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=123.2595, y=54.0853
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=17836, maxVal=1.836979
 [Verbose] [ComputeEngine] Running Compute: WebGPU
-[Verbose] [WebGPUCompute] Starting WebGPU compute for 100 agents (readback: true)
-[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=474.1449, y=315.8655
-[Info] [WebGPUCompute] Trail Map Readback: nonZero=13320, maxVal=0.830128
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=124.6017, y=52.8264
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=19251, maxVal=1.832003
 [Verbose] [ComputeEngine] Running Compute: WebGPU
-[Verbose] [WebGPUCompute] Starting WebGPU compute for 100 agents (readback: true)
-[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=475.8046, y=316.6604
-[Info] [WebGPUCompute] Trail Map Readback: nonZero=18608, maxVal=0.750624
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=126.4204, y=52.5452
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=19791, maxVal=1.904305
 [Verbose] [ComputeEngine] Running Compute: WebGPU
-[Verbose] [WebGPUCompute] Starting WebGPU compute for 100 agents (readback: true)
-[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=477.4644, y=317.4552
-[Info] [WebGPUCompute] Trail Map Readback: nonZero=24726, maxVal=0.859910
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=127.7627, y=51.2863
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=19976, maxVal=2.159705
 [Verbose] [ComputeEngine] Running Compute: WebGPU
-[Verbose] [WebGPUCompute] Starting WebGPU compute for 100 agents (readback: true)
-[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=479.1241, y=318.2501
-[Info] [WebGPUCompute] Trail Map Readback: nonZero=31604, maxVal=0.875711
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=129.5813, y=51.0051
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=2.336963
 [Verbose] [ComputeEngine] Running Compute: WebGPU
-[Verbose] [WebGPUCompute] Starting WebGPU compute for 100 agents (readback: true)
-[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=480.7839, y=319.0450
-[Info] [WebGPUCompute] Trail Map Readback: nonZero=39186, maxVal=0.876650
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=130.9236, y=49.7462
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=2.173257
 [Verbose] [ComputeEngine] Running Compute: WebGPU
-[Verbose] [WebGPUCompute] Starting WebGPU compute for 100 agents (readback: true)
-[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=482.4437, y=319.8398
-[Info] [WebGPUCompute] Trail Map Readback: nonZero=47412, maxVal=0.932741
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=132.7423, y=49.4651
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=2.408631
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=134.0845, y=48.2061
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=2.505246
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=135.9032, y=47.9250
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=2.660415
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=137.5630, y=48.7199
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=3.423783
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=138.4840, y=50.3131
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=4.081913
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=140.1438, y=51.1079
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=4.206894
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=141.9624, y=50.8268
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=4.149358
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=143.3047, y=49.5678
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=4.011792
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=145.1234, y=49.2867
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=3.980186
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=146.4657, y=48.0278
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=4.048389
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=148.2843, y=47.7466
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=3.775079
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=150.1030, y=47.4655
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=4.018116
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=150.5000, y=45.6685
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=4.289765
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=151.8422, y=44.4096
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=4.177392
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=152.2392, y=42.6126
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=4.037372
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=153.5815, y=41.3537
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=4.215737
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=153.9784, y=39.5568
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=4.259359
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=155.3207, y=38.2978
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=4.616834
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=157.1394, y=38.0167
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=4.654766
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=158.4816, y=36.7577
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=4.982707
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=160.3003, y=36.4766
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=5.086751
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=162.1190, y=36.1954
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=5.581704
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=163.9376, y=35.9143
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=6.019622
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=164.8587, y=37.5075
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=6.475063
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=166.6774, y=37.2264
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=6.416691
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=167.5984, y=38.8196
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=6.218304
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=169.2582, y=39.6144
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=5.875972
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=171.0769, y=39.3333
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=5.819370
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=172.7366, y=40.1281
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=6.116487
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=173.6577, y=41.7213
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=6.249786
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=175.3174, y=42.5162
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=7.066912
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=177.1361, y=42.2351
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=7.381937
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=178.7959, y=43.0299
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=7.132131
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=180.6145, y=42.7488
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=7.031451
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=182.2743, y=43.5437
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=6.595139
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=184.0930, y=43.2625
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=6.687748
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=185.7527, y=44.0574
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=6.837383
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=187.5714, y=43.7762
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=6.972646
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=189.2312, y=44.5711
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=6.323895
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=190.1522, y=46.1643
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=6.671282
+[Verbose] [ComputeEngine] Running Compute: WebGPU
+[Verbose] [WebGPUCompute] Starting WebGPU compute for 500 agents (readback: true)
+[Info] [WebGPUCompute] Readback complete: Agent[0] updated to x=191.8120, y=46.9592
+[Info] [WebGPUCompute] Trail Map Readback: nonZero=20000, maxVal=6.388148

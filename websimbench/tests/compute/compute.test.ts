@@ -9,10 +9,10 @@ import GPU from '../../src/simulation/helpers/gpu';
 import Logger, { LogLevel } from '../../src/simulation/helpers/logger';
 
 // Test configuration
-const NUM_FRAMES = 10;  // Increased from 5 for more thorough testing
-const NUM_AGENTS = 100;
-const WIDTH = 800;
-const HEIGHT = 600;
+const NUM_FRAMES = 50;  // Increased from 5 for more thorough testing
+const NUM_AGENTS = 500;
+const WIDTH = 200;
+const HEIGHT = 100;
 
 // Methods to test
 const METHODS: Method[] = ['JavaScript', 'WebAssembly', 'WebWorkers', 'WebGPU'];
@@ -252,11 +252,8 @@ describe('Compute Cross-Method Comparison', () => {
                     comparisons: []
                 };
 
-                // Header for detailed report
-                console.log('\n' + '='.repeat(80));
-                console.log(`PARITY REPORT: ${simulationName.toUpperCase()}`);
-                console.log(`Agents: ${NUM_AGENTS} | Frames: ${NUM_FRAMES}`);
-                console.log('='.repeat(80));
+                // Collect failures to assert after report is written
+                const failures: string[] = [];
 
                 // Compare each method against JavaScript
                 for (const [method, result] of results) {
@@ -268,18 +265,16 @@ describe('Compute Cross-Method Comparison', () => {
                     let totalAvgError = 0;
                     let overallMaxError = 0;
                     let overallMinError = Infinity;
-
-                    console.log(`\n${method} vs JavaScript (tolerance: ${tolerance})`);
-                    console.log('-'.repeat(60));
-                    console.log('Frame | Avg Error  | Max Error  | Min Error  | Status');
-                    console.log('-'.repeat(60));
+                    let failedFrames = 0;
 
                     for (let frame = 0; frame < NUM_FRAMES; frame++) {
                         const jsAgents = jsResult!.frames[frame];
                         const methodAgents = result.frames[frame];
 
-                        // Verify agent count matches
-                        expect(methodAgents.length).toBe(jsAgents.length);
+                        if (methodAgents.length !== jsAgents.length) {
+                            failures.push(`${method} frame ${frame}: agent count mismatch (${methodAgents.length} vs ${jsAgents.length})`);
+                            continue;
+                        }
 
                         const comparison = compareAgents(jsAgents, methodAgents, frame, tolerance);
 
@@ -289,12 +284,13 @@ describe('Compute Cross-Method Comparison', () => {
                             ? Math.min(...agentsWithDiff.map(d => d.posDiff))
                             : 0;
 
+                        const passed = comparison.maxPosDiff <= tolerance;
                         frameComparisons.push({
                             frame,
                             maxPosDiff: comparison.maxPosDiff,
                             avgPosDiff: comparison.avgPosDiff,
                             minPosDiff,
-                            passed: comparison.maxPosDiff <= tolerance
+                            passed
                         });
 
                         // Track overall stats
@@ -304,33 +300,14 @@ describe('Compute Cross-Method Comparison', () => {
                             overallMinError = Math.min(overallMinError, minPosDiff > 0 ? minPosDiff : Infinity);
                         }
 
-                        const status = comparison.maxPosDiff <= tolerance ? '✓ PASS' : '✗ FAIL';
-                        console.log(
-                            `${String(frame).padStart(5)} | ` +
-                            `${comparison.avgPosDiff.toFixed(6).padStart(10)} | ` +
-                            `${comparison.maxPosDiff.toFixed(6).padStart(10)} | ` +
-                            `${minPosDiff.toFixed(6).padStart(10)} | ` +
-                            status
-                        );
-
-                        // Assert positions match within tolerance
-                        expect(
-                            comparison.maxPosDiff,
-                            `${method} frame ${frame} position difference exceeds tolerance`
-                        ).toBeLessThanOrEqual(tolerance);
+                        if (!passed) {
+                            failedFrames++;
+                            failures.push(`${method} frame ${frame}: maxPosDiff=${comparison.maxPosDiff.toFixed(6)} exceeds tolerance=${tolerance}`);
+                        }
                     }
 
                     const avgError = totalAvgError / NUM_FRAMES;
                     if (overallMinError === Infinity) overallMinError = 0;
-
-                    console.log('-'.repeat(60));
-                    console.log(
-                        `OVERALL | ` +
-                        `${avgError.toFixed(6).padStart(10)} | ` +
-                        `${overallMaxError.toFixed(6).padStart(10)} | ` +
-                        `${overallMinError.toFixed(6).padStart(10)} | ` +
-                        (overallMaxError <= tolerance ? '✓ PASS' : '✗ FAIL')
-                    );
 
                     comparisonReport.comparisons.push({
                         method,
@@ -341,26 +318,21 @@ describe('Compute Cross-Method Comparison', () => {
                             minError: overallMinError
                         }
                     });
+
+                    // Summary log for this method
+                    const status = overallMaxError <= tolerance ? '✓ PASS' : `✗ FAIL (${failedFrames}/${NUM_FRAMES} frames)`;
+                    console.log(`${method}: avg=${avgError.toFixed(6)}, max=${overallMaxError.toFixed(6)}, tolerance=${tolerance} → ${status}`);
                 }
 
-                console.log('\n' + '='.repeat(80));
-                console.log('SUMMARY');
-                console.log('='.repeat(80));
-                for (const comp of comparisonReport.comparisons) {
-                    const tolerance = TOLERANCES[comp.method as Method];
-                    const status = comp.overall.maxError <= tolerance ? '✓' : '✗';
-                    console.log(
-                        `${status} ${comp.method}: ` +
-                        `avg=${comp.overall.avgError.toFixed(6)}, ` +
-                        `max=${comp.overall.maxError.toFixed(6)}, ` +
-                        `tolerance=${tolerance}`
-                    );
-                }
-                console.log('='.repeat(80) + '\n');
-
-                // Write comparison report
+                // Write comparison report (always, even on failure)
                 const reportPath = `tests/compute/outputs/${simulationName}/comparison_report.json`;
                 await writeOutputFile(reportPath, JSON.stringify(comparisonReport, null, 2));
+
+                // Now assert after report is written
+                if (failures.length > 0) {
+                    console.log(`\n${failures.length} failure(s) detected. See ${reportPath} for details.`);
+                    expect.fail(`Parity check failed:\n${failures.slice(0, 5).join('\n')}${failures.length > 5 ? `\n... and ${failures.length - 5} more` : ''}`);
+                }
             });
         });
     }

@@ -11,6 +11,7 @@ struct Agent {
 @group(0) @binding(6) var<storage, read_write> agentLogs : array<vec2<f32>>;
 
 struct Inputs {
+    agentCount: f32,
     perceptionRadius: f32,
     alignmentFactor: f32,
     cohesionFactor: f32,
@@ -73,7 +74,7 @@ fn main(
                 nearbyAgents_sum_vy += other.vy;
             }
         }
-        if (nearbyAgents _count > 0) {
+        if (nearbyAgents_count > 0u) {
             var avgVx: f32 = 0.0;
             if (nearbyAgents_count > 0u) {
                 avgVx = nearbyAgents_sum_vx / f32(nearbyAgents_count);
@@ -85,7 +86,7 @@ fn main(
             vx = vx + (avgVx - vx) * inputs.alignmentFactor;
             vy = vy + (avgVy - vy) * inputs.alignmentFactor;
         }
-        if (nearbyAgents _count > 0) {
+        if (nearbyAgents_count > 0u) {
             var avgX: f32 = 0.0;
             if (nearbyAgents_count > 0u) {
                 avgX = nearbyAgents_sum_x / f32(nearbyAgents_count);
@@ -100,7 +101,7 @@ fn main(
         var separationX: f32 = 0;
         var separationY: f32 = 0;
         // Foreach over nearbyAgents
-        for (var _ni: u32 = 0u; _ni < arrayLength(&agentsRead); _ni++) {
+        for (var _ni: u32 = 0u; _ni < u32(inputs.agentCount); _ni++) {
             if (_ni == i) { continue; }
             let _loop_other = agentsRead[_ni];
             let _loop_dx = x - _loop_other.x;
