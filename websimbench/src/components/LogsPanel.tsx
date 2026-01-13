@@ -1,9 +1,9 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Trash, Terminal } from "@phosphor-icons/react";
-import { LogMessage } from '../../hooks/useLogger';
+import { LogMessage } from '../hooks/useLogger';
 import { useState } from 'react';
-import { LogLevel } from '../../simulation/helpers/logger';
+import { LogLevel } from '../simulation/helpers/logger';
 
 interface LogsPanelProps {
   logs: LogMessage[];
@@ -31,9 +31,9 @@ export const LogsPanel = ({ logs, onClear }: LogsPanelProps) => {
     <div className="flex flex-col h-full bg-[#0d1619]">
       <div className="h-10 flex px-4 items-center bg-black/40 border-b border-white/5 shrink-0">
         <Terminal className="mr-2 text-tropicalTeal" size={16} />
-        <span className="font-bold mr-4 text-xs tracking-wider uppercase text-gray-400">Console</span>
+        {/* <span className="font-bold mr-4 text-xs tracking-wider uppercase text-gray-400">Console</span> */}
 
-        <Select value={filterLevel} onValueChange={setFilterLevel}>
+        {/* <Select value={filterLevel} onValueChange={setFilterLevel}>
           <SelectTrigger className="w-[110px] h-7 text-[10px] bg-white/5 border-none focus:ring-0">
             <SelectValue placeholder="All Levels" />
           </SelectTrigger>
@@ -44,16 +44,14 @@ export const LogsPanel = ({ logs, onClear }: LogsPanelProps) => {
             <SelectItem value="Warning">Warning</SelectItem>
             <SelectItem value="Error">Error</SelectItem>
           </SelectContent>
-        </Select>
+        </Select> */}
 
         <Button
-          size="xs"
-          variant="ghost"
-          className="ml-auto text-gray-500 hover:text-red-400 hover:bg-red-500/10 h-7 px-2 flex items-center gap-1.5"
+          className="ml-auto text-gray-300 hover:text-red-400 hover:bg-red-500/10 px-2 flex items-center gap-1.5"
           onClick={onClear}
         >
           <Trash size={14} />
-          <span className="text-[10px] font-bold uppercase">Clear</span>
+          <span className="text-[12px] ">Clear</span>
         </Button>
       </div>
 
