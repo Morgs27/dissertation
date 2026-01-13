@@ -1,6 +1,5 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
-    Button,
     Input,
     Progress,
     Select,
@@ -8,7 +7,6 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue,
-    Switch,
     Alert,
     AlertDescription,
     AlertTitle,
@@ -23,6 +21,8 @@ import { BenchmarkResult, BenchmarkConfiguration, DeviceInfo } from '../../simul
 import { collectDeviceInfo } from '../../simulation/helpers/deviceInfo';
 import { InputDefinition, Method, RenderMode } from '../../simulation/types';
 import { SimulationAppearanceOptions } from '../../hooks/useSimulationOptions';
+import { RunControl } from './RunControl';
+import { Combobox, ComboboxList, ComboboxContent, ComboboxItem, ComboboxTrigger, ComboboxValue } from "@/components/ui/combobox";
 
 interface BenchmarkControlsProps {
     code: string;
@@ -31,6 +31,8 @@ interface BenchmarkControlsProps {
     options: SimulationAppearanceOptions;
     canvasRef: React.RefObject<HTMLCanvasElement>;
     gpuCanvasRef: React.RefObject<HTMLCanvasElement>;
+    onRenderModeChange: (mode: RenderMode) => void;
+    onRunningChange?: (isRunning: boolean) => void;
 }
 
 type MethodOption = {
@@ -54,7 +56,9 @@ export const BenchmarkControls: React.FC<BenchmarkControlsProps> = ({
     onComplete,
     options,
     canvasRef,
-    gpuCanvasRef
+    gpuCanvasRef,
+    onRenderModeChange,
+    onRunningChange
 }) => {
     // Configuration State
     const [agentRangeMode, setAgentRangeMode] = useState<'manual' | 'range'>('manual');
@@ -69,7 +73,7 @@ export const BenchmarkControls: React.FC<BenchmarkControlsProps> = ({
 
     const [framesPerTest, setFramesPerTest] = useState(100);
     const [warmupRun, setWarmupRun] = useState(true);
-    const [selectedMethods, setSelectedMethods] = useState<Set<string>>(new Set(['methodWebGPUGpu']));
+    const [selectedMethods, setSelectedMethods] = useState<string[]>(['methodWebGPUGpu']);
 
     // Execution State
     const [isRunning, setIsRunning] = useState(false);
@@ -79,32 +83,26 @@ export const BenchmarkControls: React.FC<BenchmarkControlsProps> = ({
 
     const cancelledRef = useRef(false);
 
-    const handleMethodToggle = (id: string) => {
-        const newSelected = new Set(selectedMethods);
-        if (newSelected.has(id)) {
-            newSelected.delete(id);
-        } else {
-            newSelected.add(id);
-        }
-        setSelectedMethods(newSelected);
-    };
+    useEffect(() => {
+        onRunningChange?.(isRunning);
+    }, [isRunning, onRunningChange]);
 
     const handleWorkerVariationsToggle = (enabled: boolean) => {
         setTestWorkerVariations(enabled);
         if (enabled) {
-            const newSelected = new Set(selectedMethods);
-            newSelected.add('methodWebWorkers');
-            setSelectedMethods(newSelected);
+            if (!selectedMethods.includes('methodWebWorkers')) {
+                setSelectedMethods([...selectedMethods, 'methodWebWorkers']);
+            }
         }
     };
 
     const handleWorkgroupVariationsToggle = (enabled: boolean) => {
         setTestWorkgroupVariations(enabled);
         if (enabled) {
-            const newSelected = new Set(selectedMethods);
-            newSelected.add('methodWebGPUCpu');
-            newSelected.add('methodWebGPUGpu');
-            setSelectedMethods(newSelected);
+            const newMethods = [...selectedMethods];
+            if (!newMethods.includes('methodWebGPUCpu')) newMethods.push('methodWebGPUCpu');
+            if (!newMethods.includes('methodWebGPUGpu')) newMethods.push('methodWebGPUGpu');
+            setSelectedMethods(newMethods);
         }
     };
 
@@ -113,7 +111,7 @@ export const BenchmarkControls: React.FC<BenchmarkControlsProps> = ({
     const runBenchmark = async () => {
         if (!canvasRef.current || !gpuCanvasRef.current) return;
 
-        if (selectedMethods.size === 0) {
+        if (selectedMethods.length === 0) {
             toast.error("Please select at least one method to test");
             return;
         }
@@ -165,7 +163,7 @@ export const BenchmarkControls: React.FC<BenchmarkControlsProps> = ({
         }
 
         const workgroupSizes = testWorkgroupVariations ? [64, 128, 256] : undefined;
-        const methodsToTest = METHOD_OPTIONS.filter(m => selectedMethods.has(m.id));
+        const methodsToTest = METHOD_OPTIONS.filter(m => selectedMethods.includes(m.id));
 
         let totalTests = 0;
         for (const _agentCount of agentCounts) {
@@ -201,6 +199,9 @@ export const BenchmarkControls: React.FC<BenchmarkControlsProps> = ({
                 if (cancelledRef.current) break;
                 for (const { method, renderMode, label } of methodsToTest) {
                     if (cancelledRef.current) break;
+
+                    onRenderModeChange(renderMode);
+
                     let variations: Array<{ workerCount?: number, workgroupSize?: number }> = [{}];
                     if (method === 'WebWorkers' && workerCounts) {
                         variations = workerCounts.map(wc => ({ workerCount: wc }));
@@ -331,48 +332,98 @@ export const BenchmarkControls: React.FC<BenchmarkControlsProps> = ({
 
     return (
         <div className="flex flex-col gap-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <RunControl
+                isRunning={isRunning}
+                onRun={runBenchmark}
+                onStop={cancelBenchmark}
+            >
+                <div className="w-full">
+                    <Combobox value={selectedMethods} onValueChange={(val) => !isRunning && setSelectedMethods(val as string[])} multiple>
+                        <ComboboxTrigger className="w-full h-9 bg-black/40 border-none focus:ring-1 focus:ring-tropicalTeal/50 text-xs font-bold px-3 py-1 flex items-center justify-between rounded-md text-white">
+                            <ComboboxValue>
+                                {({ value }) => (
+                                    <div className="flex flex-nowrap gap-1 overflow-hidden items-center">
+                                        {(!value || (value as string[]).length === 0) && <span className="text-gray-400 font-normal">Select Methods to Benchmark</span>}
+                                        {(value as string[] || []).length > 0 && (
+                                            <span className="truncate">
+                                                {(value as string[]).map(id => METHOD_OPTIONS.find(m => m.id === id)?.label).join(", ")}
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
+                            </ComboboxValue>
+                        </ComboboxTrigger>
+                        <ComboboxContent className="bg-[#1a2e33] border-white/10" sideOffset={5}>
+                            <ComboboxList className="bg-transparent p-1">
+                                {METHOD_OPTIONS.map((option) => (
+                                    <ComboboxItem key={option.id} value={option.id} className="text-gray-200 focus:bg-tropicalTeal focus:text-black rounded-sm text-xs py-1.5 pl-2 pr-8 relative cursor-pointer select-none">
+                                        <div className="flex items-center gap-2">
+                                            {option.label}
+                                        </div>
+                                    </ComboboxItem>
+                                ))}
+                            </ComboboxList>
+                        </ComboboxContent>
+                    </Combobox>
+                </div>
+            </RunControl>
+
+            {(isRunning || progress > 0) && (
+                <div className="space-y-2 bg-black/20 p-3 rounded-lg border border-white/5">
+                    <div className="flex justify-between text-[11px] font-mono text-gray-400">
+                        <span>{statusMessage}</span>
+                        <span>{Math.round(progress)}%</span>
+                    </div>
+                    <Progress value={progress} className="h-1.5" />
+                </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                 <div className="space-y-4">
                     <div className="space-y-2">
                         <Label className="text-xs uppercase font-bold text-gray-400">Agent Configuration</Label>
-                        <Select value={agentRangeMode} onValueChange={(v: 'manual' | 'range') => setAgentRangeMode(v)}>
-                            <SelectTrigger className="h-9 bg-black/40">
-                                <SelectValue placeholder="Select mode" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="manual">Manual (comma separated)</SelectItem>
-                                <SelectItem value="range">Range (start, end, step)</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        {agentRangeMode === 'manual' ? (
-                            <Input
-                                value={agentCountsInput}
-                                onChange={(e) => setAgentCountsInput(e.target.value)}
-                                placeholder="100, 500, 1000"
-                                className="h-9 bg-black/40"
-                            />
-                        ) : (
-                            <div className="grid grid-cols-3 gap-2">
-                                <Input type="number" value={agentStart} onChange={(e) => setAgentStart(parseInt(e.target.value))} className="h-9 bg-black/40" placeholder="Start" />
-                                <Input type="number" value={agentEnd} onChange={(e) => setAgentEnd(parseInt(e.target.value))} className="h-9 bg-black/40" placeholder="End" />
-                                <Input type="number" value={agentStep} onChange={(e) => setAgentStep(parseInt(e.target.value))} className="h-9 bg-black/40" placeholder="Step" />
-                            </div>
-                        )}
+                        <div className="flex flex-col gap-2">
+                            <Select value={agentRangeMode} onValueChange={(v: 'manual' | 'range') => setAgentRangeMode(v)}>
+                                <SelectTrigger className="h-9 bg-black/40 border-white/5">
+                                    <SelectValue placeholder="Select mode" />
+                                </SelectTrigger>
+                                <SelectContent position="popper" sideOffset={5} className="bg-[#1a2e33] border-white/10 text-white">
+                                    <SelectItem value="manual">Manual (comma separated)</SelectItem>
+                                    <SelectItem value="range">Range (start, end, step)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            {agentRangeMode === 'manual' ? (
+                                <Input
+                                    value={agentCountsInput}
+                                    onChange={(e) => setAgentCountsInput(e.target.value)}
+                                    placeholder="100, 500, 1000"
+                                    className="h-9 bg-black/40 border-white/10 text-tropicalTeal font-mono text-xs"
+                                />
+                            ) : (
+                                <div className="grid grid-cols-3 gap-2">
+                                    <Input type="number" value={agentStart} onChange={(e) => setAgentStart(parseInt(e.target.value))} className="h-9 bg-black/40 border-white/10 text-tropicalTeal font-mono text-xs" placeholder="Start" />
+                                    <Input type="number" value={agentEnd} onChange={(e) => setAgentEnd(parseInt(e.target.value))} className="h-9 bg-black/40 border-white/10 text-tropicalTeal font-mono text-xs" placeholder="End" />
+                                    <Input type="number" value={agentStep} onChange={(e) => setAgentStep(parseInt(e.target.value))} className="h-9 bg-black/40 border-white/10 text-tropicalTeal font-mono text-xs" placeholder="Step" />
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     <div className="space-y-2">
-                        <Label className="text-xs uppercase font-bold text-gray-400">Variations</Label>
-                        <div className="bg-black/20 p-3 rounded-md space-y-4 border border-white/5">
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm">WebWorker variations</span>
-                                <Switch checked={testWorkerVariations} onCheckedChange={handleWorkerVariationsToggle} />
+                        <Label className="text-xs uppercase font-bold text-gray-400">Parameters</Label>
+                        <div className="grid grid-cols-2 gap-4 bg-black/20 p-3 rounded-md border border-white/5">
+                            <div className="space-y-1">
+                                <Label className="text-[10px] text-gray-500 font-bold uppercase">Frames/Test</Label>
+                                <Input type="number" value={framesPerTest} onChange={(e) => setFramesPerTest(parseInt(e.target.value))} className="h-8 bg-black/40 border-white/10 text-xs text-center" />
                             </div>
-                            {testWorkerVariations && (
-                                <Input value={workerCountsInput} onChange={(e) => setWorkerCountsInput(e.target.value)} className="h-9 bg-black/40" placeholder="1, 2, 4, max" />
-                            )}
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm">GPU Workgroup variations</span>
-                                <Switch checked={testWorkgroupVariations} onCheckedChange={handleWorkgroupVariationsToggle} />
+                            <div className="space-y-1">
+                                <Label className="text-[10px] text-gray-500 font-bold uppercase">Warmup</Label>
+                                <div className="flex items-center h-8">
+                                    <div className="flex items-center space-x-2">
+                                        <Checkbox id="warmup" checked={warmupRun} onCheckedChange={(v) => setWarmupRun(!!v)} className="border-white/20 data-checked:bg-tropicalTeal data-checked:text-black" />
+                                        <Label htmlFor="warmup" className="text-xs cursor-pointer text-gray-300">Enabled</Label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -380,50 +431,44 @@ export const BenchmarkControls: React.FC<BenchmarkControlsProps> = ({
 
                 <div className="space-y-4">
                     <div className="space-y-2">
-                        <Label className="text-xs uppercase font-bold text-gray-400">Methods to Test</Label>
-                        <div className="grid grid-cols-2 gap-2 bg-black/20 p-3 rounded-md border border-white/5">
-                            {METHOD_OPTIONS.map(opt => (
-                                <div key={opt.id} className="flex items-center space-x-2">
-                                    <Checkbox id={opt.id} checked={selectedMethods.has(opt.id)} onCheckedChange={() => handleMethodToggle(opt.id)} />
-                                    <Label htmlFor={opt.id} className="text-xs cursor-pointer">{opt.label}</Label>
+                        <Label className="text-xs uppercase font-bold text-gray-400">Variations</Label>
+                        <div className="bg-black/20 p-3 rounded-md space-y-4 border border-white/5">
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-medium text-gray-300">WebWorker Variations</span>
+                                    <Checkbox
+                                        checked={testWorkerVariations}
+                                        onCheckedChange={handleWorkerVariationsToggle}
+                                        className="border-white/20 data-checked:bg-tropicalTeal data-checked:text-black"
+                                    />
                                 </div>
-                            ))}
-                        </div>
-                    </div>
+                                {testWorkerVariations && (
+                                    <Input
+                                        value={workerCountsInput}
+                                        onChange={(e) => setWorkerCountsInput(e.target.value)}
+                                        className="h-8 bg-black/40 border-white/10 text-xs font-mono text-tropicalTeal"
+                                        placeholder="1, 2, 4, max"
+                                    />
+                                )}
+                            </div>
 
-                    <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-2">
-                            <Label className="text-xs">Frames/Test</Label>
-                            <Input type="number" value={framesPerTest} onChange={(e) => setFramesPerTest(parseInt(e.target.value))} className="h-9 bg-black/40" />
-                        </div>
-                        <div className="flex items-end pb-2">
-                            <div className="flex items-center space-x-2">
-                                <Checkbox id="warmup" checked={warmupRun} onCheckedChange={(v) => setWarmupRun(!!v)} />
-                                <Label htmlFor="warmup" className="text-xs cursor-pointer">Warmup</Label>
+                            <div className="space-y-2 pt-2 border-t border-white/5">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-medium text-gray-300">GPU Workgroup Variations</span>
+                                    <Checkbox
+                                        checked={testWorkgroupVariations}
+                                        onCheckedChange={handleWorkgroupVariationsToggle}
+                                        className="border-white/20 data-checked:bg-tropicalTeal data-checked:text-black"
+                                    />
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <div className="flex items-center gap-4 bg-black/40 p-3 rounded-lg border border-white/5">
-                <Button
-                    className={`${isRunning ? 'bg-red-500 hover:bg-red-600' : 'bg-teal-600 hover:bg-teal-700'} h-10 px-6 font-bold`}
-                    onClick={isRunning ? cancelBenchmark : runBenchmark}
-                >
-                    {isRunning ? "Stop Benchmark" : "Execute Suite"}
-                </Button>
-                <div className="flex-1 space-y-2">
-                    <div className="flex justify-between text-[11px] font-mono text-gray-400">
-                        <span>{statusMessage}</span>
-                        {isRunning && <span>{Math.round(progress)}%</span>}
-                    </div>
-                    <Progress value={progress} className="h-1.5" />
                 </div>
             </div>
 
             {showSuccess && (
-                <Alert className="bg-teal-900/20 border-teal-500/50">
+                <Alert className="bg-teal-900/20 border-teal-500/50 mt-4">
                     <CheckCircle className="h-4 w-4 text-teal-500" />
                     <AlertTitle className="text-teal-500 font-bold">Benchmark Complete</AlertTitle>
                     <AlertDescription className="text-xs opacity-80">

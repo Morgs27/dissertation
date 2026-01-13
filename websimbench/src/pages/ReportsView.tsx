@@ -22,6 +22,15 @@ import {
     SelectItem,
     SelectTrigger,
     SelectValue,
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
 } from '@/components/ui';
 
 import { ChartBar, Calendar, Trash, PencilSimple, Check, X, Table as TableIcon, Image as ImageIcon, DownloadSimple } from "@phosphor-icons/react";
@@ -208,16 +217,31 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ reports, onClear, onRe
                         <ChartBar className="text-tropicalTeal" size={20} weight="bold" />
                         <h2 className="text-sm font-bold uppercase tracking-widest text-white">Reports</h2>
                     </div>
-                    <Button
-                        size="xs"
-                        variant="ghost"
-                        className="text-gray-500 hover:text-red-400 hover:bg-red-500/10 h-8 w-8 p-0"
-                        onClick={onClear}
-                        disabled={reports.length === 0}
-                        title="Clear All Reports"
-                    >
-                        <Trash size={16} />
-                    </Button>
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button
+                                // size="md"
+                                variant="ghost"
+                                className="text-gray-500 hover:text-red-400 hover:bg-red-500/10 h-8 w-8 p-0"
+                                disabled={reports.length === 0}
+                                title="Clear All Reports"
+                            >
+                                <Trash size={16} />
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="bg-[#1a2e33] border-white/10 text-white">
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Delete all reports?</AlertDialogTitle>
+                                <AlertDialogDescription className="text-gray-400">
+                                    This action cannot be undone. This will permanently delete all your benchmark reports.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel className="bg-transparent border-white/10 text-white hover:bg-white/5 hover:text-white">Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={onClear} className="bg-red-500 hover:bg-red-600 border-red-500 text-white">Delete All</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                 </div>
                 <div className="flex-1 overflow-y-auto py-2">
                     {reports.length === 0 && (
@@ -309,7 +333,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ reports, onClear, onRe
 
                         {/* Tabs for different views */}
                         <Tabs defaultValue="overview" className="flex-1 flex flex-col overflow-hidden">
-                            <TabsList className="bg-black/20 px-4 justify-start h-auto rounded-none border-b border-white/5">
+                            <TabsList className="bg-black/20 p-2 gap-2 justify-start h-auto rounded-none border-b border-white/5 br-10">
                                 <TabsTrigger value="overview" className="text-xs data-[state=active]:bg-teal-600 data-[state=active]:text-white">Overview</TabsTrigger>
                                 <TabsTrigger value="charts" className="text-xs data-[state=active]:bg-teal-600 data-[state=active]:text-white">Charts</TabsTrigger>
                                 <TabsTrigger value="data-tables" className="text-xs data-[state=active]:bg-teal-600 data-[state=active]:text-white">Data Tables</TabsTrigger>
@@ -484,7 +508,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ reports, onClear, onRe
                                         </div>
 
                                         {/* Detailed Stats Accordion */}
-                                        <Accordion type="single" collapsible className="mt-6 space-y-2">
+                                        <Accordion type="single" collapsible className="mt-6 space-y-2 border border-white/0">
                                             {selectedReport.results.map((result, idx) => {
                                                 const hasSpecificStats = result.specificStats && Object.keys(result.specificStats).length > 0;
                                                 if (!hasSpecificStats) return null;
@@ -622,7 +646,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ reports, onClear, onRe
                         </Tabs>
                     </div>
                 ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center">
+                    <div className="flex-1 mt-10 flex flex-col items-center justify-center">
                         <ChartBar size={48} className="text-gray-600 mb-4" />
                         <span className="text-gray-500">Select a report from the list to view details.</span>
                     </div>

@@ -10,7 +10,7 @@ interface CanvasAreaProps {
 export const CanvasArea = ({ canvasRef, gpuCanvasRef, renderMode, isHidden }: CanvasAreaProps) => {
 
     return (
-        <div className={`w-full h-full border-t border-white/5 relative flex bg-transparent items-center justify-center transition-opacity duration-300 `}>
+        <div className={`w-full h-full border-t border-white/5 relative flex bg-transparent items-center justify-center transition-opacity duration-300 ${isHidden ? 'hidden' : ''}`}>
             {/* CPU rendering canvas */}
             <canvas
                 ref={canvasRef}

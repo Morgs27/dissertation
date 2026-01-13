@@ -1,4 +1,5 @@
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import { Panel, PanelGroup, PanelResizeHandle, ImperativePanelHandle } from 'react-resizable-panels';
+import { RenderMode } from '../simulation/types';
 import { EditorPanel } from '../components/EditorPanel';
 import { LogsPanel } from '../components/LogsPanel';
 import { PlaygroundControls } from '../components/Controls/PlaygroundControls';
@@ -13,11 +14,16 @@ import { useLogger } from '../hooks/useLogger';
 import { useSimulationOptions } from '../hooks/useSimulationOptions';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useBenchmarkHistory } from '@/hooks/useBenchmarkHistory';
+import { GameController, Scales, Speedometer } from "@phosphor-icons/react";
 
 export const Home = () => {
     const [activeHomeTab, setActiveHomeTab] = useState('playground');
+    const [benchmarkRenderMode, setBenchmarkRenderMode] = useState<RenderMode>('cpu');
+    const [isBenchmarkRunning, setIsBenchmarkRunning] = useState(false);
+    const controlsPanelRef = useRef<ImperativePanelHandle>(null);
+
 
     // Hooks
     const {
@@ -32,7 +38,7 @@ export const Home = () => {
         handleLoadCode
     } = useCodeCompiler();
 
-    const { options, updateOption, resetOptions } = useSimulationOptions();
+    const { options } = useSimulationOptions();
 
     const {
         method,
@@ -88,58 +94,74 @@ export const Home = () => {
                     <Tabs value={activeHomeTab} onValueChange={setActiveHomeTab} className="flex-1 flex flex-col overflow-hidden">
                         <div className="bg-black/40 border-b border-white/5 px-4 h-12 flex items-center shrink-0">
                             <TabsList className="bg-transparent h-8 p-0 gap-1">
-                                <TabsTrigger value="playground" className="px-4 h-8 data-[state=active]:bg-tropicalTeal data-[state=active]:text-jetBlack rounded-md text-xs font-bold transition-all">Playground</TabsTrigger>
-                                <TabsTrigger value="compare" className="px-4 h-8 data-[state=active]:bg-tropicalTeal data-[state=active]:text-jetBlack rounded-md text-xs font-bold transition-all">Compare</TabsTrigger>
-                                <TabsTrigger value="benchmark" className="px-4 h-8 data-[state=active]:bg-tropicalTeal data-[state=active]:text-jetBlack rounded-md text-xs font-bold transition-all">Benchmark</TabsTrigger>
+                                <TabsTrigger value="playground" className="px-3 h-8 data-[state=active]:bg-tropicalTeal data-[state=active]:text-jetBlack rounded-md text-xs font-bold transition-all flex items-center gap-2">
+                                    <GameController size={16} weight="fill" /> Playground
+                                </TabsTrigger>
+                                <TabsTrigger value="compare" className="px-3 h-8 data-[state=active]:bg-tropicalTeal data-[state=active]:text-jetBlack rounded-md text-xs font-bold transition-all flex items-center gap-2">
+                                    <Scales size={16} weight="fill" /> Compare
+                                </TabsTrigger>
+                                <TabsTrigger value="benchmark" className="px-3 h-8 data-[state=active]:bg-tropicalTeal data-[state=active]:text-jetBlack rounded-md text-xs font-bold transition-all flex items-center gap-2">
+                                    <Speedometer size={16} weight="fill" /> Benchmark
+                                </TabsTrigger>
                             </TabsList>
                         </div>
 
-                        {/* Config Section (Top) */}
-                        <div className="p-4 overflow-y-auto flex-1">
-                            <TabsContent value="playground" className="m-0 focus-visible:outline-none">
-                                <PlaygroundControls
-                                    method={method}
-                                    setMethod={setMethod}
-                                    renderMode={renderMode}
-                                    setRenderMode={setRenderMode}
-                                    isRunning={isRunning}
-                                    handleRun={handleRun}
-                                    fps={fps}
-                                    inputs={inputs}
-                                    definedInputs={definedInputs}
-                                    handleInputChange={handleInputChange}
-                                />
-                            </TabsContent>
+                        <PanelGroup direction="vertical">
+                            {/* Config Section (Top) */}
+                            <Panel ref={controlsPanelRef} defaultSize={40} minSize={20} className="flex flex-col">
+                                <div className="p-4 overflow-y-auto flex-1">
+                                    <TabsContent value="playground" className="m-0 focus-visible:outline-none">
+                                        <PlaygroundControls
+                                            method={method}
+                                            setMethod={setMethod}
+                                            renderMode={renderMode}
+                                            setRenderMode={setRenderMode}
+                                            isRunning={isRunning}
+                                            handleRun={handleRun}
+                                            fps={fps}
+                                            inputs={inputs}
+                                            definedInputs={definedInputs}
+                                            handleInputChange={handleInputChange}
+                                        />
+                                    </TabsContent>
 
-                            <TabsContent value="compare" className="m-0 focus-visible:outline-none">
-                                <CompareControls
-                                    code={code}
-                                    definedInputs={definedInputs}
-                                    canvasRef={canvasRef}
-                                />
-                            </TabsContent>
+                                    <TabsContent value="compare" className="m-0 focus-visible:outline-none">
+                                        <CompareControls
+                                            code={code}
+                                            definedInputs={definedInputs}
+                                            canvasRef={canvasRef}
+                                        />
+                                    </TabsContent>
 
-                            <TabsContent value="benchmark" className="m-0 focus-visible:outline-none">
-                                <BenchmarkControls
-                                    code={code}
-                                    definedInputs={definedInputs}
-                                    onComplete={addReport}
-                                    options={options}
-                                    canvasRef={canvasRef}
-                                    gpuCanvasRef={gpuCanvasRef}
-                                />
-                            </TabsContent>
-                        </div>
+                                    <TabsContent value="benchmark" className="m-0 focus-visible:outline-none">
+                                        <BenchmarkControls
+                                            code={code}
+                                            definedInputs={definedInputs}
+                                            onComplete={addReport}
+                                            options={options}
+                                            canvasRef={canvasRef}
+                                            gpuCanvasRef={gpuCanvasRef}
+                                            onRenderModeChange={setBenchmarkRenderMode}
+                                            onRunningChange={setIsBenchmarkRunning}
+                                        />
+                                    </TabsContent>
+                                </div>
+                            </Panel>
 
-                        {/* Canvas Section (Bottom) */}
-                        <div className="flex-1 min-h-0 bg-black relative shadow-inner">
-                            <CanvasArea
-                                canvasRef={canvasRef}
-                                gpuCanvasRef={gpuCanvasRef}
-                                renderMode={activeHomeTab === 'playground' ? renderMode : 'cpu'}
-                                isHidden={activeHomeTab === 'benchmark' && !isRunning}
-                            />
-                        </div>
+                            <PanelResizeHandle className="h-1 bg-white/5 cursor-row-resize transition-all hover:bg-tropicalTeal/30" />
+
+                            {/* Canvas Section (Bottom) */}
+                            <Panel defaultSize={60} minSize={20}>
+                                <div className="flex-1 h-full min-h-0 bg-black relative shadow-inner">
+                                    <CanvasArea
+                                        canvasRef={canvasRef}
+                                        gpuCanvasRef={gpuCanvasRef}
+                                        renderMode={activeHomeTab === 'benchmark' ? benchmarkRenderMode : (activeHomeTab === 'playground' ? renderMode : 'cpu')}
+                                        isHidden={activeHomeTab === 'benchmark' && !isBenchmarkRunning}
+                                    />
+                                </div>
+                            </Panel>
+                        </PanelGroup>
                     </Tabs>
                 </div>
             </Panel>

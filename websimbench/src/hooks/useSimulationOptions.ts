@@ -9,6 +9,7 @@ export interface SimulationAppearanceOptions {
   agentSize: number;
   agentShape: AgentShape;
   showTrails: boolean;
+  trailOpacity: number;
   trailColor: string;
   logLevel: LogLevel;
 }
@@ -21,6 +22,7 @@ const DEFAULT_OPTIONS: SimulationAppearanceOptions = {
   agentSize: 3,
   agentShape: 'circle',
   showTrails: true,
+  trailOpacity: 1.0,
   trailColor: '#50FFFF', // Light Cyan default
   logLevel: LogLevel.Info
 };

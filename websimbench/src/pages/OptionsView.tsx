@@ -7,12 +7,11 @@ import {
   SelectTrigger,
   SelectValue,
   Slider,
-  Switch,
   Label,
 } from '@/components/ui';
-import { SimulationAppearanceOptions, AgentShape, UpdateOptionFn } from '../hooks/useSimulationOptions';
+import { SimulationAppearanceOptions, UpdateOptionFn } from '../hooks/useSimulationOptions';
 import { LogLevel } from '../simulation/helpers/logger';
-import { Gear, Palette, Monitor, ShootingStar, Info } from "@phosphor-icons/react";
+import { Gear, Palette, Monitor, ShootingStar, Info, Circle, Square } from "@phosphor-icons/react";
 
 interface OptionsViewProps {
   options: SimulationAppearanceOptions;
@@ -142,34 +141,43 @@ export const OptionsView = ({ options, updateOption, resetOptions }: OptionsView
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-3 bg-black/20 p-5 rounded-2xl border border-white/5">
                   <Label className="text-xs font-bold text-gray-400">Agent Shape</Label>
-                  <Select
-                    value={options.agentShape}
-                    onValueChange={(v) => updateOption('agentShape', v as AgentShape)}
-                  >
-                    <SelectTrigger className="bg-black/20 border-white/5 h-11">
-                      <SelectValue placeholder="Select Shape" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-[#1a2e33] border-white/10">
-                      <SelectItem value="circle">Circle</SelectItem>
-                      <SelectItem value="square">Square</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    <Button
+                      variant={options.agentShape === 'circle' ? 'default' : 'outline'}
+                      onClick={() => updateOption('agentShape', 'circle')}
+                      className={`flex-1 ${options.agentShape === 'circle' ? 'bg-tropicalTeal text-jetBlack hover:bg-tropicalTeal/80' : 'bg-transparent border-white/10 hover:bg-white/5'}`}
+                    >
+                      <Circle weight="fill" className="mr-2" /> Circle
+                    </Button>
+                    <Button
+                      variant={options.agentShape === 'square' ? 'default' : 'outline'}
+                      onClick={() => updateOption('agentShape', 'square')}
+                      className={`flex-1 ${options.agentShape === 'square' ? 'bg-tropicalTeal text-jetBlack hover:bg-tropicalTeal/80' : 'bg-transparent border-white/10 hover:bg-white/5'}`}
+                    >
+                      <Square weight="fill" className="mr-2" /> Square
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="space-y-3 bg-black/20 p-5 rounded-2xl border border-white/5 flex flex-col justify-between">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="show-trails" className="text-xs font-bold text-gray-400 cursor-pointer">
-                      Render Trails
+                  <div className="flex justify-between items-center mb-2">
+                    <Label htmlFor="trail-opacity" className="text-xs font-bold text-gray-400">
+                      Trail Opacity
                     </Label>
-                    <Switch
-                      id="show-trails"
-                      checked={options.showTrails}
-                      onCheckedChange={(checked) => updateOption('showTrails', checked)}
-                    />
+                    <span className="text-xs font-mono bg-tropicalTeal/10 text-tropicalTeal px-2 py-1 rounded-md">{options.trailOpacity?.toFixed(2) ?? "1.00"}</span>
                   </div>
-                  <p className="text-[10px] text-gray-500 leading-tight pr-4 flex items-start gap-1">
+                  <Slider
+                    id="trail-opacity"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={[options.trailOpacity ?? 1]}
+                    onValueChange={(v) => updateOption('trailOpacity', v[0])}
+                    className="py-2"
+                  />
+                  <p className="text-[10px] text-gray-500 leading-tight flex items-start gap-1 mt-2">
                     <Info size={12} className="shrink-0 mt-0.5" />
-                    Enables persistent visual paths for agents. Note: high performance cost.
+                    Adjusts the intensity of the agent trails. 0 = No trails.
                   </p>
                 </div>
               </div>

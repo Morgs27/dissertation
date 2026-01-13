@@ -17,6 +17,7 @@ export type SimulationAppearance = {
     agentSize: number;
     agentShape: 'circle' | 'square';
     showTrails: boolean;
+    trailOpacity?: number;
     trailColor: string;
 }
 
