@@ -69,10 +69,12 @@ export class ComputeEngine {
         // Apply blur (3x3 kernel) and decay
         const temp = new Float32Array(this.trailMapRead.length);
 
+        const f = Math.fround; // Alias for readability
+
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
-                let sum = 0;
-                let count = 0;
+                let sum = f(0);
+                let count = f(0);
 
                 for (let dy = -1; dy <= 1; dy++) {
                     for (let dx = -1; dx <= 1; dx++) {
@@ -85,16 +87,24 @@ export class ComputeEngine {
                         if (ny < 0) ny += height;
                         if (ny >= height) ny -= height;
 
-                        sum += this.trailMapRead[ny * width + nx];
-                        count++;
+                        sum = f(sum + this.trailMapRead[ny * width + nx]);
+                        count = f(count + 1);
                     }
                 }
 
                 const idx = y * width + x;
-                const blurred = sum / count;
+                const blurred = f(sum / count);
                 const current = this.trailMapRead[idx];
-                const diffused = current * 0.1 + blurred * 0.9;
-                temp[idx] = diffused * (1.0 - decayFactor);
+
+                // Formula: diffused = current * 0.1 + blurred * 0.9
+                // Must wrap each step
+                const term1 = f(current * f(0.1));
+                const term2 = f(blurred * f(0.9));
+                const diffused = f(term1 + term2);
+
+                // temp[idx] = diffused * (1.0 - decayFactor)
+                const decayMult = f(f(1.0) - f(decayFactor));
+                temp[idx] = f(diffused * decayMult);
             }
         }
 

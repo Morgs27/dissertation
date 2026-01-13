@@ -1,0 +1,248 @@
+{
+  "simulation": "boids",
+  "generatedAt": "2026-01-13T11:43:01.574Z",
+  "numFrames": 10,
+  "numAgents": 100,
+  "comparisons": [
+    {
+      "method": "WebAssembly",
+      "vsJavaScript": [
+        {
+          "frame": 0,
+          "maxPosDiff": 0.021467115231703377,
+          "avgPosDiff": 0.0015670260904935502,
+          "minPosDiff": 0.00000762939453125,
+          "passed": true
+        },
+        {
+          "frame": 1,
+          "maxPosDiff": 0.06095857011440944,
+          "avgPosDiff": 0.004400827742645343,
+          "minPosDiff": 0.0000152587890625,
+          "passed": true
+        },
+        {
+          "frame": 2,
+          "maxPosDiff": 0.1152651996118619,
+          "avgPosDiff": 0.008476897458067845,
+          "minPosDiff": 0.00002288818359375,
+          "passed": true
+        },
+        {
+          "frame": 3,
+          "maxPosDiff": 0.1816165149233377,
+          "avgPosDiff": 0.012749137307332457,
+          "minPosDiff": 0.00002288818359375,
+          "passed": true
+        },
+        {
+          "frame": 4,
+          "maxPosDiff": 0.25787476488531214,
+          "avgPosDiff": 0.01739739869577546,
+          "minPosDiff": 0.00006823937919616058,
+          "passed": true
+        },
+        {
+          "frame": 5,
+          "maxPosDiff": 0.3420603145625041,
+          "avgPosDiff": 0.022535386789525724,
+          "minPosDiff": 0.0001332416473127211,
+          "passed": true
+        },
+        {
+          "frame": 6,
+          "maxPosDiff": 0.5218357775633885,
+          "avgPosDiff": 0.02897582399714912,
+          "minPosDiff": 0.00020142179538641487,
+          "passed": true
+        },
+        {
+          "frame": 7,
+          "maxPosDiff": 0.7083128206383517,
+          "avgPosDiff": 0.03594715568337267,
+          "minPosDiff": 0.00032592787724752543,
+          "passed": true
+        },
+        {
+          "frame": 8,
+          "maxPosDiff": 0.8705821807065839,
+          "avgPosDiff": 0.04327706280982593,
+          "minPosDiff": 0.00045116758550941524,
+          "passed": true
+        },
+        {
+          "frame": 9,
+          "maxPosDiff": 1.0081039241160707,
+          "avgPosDiff": 0.050880793353591545,
+          "minPosDiff": 0.0002729575167846423,
+          "passed": true
+        }
+      ],
+      "overall": {
+        "avgError": 0.022620750992777966,
+        "maxError": 1.0081039241160707,
+        "minError": 0.00000762939453125
+      }
+    },
+    {
+      "method": "WebWorkers",
+      "vsJavaScript": [
+        {
+          "frame": 0,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 1,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 2,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 3,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 4,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 5,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 6,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 7,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 8,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 9,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        }
+      ],
+      "overall": {
+        "avgError": 0,
+        "maxError": 0,
+        "minError": 0
+      }
+    },
+    {
+      "method": "WebGPU",
+      "vsJavaScript": [
+        {
+          "frame": 0,
+          "maxPosDiff": 0.002913270090889421,
+          "avgPosDiff": 0.00008635965895203133,
+          "minPosDiff": 0.000030517578125,
+          "passed": true
+        },
+        {
+          "frame": 1,
+          "maxPosDiff": 0.005702787415428749,
+          "avgPosDiff": 0.00022517119806469014,
+          "minPosDiff": 9.5367431640625e-7,
+          "passed": true
+        },
+        {
+          "frame": 2,
+          "maxPosDiff": 0.006476416817419745,
+          "avgPosDiff": 0.00040620317184297025,
+          "minPosDiff": 0.00000667572021484375,
+          "passed": true
+        },
+        {
+          "frame": 3,
+          "maxPosDiff": 0.012868000173932763,
+          "avgPosDiff": 0.0006246676190414176,
+          "minPosDiff": 0.00000762939453125,
+          "passed": true
+        },
+        {
+          "frame": 4,
+          "maxPosDiff": 0.02292057034810803,
+          "avgPosDiff": 0.0009204093214089996,
+          "minPosDiff": 0.0000152587890625,
+          "passed": true
+        },
+        {
+          "frame": 5,
+          "maxPosDiff": 0.037079874660525466,
+          "avgPosDiff": 0.00129782050541844,
+          "minPosDiff": 0.0000152587890625,
+          "passed": true
+        },
+        {
+          "frame": 6,
+          "maxPosDiff": 0.05477252379376116,
+          "avgPosDiff": 0.001747859602479556,
+          "minPosDiff": 0.000026702880859375,
+          "passed": true
+        },
+        {
+          "frame": 7,
+          "maxPosDiff": 0.07493534604469539,
+          "avgPosDiff": 0.0022562124043914453,
+          "minPosDiff": 0.000026702880859375,
+          "passed": true
+        },
+        {
+          "frame": 8,
+          "maxPosDiff": 0.09670909280278799,
+          "avgPosDiff": 0.0028241830347743263,
+          "minPosDiff": 0.00002288818359375,
+          "passed": true
+        },
+        {
+          "frame": 9,
+          "maxPosDiff": 0.11949274917201172,
+          "avgPosDiff": 0.0035017965941598174,
+          "minPosDiff": 0.000030517578125,
+          "passed": true
+        }
+      ],
+      "overall": {
+        "avgError": 0.0013890683110533695,
+        "maxError": 0.11949274917201172,
+        "minError": 9.5367431640625e-7
+      }
+    }
+  ]
+}

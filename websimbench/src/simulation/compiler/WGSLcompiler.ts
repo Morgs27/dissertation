@@ -25,6 +25,7 @@ const COMMANDS: CommandMap = {
 
 const WGSL_HELPERS = `
 
+
 fn _sense(x: f32, y: f32, vx: f32, vy: f32, angle_offset: f32, dist: f32) -> f32 {
     let angle_cur = atan2(vy, vx);
     let angle_new = angle_cur + angle_offset;
@@ -35,8 +36,8 @@ fn _sense(x: f32, y: f32, vx: f32, vy: f32, angle_offset: f32, dist: f32) -> f32
     let h = inputs.height;
     
     // Wrap coordinates
-    var ix = i32(floor(sx));
-    var iy = i32(floor(sy));
+    var ix = i32(trunc(sx));
+    var iy = i32(trunc(sy));
     
     if (ix < 0) { ix += i32(w); }
     if (ix >= i32(w)) { ix -= i32(w); }
@@ -52,8 +53,8 @@ fn _deposit(x: f32, y: f32, amount: f32) {
     let w = inputs.width;
     let h = inputs.height;
     
-    var ix = i32(floor(x));
-    var iy = i32(floor(y));
+    var ix = i32(trunc(x));
+    var iy = i32(trunc(y));
     
     if (ix < 0) { ix += i32(w); }
     if (ix >= i32(w)) { ix -= i32(w); }
@@ -62,8 +63,10 @@ fn _deposit(x: f32, y: f32, amount: f32) {
     
     let idx = u32(iy * i32(w) + ix);
     // Write to trailMapWrite (deposits for this frame)
-    // Racy but acceptable for visual slime mold simulation
-    trailMapWrite[idx] += amount;
+    // Use atomic add with fixed-point conversion (x10000) because f32 atomics aren't supported
+    // and standard += is racy/divergent on GPU.
+    let fixed_amount = i32(amount * 10000.0);
+    atomicAdd(&trailMapWrite[idx], fixed_amount);
 }
 `;
 
@@ -506,7 +509,7 @@ struct Agent {
         : '';
 
     const trailMapWriteBinding = hasTrailMap
-        ? `@group(0) @binding(4) var<storage, read_write> trailMapWrite : array<f32>;`
+        ? `@group(0) @binding(4) var<storage, read_write> trailMapWrite : array<atomic<i32>>;`
         : '';
 
     const randomValuesBinding = hasRandomValues

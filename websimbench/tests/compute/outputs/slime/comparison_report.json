@@ -1,0 +1,248 @@
+{
+  "simulation": "slime",
+  "generatedAt": "2026-01-13T11:43:02.092Z",
+  "numFrames": 10,
+  "numAgents": 100,
+  "comparisons": [
+    {
+      "method": "WebAssembly",
+      "vsJavaScript": [
+        {
+          "frame": 0,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 1,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 2,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 3,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 4,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 5,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 6,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 7,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 8,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 9,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        }
+      ],
+      "overall": {
+        "avgError": 0,
+        "maxError": 0,
+        "minError": 0
+      }
+    },
+    {
+      "method": "WebWorkers",
+      "vsJavaScript": [
+        {
+          "frame": 0,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 1,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 2,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 3,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 4,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 5,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 6,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 7,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 8,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 9,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        }
+      ],
+      "overall": {
+        "avgError": 0,
+        "maxError": 0,
+        "minError": 0
+      }
+    },
+    {
+      "method": "WebGPU",
+      "vsJavaScript": [
+        {
+          "frame": 0,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 1,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 2,
+          "maxPosDiff": 0.000030517578125,
+          "avgPosDiff": 3.0517578125e-7,
+          "minPosDiff": 0.000030517578125,
+          "passed": true
+        },
+        {
+          "frame": 3,
+          "maxPosDiff": 0.00008631674575031098,
+          "avgPosDiff": 0.0000020838705825031095,
+          "minPosDiff": 0.00006103515625,
+          "passed": true
+        },
+        {
+          "frame": 4,
+          "maxPosDiff": 0.00017794652999405825,
+          "avgPosDiff": 0.000005703542560746493,
+          "minPosDiff": 0.000097703922079969,
+          "passed": true
+        },
+        {
+          "frame": 5,
+          "maxPosDiff": 0.0003571990939550667,
+          "avgPosDiff": 0.000012341421203916766,
+          "minPosDiff": 0.00006103515625,
+          "passed": true
+        },
+        {
+          "frame": 6,
+          "maxPosDiff": 0.00060190072397815,
+          "avgPosDiff": 0.000024598585260754855,
+          "minPosDiff": 0.000030517578125,
+          "passed": true
+        },
+        {
+          "frame": 7,
+          "maxPosDiff": 0.0009016898622249852,
+          "avgPosDiff": 0.00004220452766126705,
+          "minPosDiff": 0.000057220458984375,
+          "passed": true
+        },
+        {
+          "frame": 8,
+          "maxPosDiff": 0.0012587344954614467,
+          "avgPosDiff": 0.0000663747289691363,
+          "minPosDiff": 0.00004981978563922492,
+          "passed": true
+        },
+        {
+          "frame": 9,
+          "maxPosDiff": 0.0013969085956006863,
+          "avgPosDiff": 0.00009588356968118008,
+          "minPosDiff": 0.000030517578125,
+          "passed": true
+        }
+      ],
+      "overall": {
+        "avgError": 0.000024949542170075468,
+        "maxError": 0.0013969085956006863,
+        "minError": 0.000030517578125
+      }
+    }
+  ]
+}
