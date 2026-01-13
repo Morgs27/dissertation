@@ -1,0 +1,248 @@
+{
+  "simulation": "gravity",
+  "generatedAt": "2026-01-13T14:08:41.401Z",
+  "numFrames": 10,
+  "numAgents": 100,
+  "comparisons": [
+    {
+      "method": "WebAssembly",
+      "vsJavaScript": [
+        {
+          "frame": 0,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 1,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 2,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 3,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 4,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 5,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 6,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 7,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 8,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 9,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        }
+      ],
+      "overall": {
+        "avgError": 0,
+        "maxError": 0,
+        "minError": 0
+      }
+    },
+    {
+      "method": "WebWorkers",
+      "vsJavaScript": [
+        {
+          "frame": 0,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 1,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 2,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 3,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 4,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 5,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 6,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 7,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 8,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 9,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        }
+      ],
+      "overall": {
+        "avgError": 0,
+        "maxError": 0,
+        "minError": 0
+      }
+    },
+    {
+      "method": "WebGPU",
+      "vsJavaScript": [
+        {
+          "frame": 0,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 1,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 2,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 3,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 4,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 5,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 6,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 7,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 8,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        },
+        {
+          "frame": 9,
+          "maxPosDiff": 0,
+          "avgPosDiff": 0,
+          "minPosDiff": 0,
+          "passed": true
+        }
+      ],
+      "overall": {
+        "avgError": 0,
+        "maxError": 0,
+        "minError": 0
+      }
+    }
+  ]
+}

@@ -32,3 +32,15 @@ Reverted: Experimental Math.fround patches were reverted to keep the codebase cl
 Updated: 
 compute.test.ts
  tolerances adjusted for realistic expectations.
+
+
+ --- More notes
+
+ Excellent! The precision analysis is very informative. Now I have a clear picture:
+
+WebWorkers: Perfect parity (0 error) - confirmed
+WebAssembly: Error grows linearly at ~1.9e-5 per frame for simple arithmetic
+WebGPU: Same error as WASM (they both use float32)
+The error is due to float64 (JavaScript) vs float32 (WASM/WebGPU) precision differences. This is an inherent limitation.
+
+Now let me create an implementation plan that addresses this and provides a solution:
