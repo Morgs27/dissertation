@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { CircleNotch, FloppyDisk, UploadSimple, Cube, FileJs, GraphicsCard, PencilLine, PencilLineIcon, CubeIcon, FileJsIcon, GraphicsCardIcon } from "@phosphor-icons/react";
@@ -32,6 +33,8 @@ export const EditorPanel = ({
   compiledCode,
   isCompiling
 }: EditorPanelProps) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   return (
     <Tabs defaultValue="sim-code" className="h-full flex flex-col bg-[#16262b]">
       <div className="h-12 flex items-center justify-between px-3 bg-black/40 border-b border-white/5 shrink-0">
@@ -62,8 +65,32 @@ export const EditorPanel = ({
             </div>
           )}
 
-          {/* Save Button Here */}
-          {/* Load button Here */}
+          <Button
+            variant="ghost"
+            size="icon-lg"
+            className="h-8 w-8 text-tropicalTeal hover:text-tropicalTeal hover:bg-white/10"
+            onClick={handleSaveCode}
+            title="Save Simulation"
+          >
+            <FloppyDisk size={18} />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon-lg"
+            className="h-8 w-8 text-tropicalTeal hover:text-tropicalTeal hover:bg-white/10"
+            onClick={() => fileInputRef.current?.click()}
+            title="Load Simulation"
+          >
+            <UploadSimple size={18} />
+          </Button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleLoadCode}
+            className="hidden"
+            accept=".js,.ts"
+          />
         </div>
       </div>
 

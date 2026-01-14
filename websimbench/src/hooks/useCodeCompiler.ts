@@ -80,6 +80,7 @@ export function useCodeCompiler() {
       if (content) setCode(content);
     };
     reader.readAsText(file);
+    e.target.value = '';
   };
 
   return {
