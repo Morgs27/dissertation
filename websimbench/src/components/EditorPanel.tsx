@@ -89,7 +89,7 @@ export const EditorPanel = ({
             ref={fileInputRef}
             onChange={handleLoadCode}
             className="hidden"
-            accept=".js,.ts"
+            accept=".js,.ts,.txt,.sim"
           />
         </div>
       </div>
