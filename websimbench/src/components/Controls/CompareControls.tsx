@@ -92,7 +92,7 @@ const AVAILABLE_METHODS: Method[] = ['JavaScript', 'WebWorkers', 'WebAssembly', 
 
 export const CompareControls = ({ code, definedInputs, canvasRef }: CompareControlsProps) => {
     const [isRunning, setIsRunning] = useState(false);
-    const [selectedMethods, setSelectedMethods] = useState<Method[]>(['JavaScript', 'WebAssembly']);
+    const [selectedMethods, setSelectedMethods] = useState<Method[]>(AVAILABLE_METHODS);
     const [agentsByMethod, setAgentsByMethod] = useState<Record<Method, Agent[]>>({} as Record<Method, Agent[]>);
     const [frame, setFrame] = useState(0);
     const [errorStats, setErrorStats] = useState<Record<string, { avg: number, max: number }>>({});
