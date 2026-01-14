@@ -99,7 +99,6 @@
 
         // Execute DSL code
         let nearbyAgents = _neighbors(f(inputs.perceptionRadius)); 
-        if (inputs.print) inputs.print(id, nearbyAgents.length);
         if ((nearbyAgents.length > f(0))) {
     
         let avgVx = _mean(nearbyAgents, 'vx'); 
@@ -116,10 +115,10 @@
         }
         let separationX = f(0); 
         let separationY = f(0); 
-        for (let i = 0; (i < nearbyAgents.length); i++) {
-                
-        let neighbor_x = f(nearbyAgents[i].x); 
-        let neighbor_y = f(nearbyAgents[i].y); 
+        for (const neighbor of nearbyAgents) {
+            
+        let neighbor_x = f(neighbor.x); 
+        let neighbor_y = f(neighbor.y); 
         let dx = f(x - neighbor_x); 
         let dy = f(y - neighbor_y); 
         let dist2 = f(f(dx * dx) + f(dy * dy)); 

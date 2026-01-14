@@ -37,12 +37,20 @@ fn main(
     let i = group_index * 64u + local_id.x;
     if (i < arrayLength(&agents)) {
         var agent = agents[i];
+        var x = agent.x;
+        var y = agent.y;
+        var vx = agent.vx;
+        var vy = agent.vy;
         
-        // Load random values
+        // Load random values based on agent.id for parity with JS
         
         
-        agent.y += inputs.gravity;
+        y = y + inputs.gravity;
         
+        agent.x = x;
+        agent.y = y;
+        agent.vx = vx;
+        agent.vy = vy;
         agents[i] = agent;
     }
 }
