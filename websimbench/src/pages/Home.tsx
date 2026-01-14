@@ -14,7 +14,7 @@ import { useLogger } from '../hooks/useLogger';
 import { useSimulationOptions } from '../hooks/useSimulationOptions';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useBenchmarkHistory } from '@/hooks/useBenchmarkHistory';
 import { GameController, Scales, Speedometer } from "@phosphor-icons/react";
 

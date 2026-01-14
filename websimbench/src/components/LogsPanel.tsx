@@ -1,4 +1,3 @@
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Trash, Terminal } from "@phosphor-icons/react";
 import { LogMessage } from '../hooks/useLogger';
@@ -11,7 +10,7 @@ interface LogsPanelProps {
 }
 
 export const LogsPanel = ({ logs, onClear }: LogsPanelProps) => {
-  const [filterLevel, setFilterLevel] = useState<string>('All');
+  const [filterLevel] = useState<string>('All');
 
   const filteredLogs = logs.filter(log => {
     if (filterLevel === 'All') return true;

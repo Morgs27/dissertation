@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { CircleNotch, FloppyDisk, UploadSimple, Cube, FileJs, GraphicsCard, PencilLine, PencilLineIcon, CubeIcon, FileJsIcon, GraphicsCardIcon } from "@phosphor-icons/react";
+import { CircleNotch, FloppyDisk, UploadSimple, PencilLineIcon, CubeIcon, FileJsIcon, GraphicsCardIcon } from "@phosphor-icons/react";
 import Editor from 'react-simple-code-editor';
 import { highlight, languages } from 'prismjs';
 import 'prismjs/components/prism-clike';
