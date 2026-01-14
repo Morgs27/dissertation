@@ -5,8 +5,20 @@ import Logger from '../simulation/helpers/logger';
 import { formatCode } from '../helpers/codeFormatter';
 import { useLocalStorageString } from './useLocalStorage';
 
+const DEFAULT_CODE = `input gravity = 9.8;
+
+r = random();
+
+moveDown(inputs.gravity);
+
+var upVariable = r * 20;
+
+moveUp(upVariable);
+
+borderWrapping();`;
+
 export function useCodeCompiler() {
-  const [code, setCode] = useLocalStorageString('websimbench_code', '');
+  const [code, setCode] = useLocalStorageString('websimbench_code', DEFAULT_CODE);
   const [compiledCode, setCompiledCode] = useState<{ js: string; wasm: string; wgsl: string }>({ js: '', wasm: '', wgsl: '' });
   const [inputs, setInputs] = useState<Record<string, number>>({ agentCount: 1000 });
   const [definedInputs, setDefinedInputs] = useState<InputDefinition[]>([]);
