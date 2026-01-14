@@ -8,7 +8,6 @@ import { useSimulationOptions, UpdateOptionFn } from './hooks/useSimulationOptio
 
 import { Toaster } from "@/components/ui/sonner";
 import { Home } from './pages/Home';
-import { useTheme } from './hooks/useTheme';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
