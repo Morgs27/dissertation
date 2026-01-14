@@ -1,4 +1,6 @@
-1. Fix Error between methods
-2. Design new editor & loading files
-3. Host online
 
+
+1. Fix error (or not justify) - Tonight
+2. Storage of simulations. Loading and saving - Tonight
+3. Host online - Morning
+4. Graphs & Writeup - Morning
