@@ -9,9 +9,9 @@ import GPU from '../../src/simulation/helpers/gpu';
 import Logger, { LogLevel } from '../../src/simulation/helpers/logger';
 
 // Test configuration
-const NUM_FRAMES = 10;  // Increased from 5 for more thorough testing
+const NUM_FRAMES = 300;
 const NUM_AGENTS = 100;
-const WIDTH = 800;
+const WIDTH = 600;
 const HEIGHT = 600;
 
 // Methods to test
@@ -137,6 +137,29 @@ interface MethodResult {
     available: boolean;
 }
 
+// Interface for position data export
+interface PositionDataExport {
+    simulation: string;
+    generatedAt: string;
+    numFrames: number;
+    numAgents: number;
+    width: number;
+    height: number;
+    methods: Record<string, {
+        available: boolean;
+        frames: Array<{
+            frame: number;
+            agents: Array<{
+                id: number;
+                x: number;
+                y: number;
+                vx: number;
+                vy: number;
+            }>;
+        }>;
+    }>;
+}
+
 describe('Compute Cross-Method Comparison', () => {
     for (const [simulationName, sourceCode] of Object.entries(SIMULATIONS)) {
         describe(`${simulationName} simulation`, () => {
@@ -216,6 +239,37 @@ describe('Compute Cross-Method Comparison', () => {
 
                     results.set(method, { method, frames, available: true });
                 }
+
+                // Build and export position data for all methods
+                const positionData: PositionDataExport = {
+                    simulation: simulationName,
+                    generatedAt: new Date().toISOString(),
+                    numFrames: NUM_FRAMES,
+                    numAgents: NUM_AGENTS,
+                    width: WIDTH,
+                    height: HEIGHT,
+                    methods: {}
+                };
+
+                for (const [method, result] of results) {
+                    positionData.methods[method] = {
+                        available: result.available,
+                        frames: result.frames.map((agents, frameIdx) => ({
+                            frame: frameIdx,
+                            agents: agents.map(a => ({
+                                id: a.id,
+                                x: a.x,
+                                y: a.y,
+                                vx: a.vx,
+                                vy: a.vy
+                            }))
+                        }))
+                    };
+                }
+
+                // Write position data to file
+                const positionDataPath = `tests/compute/outputs/${simulationName}/positions_data.json`;
+                await writeOutputFile(positionDataPath, JSON.stringify(positionData, null, 2));
 
                 // Use JavaScript as the reference for comparison
                 const jsResult = results.get('JavaScript');
