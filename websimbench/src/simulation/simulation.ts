@@ -44,12 +44,14 @@ export class Simulation {
 
         this.ComputeEngine = new ComputeEngine(compilationResult, this.PerformanceMonitor, options.agents, options.workers);
 
+        const speciesCount = compilationResult.speciesCount || 1;
         this.agents = Array.from({ length: options.agents }, (_, i) => ({
             id: i,
             x: Math.random() * canvas.width,
             y: Math.random() * canvas.height,
             vx: (Math.random() - 0.5) * 2, // Random velocity between -1 and 1
-            vy: (Math.random() - 0.5) * 2
+            vy: (Math.random() - 0.5) * 2,
+            species: i % speciesCount
         }));
 
         this.initTrailMap(canvas.width, canvas.height);

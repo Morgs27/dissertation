@@ -27,6 +27,8 @@ const COMMANDS: Record<
   sense: { target: "x", op: "complex" },
   enableTrails: { target: "x", op: "complex" },
   print: { target: "x", op: "complex" },
+  species: { target: "x", op: "complex" },
+  avoidObstacles: { target: "x", op: "complex" },
 };
 
 /**
@@ -382,7 +384,7 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
           ))
         ))
         (local.set $_loop_idx (i32.add (local.get $_loop_idx) (i32.const 1)))
-        (local.set $_loop_ptr (i32.add (local.get $_loop_ptr) (i32.const 20)))
+        (local.set $_loop_ptr (i32.add (local.get $_loop_ptr) (i32.const 24)))
         (br $_neighbor_loop)
       )
     )`;
@@ -513,6 +515,8 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
         } else if (parsed.command === "print") {
           const argExpr = normalizeWASMExpression(parsed.argument, randomInputs);
           return `(call $print (local.get $_agent_id) ${argExpr})`;
+        } else if (parsed.command === "species" || parsed.command === "avoidObstacles") {
+          return `nop`;
         }
         return `;; TODO: ${parsed.command} not yet implemented in WASM`;
       } else {
@@ -634,10 +638,10 @@ export const compileDSLtoWAT = (
 
             if (loopInfo.type === 'nearby') {
               // Close 2 ifs, then loop update, then loop/block
-              statements.push(`          ))\n        ))\n        (local.set $_for_idx (i32.add (local.get $_for_idx) (i32.const 1)))\n        (local.set $_for_ptr (i32.add (local.get $_for_ptr) (i32.const 20)))\n        (br $_for_loop)\n      )\n    )`);
+              statements.push(`          ))\n        ))\n        (local.set $_for_idx (i32.add (local.get $_for_idx) (i32.const 1)))\n        (local.set $_for_ptr (i32.add (local.get $_for_ptr) (i32.const 24)))\n        (br $_for_loop)\n      )\n    )`);
             } else if (loopInfo.type === 'foreach') {
               // Close 2 ifs, then loop update, then loop/block (using foreach vars)
-              statements.push(`          ))\n        ))\n        (local.set $_foreach_idx (i32.add (local.get $_foreach_idx) (i32.const 1)))\n        (local.set $_foreach_ptr (i32.add (local.get $_foreach_ptr) (i32.const 20)))\n        (br $_foreach_loop)\n      )\n    )`);
+              statements.push(`          ))\n        ))\n        (local.set $_foreach_idx (i32.add (local.get $_foreach_idx) (i32.const 1)))\n        (local.set $_foreach_ptr (i32.add (local.get $_foreach_ptr) (i32.const 24)))\n        (br $_foreach_loop)\n      )\n    )`);
             } else if (loopInfo.type === 'standard') {
               const varName = loopInfo.var;
               // Standard loop update
@@ -691,7 +695,7 @@ export const compileDSLtoWAT = (
     ;; execute DSL
     ${statements.join("\n    ")}
 
-    ;; store back
+    ;; store back (species at offset 20 is preserved, not modified)
     (f32.store (i32.add (local.get $ptr) (i32.const 4)) (local.get $x))
     (f32.store (i32.add (local.get $ptr) (i32.const 8)) (local.get $y))
     (f32.store (i32.add (local.get $ptr) (i32.const 12)) (local.get $vx))
@@ -771,7 +775,7 @@ export const compileDSLtoWAT = (
           (br_if $exit (i32.ge_u (local.get $_outer_i) (local.get $count)))
           ${agentKernel}
           (local.set $_outer_i (i32.add (local.get $_outer_i) (i32.const 1)))
-          (local.set $ptr (i32.add (local.get $ptr) (i32.const 20)))
+          (local.set $ptr (i32.add (local.get $ptr) (i32.const 24)))
           (br $loop)
         )
       )

@@ -22,6 +22,8 @@ const COMMANDS: CommandMap = {
     sense: '_sense(x, y, vx, vy, {arg})', // Templated call
     enableTrails: '', // Configuration only
     print: 'agentLogs[i] = vec2<f32>(1.0, {arg});',
+    species: '', // Configuration only
+    avoidObstacles: '', // JS-only for now
 };
 
 const WGSL_HELPERS = `
@@ -497,6 +499,7 @@ struct Agent {
     y  : f32,
     vx : f32,
     vy : f32,
+    species : f32,
 };
 
 @group(0) @binding(0) var<storage, read_write> agents : array<Agent>;
@@ -562,6 +565,7 @@ fn main(
         agent.y = y;
         agent.vx = vx;
         agent.vy = vy;
+        // species is preserved (not modified by DSL code)
         agents[i] = agent;
     }
 }`.trim();

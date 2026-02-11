@@ -20,6 +20,8 @@ export type AVAILABLE_COMMANDS =
     | 'deposit'
     | 'enableTrails'
     | 'print'
+    | 'species'
+    | 'avoidObstacles'
 
 export const AVAILABLE_COMMANDS_LIST: AVAILABLE_COMMANDS[] = [
     'moveUp',
@@ -40,6 +42,8 @@ export const AVAILABLE_COMMANDS_LIST: AVAILABLE_COMMANDS[] = [
     'deposit',
     'enableTrails',
     'print',
+    'species',
+    'avoidObstacles',
 ];
 
 export type CommandMap = Record<AVAILABLE_COMMANDS, string>;

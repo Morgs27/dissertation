@@ -5,7 +5,7 @@ import { WORKGROUP_SIZE } from "../compiler/WGSLcompiler";
 
 const MAX_AGENTS = 100_000;
 const FLOAT_SIZE = 4;
-const COMPONENTS_PER_AGENT = 5; // id, x, y, vx, vy
+const COMPONENTS_PER_AGENT = 6; // id, x, y, vx, vy, species
 
 export type WebGPURenderResources = {
     device: GPUDevice;
@@ -495,6 +495,7 @@ export default class WebGPU {
                     updatedAgents[i].y = data[base + 2];
                     updatedAgents[i].vx = data[base + 3];
                     updatedAgents[i].vy = data[base + 4];
+                    updatedAgents[i].species = data[base + 5];
                 }
 
                 this.Logger.log(`Readback complete: Agent[0] updated to x=${updatedAgents[0].x.toFixed(2)}, y=${updatedAgents[0].y.toFixed(2)}`);
@@ -585,6 +586,7 @@ export default class WebGPU {
             data[base + 2] = a.y;
             data[base + 3] = a.vx;
             data[base + 4] = a.vy;
+            data[base + 5] = a.species || 0;
         }
 
         this.gpuHelper.writeBuffer(device, this.agentStorageBuffer!, data);

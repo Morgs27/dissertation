@@ -44,6 +44,7 @@ export type CompilationResult = {
     jsCode: string;
     WASMCode: string;
     trailEnvironmentConfig?: TrailEnvironmentConfig;
+    speciesCount?: number;
 }
 
 export type Agent = {
@@ -52,6 +53,14 @@ export type Agent = {
     y: number;
     vx: number;
     vy: number;
+    species: number;
+}
+
+export type Obstacle = {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
 }
 
 export type Method = "WebGL" | "WebAssembly" | "JavaScript" | "WebWorkers" | "WebGPU"
