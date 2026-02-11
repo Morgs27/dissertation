@@ -63,9 +63,14 @@ function transpileLine(line: string, randomInputs: Set<string> = new Set()): str
         case 'else':
             return 'else {';
 
-        case 'foreach': ``
-            return `for (const ${parsed.varName} of ${parsed.collection}) {
+        case 'foreach': {
+            const loopVar = parsed.varName || parsed.itemAlias;
+            if (loopVar) {
+                return `for (const ${loopVar} of ${parsed.collection}) {
             `;
+            }
+            return '';
+        }
 
         case 'for': {
             // Handle for loops: for (var i = 0; i < n; i++)
@@ -249,24 +254,25 @@ export const compileDSLtoJS = (lines: LineInfo[], _inputs: string[], logger: Log
                         writeMap[iy * w + ix] = f(writeMap[iy * w + ix] + amt);
                     };
 
-                    const _avoidObstacles = (strength) =&gt; {
+
+                    const _avoidObstacles = (strength) => {
                         const obstacles = inputs.obstacles || [];
                         const str = f(strength || 1);
-                        for (let oi = 0; oi &lt; obstacles.length; oi++) {
+                        for (let oi = 0; oi < obstacles.length; oi++) {
                             const ob = obstacles[oi];
                             const margin = f(5);
                             const ox1 = f(ob.x - margin);
                             const oy1 = f(ob.y - margin);
                             const ox2 = f(ob.x + ob.w + margin);
                             const oy2 = f(ob.y + ob.h + margin);
-                            if (x &gt; ox1 &amp;&amp; x &lt; ox2 &amp;&amp; y &gt; oy1 &amp;&amp; y &lt; oy2) {
+                            if (x > ox1 && x < ox2 && y > oy1 && y < oy2) {
                                 // Inside obstacle region — push away from center
                                 const cx = f(ob.x + f(ob.w * f(0.5)));
                                 const cy = f(ob.y + f(ob.h * f(0.5)));
                                 let dx = f(x - cx);
                                 let dy = f(y - cy);
                                 const dist = f(Math.sqrt(f(f(dx * dx) + f(dy * dy))));
-                                if (dist &gt; f(0.001)) {
+                                if (dist > f(0.001)) {
                                     dx = f(dx / dist);
                                     dy = f(dy / dist);
                                 }

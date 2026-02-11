@@ -101,7 +101,7 @@
           ))
         ))
         (local.set $_loop_idx (i32.add (local.get $_loop_idx) (i32.const 1)))
-        (local.set $_loop_ptr (i32.add (local.get $_loop_ptr) (i32.const 20)))
+        (local.set $_loop_ptr (i32.add (local.get $_loop_ptr) (i32.const 24)))
         (br $_neighbor_loop)
       )
     )
@@ -120,7 +120,7 @@
     (local.set $separationX (f32.const 0))
     (local.set $separationY (f32.const 0))
     
-    ;; Foreach loop over nearbyAgents
+    ;; Foreach loop over agents (presumed neighbors/all)
     (local.set $_foreach_idx (i32.const 0))
     (local.set $_foreach_ptr (global.get $agentsReadPtr))
     (block $_foreach_exit
@@ -146,7 +146,7 @@
               ))
         ))
         (local.set $_foreach_idx (i32.add (local.get $_foreach_idx) (i32.const 1)))
-        (local.set $_foreach_ptr (i32.add (local.get $_foreach_ptr) (i32.const 20)))
+        (local.set $_foreach_ptr (i32.add (local.get $_foreach_ptr) (i32.const 24)))
         (br $_foreach_loop)
       )
     )
@@ -164,7 +164,7 @@
     (local.set $x (f32.add (local.get $x) (f32.mul (local.get $vx) (global.get $inputs_dt))))
     (local.set $y (f32.add (local.get $y) (f32.mul (local.get $vy) (global.get $inputs_dt))))
 
-    ;; store back
+    ;; store back (species at offset 20 is preserved, not modified)
     (f32.store (i32.add (local.get $ptr) (i32.const 4)) (local.get $x))
     (f32.store (i32.add (local.get $ptr) (i32.const 8)) (local.get $y))
     (f32.store (i32.add (local.get $ptr) (i32.const 12)) (local.get $vx))
@@ -252,7 +252,7 @@
           ))
         ))
         (local.set $_loop_idx (i32.add (local.get $_loop_idx) (i32.const 1)))
-        (local.set $_loop_ptr (i32.add (local.get $_loop_ptr) (i32.const 20)))
+        (local.set $_loop_ptr (i32.add (local.get $_loop_ptr) (i32.const 24)))
         (br $_neighbor_loop)
       )
     )
@@ -271,7 +271,7 @@
     (local.set $separationX (f32.const 0))
     (local.set $separationY (f32.const 0))
     
-    ;; Foreach loop over nearbyAgents
+    ;; Foreach loop over agents (presumed neighbors/all)
     (local.set $_foreach_idx (i32.const 0))
     (local.set $_foreach_ptr (global.get $agentsReadPtr))
     (block $_foreach_exit
@@ -297,7 +297,7 @@
               ))
         ))
         (local.set $_foreach_idx (i32.add (local.get $_foreach_idx) (i32.const 1)))
-        (local.set $_foreach_ptr (i32.add (local.get $_foreach_ptr) (i32.const 20)))
+        (local.set $_foreach_ptr (i32.add (local.get $_foreach_ptr) (i32.const 24)))
         (br $_foreach_loop)
       )
     )
@@ -315,14 +315,14 @@
     (local.set $x (f32.add (local.get $x) (f32.mul (local.get $vx) (global.get $inputs_dt))))
     (local.set $y (f32.add (local.get $y) (f32.mul (local.get $vy) (global.get $inputs_dt))))
 
-    ;; store back
+    ;; store back (species at offset 20 is preserved, not modified)
     (f32.store (i32.add (local.get $ptr) (i32.const 4)) (local.get $x))
     (f32.store (i32.add (local.get $ptr) (i32.const 8)) (local.get $y))
     (f32.store (i32.add (local.get $ptr) (i32.const 12)) (local.get $vx))
     (f32.store (i32.add (local.get $ptr) (i32.const 16)) (local.get $vy))
   
           (local.set $_outer_i (i32.add (local.get $_outer_i) (i32.const 1)))
-          (local.set $ptr (i32.add (local.get $ptr) (i32.const 20)))
+          (local.set $ptr (i32.add (local.get $ptr) (i32.const 24)))
           (br $loop)
         )
       )

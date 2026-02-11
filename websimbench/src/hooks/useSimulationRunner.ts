@@ -4,7 +4,14 @@ import Logger from '../simulation/helpers/logger';
 import { Method, RenderMode } from '../simulation/types';
 import { SimulationAppearanceOptions } from './useSimulationOptions';
 
-export function useSimulationRunner(code: string, inputs: Record<string, number>, options: SimulationAppearanceOptions) {
+import { Obstacle } from '../simulation/types';
+
+export function useSimulationRunner(
+  code: string,
+  inputs: Record<string, number>,
+  options: SimulationAppearanceOptions,
+  obstacles: Obstacle[] = []
+) {
   const [method, setMethod] = useState<Method>('WebGPU');
   const [renderMode, setRenderMode] = useState<RenderMode>('gpu');
   const [fps, setFps] = useState(0);
@@ -15,7 +22,7 @@ export function useSimulationRunner(code: string, inputs: Record<string, number>
   const simulationRef = useRef<Simulation | null>(null);
   const animationFrameRef = useRef<number>();
   const isRunningRef = useRef<boolean>(false);
-  const inputsRef = useRef<Record<string, number>>(inputs);
+  const inputsRef = useRef<Record<string, number | Obstacle[]>>({ ...inputs, obstacles });
   const lastFrameTimeRef = useRef<number>(0);
   const frameTimesRef = useRef<number[]>([]);
 
@@ -109,12 +116,12 @@ export function useSimulationRunner(code: string, inputs: Record<string, number>
       isRunningRef.current = false;
       setIsRunning(false);
     }
-  }, [code, inputs, method, renderMode, options]);
+  }, [code, inputs, method, renderMode, options, obstacles]);
 
-  // Keep inputsRef synchronized with inputs
+  // Keep inputsRef synchronized with inputs and obstacles
   useEffect(() => {
-    inputsRef.current = inputs;
-  }, [inputs]);
+    inputsRef.current = { ...inputs, obstacles };
+  }, [inputs, obstacles]);
 
   useEffect(() => {
     return () => {

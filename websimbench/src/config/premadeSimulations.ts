@@ -94,277 +94,203 @@ updatePosition(inputs.dt);
 `,
 
     'Fire': `
-input riseSpeed = 3; // [0,10]
-input spread = 1.5; // [0,5]
-input depositAmount = 3.0; // [0,10]
-input decayFactor = 0.08; // [0,0.5]
-input flickerAmount = 0.4; // [0,1]
-input r = random();
+species(3); 
+// 0 = Fuel/Base
+// 1 = Active Fire
+// 2 = Smoke/Ash
 
-// Trails create a heat glow effect
-enableTrails(inputs.depositAmount, inputs.decayFactor);
+input riseSpeed = 3.5;
+input turbulence = 0.8;
+input coolingRate = 0.05;
+input debrisChance = 0.02;
 
-// Embers rise upward
-moveUp(inputs.riseSpeed);
+// Species behavior
+if (species == 0) {
+    // Fuel: stationary or slowly rising
+    moveUp(0.5);
+    
+    // Chance to catch fire (become species 1)
+    if (random() < 0.1) {
+        species = 1;
+    }
+}
+else if (species == 1) {
+    // Active Fire: fast rising, turbulent
+    moveUp(inputs.riseSpeed);
+    
+    // Turbulence
+    var r = random();
+    var dx = (r - 0.5) * inputs.turbulence;
+    moveRight(dx);
+    
+    // Emit light/heat trail
+    deposit(1.0);
+    
+    // Cooling process
+    if (random() < inputs.coolingRate) {
+        species = 2; // Become smoke
+    }
+}
+else {
+    // Smoke: slower rising, fading
+    moveUp(inputs.riseSpeed * 0.5);
+    
+    // Drifting
+    var r = random();
+    var dx = (r - 0.5) * inputs.turbulence * 0.5;
+    moveRight(dx);
+    
+    // Chance to re-ignite if near fire? Or just recycle
+    if (y < 0) {
+        species = 0; // Recycle as fuel at bottom
+        y = inputs.height;
+        x = random() * inputs.width;
+    }
+}
 
-// Random horizontal drift simulates flickering fire
-var drift = (inputs.r - 0.5) * inputs.spread;
-moveRight(drift);
-
-// Add slight random turn for organic movement
-var turnAmount = (inputs.r - 0.5) * inputs.flickerAmount;
-turn(turnAmount);
-
-// Deposit heat at current position
-deposit(inputs.depositAmount);
-
-// Wrap around so embers recycle from bottom
+// Global wrap
 borderWrapping();
 `,
 
     'Fluid Dispersal': `
-input repulsionRadius = 30; // [0,100]
-input repulsionForce = 0.08; // [0,0.5]
-input dampening = 0.95; // [0,1]
-input maxSpeed = 3; // [0,10]
-input dt = 1; // [0,10]
+input gravity = 0.1;
+input repulsionRadius = 15;
+input repulsionForce = 0.5;
+input damping = 0.96;
+input r = random();
 
-// Find nearby particles
+// Apply gravity
+vy += inputs.gravity;
+
+// SPH-like repulsion (simulating pressure)
 var nearby = neighbors(inputs.repulsionRadius);
-
-// Repulsion: push away from nearby particles
-foreach (nearby as other) {
-  var other_x = other.x;
-  var other_y = other.y;
-  var dx = x - other_x;
-  var dy = y - other_y;
-  var dist2 = dx*dx + dy*dy;
-
-  if (dist2 > 0) {
-    // Force inversely proportional to distance
-    var force = inputs.repulsionForce / dist2;
-    vx += dx * force;
-    vy += dy * force;
-  }
+foreach(nearby) {
+    var dx = x - nearby.x;
+    var dy = y - nearby.y;
+    var dist2 = dx*dx + dy*dy;
+    
+    if (dist2 > 0 && dist2 < inputs.repulsionRadius^2) {
+        var force = inputs.repulsionForce / (dist2 + 0.1);
+        vx += dx * force;
+        vy += dy * force;
+    }
 }
 
-// Dampen velocity to prevent explosion
-vx = vx * inputs.dampening;
-vy = vy * inputs.dampening;
+// Apply damping (viscosity)
+vx *= inputs.damping;
+vy *= inputs.damping;
 
-// Limit speed
-limitSpeed(inputs.maxSpeed);
-
-// Bounce off boundaries
-borderBounce();
-
-// Update position
-updatePosition(inputs.dt);
-`,
-
-    'Rain': `
-input gravity = 9.8;
-input r = random();
-
-enableTrails(0, 0.1); 
-
-moveDown(inputs.gravity);
-
-var jitter = (inputs.r - 0.5) * 2;
-moveRight(jitter);
-
-borderWrapping();
-`,
-
-    'Ant Colony': `
-input sensorAngle = 0.5; // [0,3]
-input sensorDist = 12; // [0,50]
-input turnAngle = 0.3; // [0,1]
-input speed = 1.5; // [0,5]
-input depositAmount = 1.5; // [0,5]
-input decayFactor = 0.02; // [0,0.2]
-input wanderAmount = 0.2; // [0,1]
-input r = random();
-
-// Pheromone trail system
-enableTrails(inputs.depositAmount, inputs.decayFactor);
-
-// Sense pheromone in three directions
-var sL = sense(inputs.sensorAngle, inputs.sensorDist);
-var sF = sense(0, inputs.sensorDist);
-var sR = sense(-inputs.sensorAngle, inputs.sensorDist);
-
-// Follow strongest pheromone trail
-if (sF > sL && sF > sR) {
-    // Go straight - strongest ahead
+// Boundary handling with bounce
+if (y >= inputs.height) {
+    y = inputs.height - 1;
+    vy *= -0.8;
+    vx *= 0.9; // Friction
 }
-else if (sL > sR) {
-    turn(inputs.turnAngle);
-}
-else if (sR > sL) {
-    turn(-inputs.turnAngle);
-}
-else {
-    // No pheromone - wander randomly
-    var wander = (inputs.r - 0.5) * inputs.wanderAmount;
-    turn(wander);
+if (x <= 0 || x >= inputs.width) {
+    vx *= -0.8;
 }
 
-// Move forward
-moveForward(inputs.speed);
-
-// Deposit pheromone at current position
-deposit(inputs.depositAmount);
-
-// Wrap around edges
-borderWrapping();
+updatePosition(1.0);
 `,
 
     'Predator-Prey': `
-input perceptionRadius = 50; // [0,150]
-input preySpeed = 0.8; // [0,5]
-input predatorSpeed = 1.2; // [0,5]
-input cohesionFactor = 0.005; // [0,0.05]
-input fleeFactor = 0.03; // [0,0.1]
-input chaseFactor = 0.02; // [0,0.1]
-input separationDist = 15; // [0,50]
-input separationFactor = 0.04; // [0,0.2]
-input dt = 1; // [0,10]
+species(2); 
+// 0 = Prey (Green-ish)
+// 1 = Predator (Red-ish)
 
-// Species determined by agent ID: even = prey, odd = predator
-var nearby = neighbors(inputs.perceptionRadius);
+input preyCohesion = 0.08;
+input preySeparation = 0.15;
+input preyAlignment = 0.05;
+input preyeSpeed = 2.0;
+input predatorChasing = 0.06;
+input predatorSpeed = 2.3;
+input perception = 40;
 
-// Prey behavior (even IDs)
-if (id % 2 == 0) {
-    // Cohesion with other prey
-    if (nearby.length > 0) {
-        var avgX = mean(nearby.x);
-        var avgY = mean(nearby.y);
-        vx += (avgX - x) * inputs.cohesionFactor;
-        vy += (avgY - y) * inputs.cohesionFactor;
-    }
+var nearby = neighbors(inputs.perception);
 
-    // Flee from predators (odd-ID neighbors)
-    foreach (nearby as other) {
-        var other_id = other.id;
-        if (other_id % 2 == 1) {
-            var other_x = other.x;
-            var other_y = other.y;
-            var dx = x - other_x;
-            var dy = y - other_y;
-            vx += dx * inputs.fleeFactor;
-            vy += dy * inputs.fleeFactor;
-        }
-    }
-
-    limitSpeed(inputs.preySpeed);
-}
-
-// Predator behavior (odd IDs)
-if (id % 2 == 1) {
-    // Chase nearest prey (even-ID neighbors)
-    foreach (nearby as other) {
-        var other_id = other.id;
-        if (other_id % 2 == 0) {
-            var other_x = other.x;
-            var other_y = other.y;
-            var dx = other_x - x;
-            var dy = other_y - y;
-            vx += dx * inputs.chaseFactor;
-            vy += dy * inputs.chaseFactor;
-        }
-    }
-
-    // Separation from other predators
-    foreach (nearby as other) {
-        var other_id = other.id;
-        if (other_id % 2 == 1) {
-            var other_x = other.x;
-            var other_y = other.y;
-            var dx = x - other_x;
-            var dy = y - other_y;
+if (species == 0) {
+    // --- PREY BEHAVIOR ---
+    
+    // Flocking (Alignment, Cohesion, Separation)
+    var avgVx = 0; var avgVy = 0;
+    var avgX = 0; var avgY = 0;
+    var count = 0;
+    
+    foreach(nearby) {
+        if (nearby.species == 0) {
+            // Friendly neighbor - flock
+            avgVx += nearby.vx; avgVy += nearby.vy;
+            avgX += nearby.x; avgY += nearby.y;
+            
+            // Separation
+            var dx = x - nearby.x;
+            var dy = y - nearby.y;
             var dist2 = dx*dx + dy*dy;
-            if (dist2 < inputs.separationDist^2 && dist2 > 0) {
-                vx += dx / dist2 * inputs.separationFactor;
-                vy += dy / dist2 * inputs.separationFactor;
+            if (dist2 < 100) { // overly close
+                vx += dx * inputs.preySeparation;
+                vy += dy * inputs.preySeparation;
+            }
+            count += 1;
+        } else {
+            // Predator! Flee!
+            var dx = x - nearby.x;
+            var dy = y - nearby.y;
+            vx += dx * 0.2; // Strong flee force
+            vy += dy * 0.2;
+        }
+    }
+    
+    if (count > 0) {
+        avgVx /= count; avgVy /= count;
+        avgX /= count; avgY /= count;
+        
+        // Cohesion
+        vx += (avgX - x) * inputs.preyCohesion;
+        vy += (avgY - y) * inputs.preyCohesion;
+        
+        // Alignment
+        vx += (avgVx - vx) * inputs.preyAlignment;
+        vy += (avgVy - vy) * inputs.preyAlignment;
+    }
+    
+    limitSpeed(inputs.preyeSpeed);
+} 
+else {
+    // --- PREDATOR BEHAVIOR ---
+    
+    // Chase nearest prey
+    var nearestDist = 999999;
+    var targetX = 0; var targetY = 0;
+    var foundPrey = 0;
+    
+    foreach(nearby) {
+        if (nearby.species == 0) {
+            var dx = nearby.x - x;
+            var dy = nearby.y - y;
+            var d2 = dx*dx + dy*dy;
+            if (d2 < nearestDist) {
+                nearestDist = d2;
+                targetX = nearby.x;
+                targetY = nearby.y;
+                foundPrey = 1;
             }
         }
     }
-
+    
+    if (foundPrey) {
+        // Move towards target
+        vx += (targetX - x) * inputs.predatorChasing;
+        vy += (targetY - y) * inputs.predatorChasing;
+    } else {
+        // Wander if no prey visible
+        var r = random();
+        turn((r - 0.5) * 0.5);
+    }
+    
     limitSpeed(inputs.predatorSpeed);
 }
 
 borderWrapping();
-updatePosition(inputs.dt);
-`,
-
-    'Particle Swarm': `
-input perceptionRadius = 60; // [0,150]
-input pullFactor = 0.005; // [0,0.05]
-input dampening = 0.98; // [0,1]
-input maxSpeed = 2; // [0,10]
-input wanderForce = 0.3; // [0,2]
-input dt = 1; // [0,10]
-input r = random();
-
-// Find nearby particles
-var nearby = neighbors(inputs.perceptionRadius);
-
-// Steer toward center of local group
-if (nearby.length > 0) {
-    var avgX = mean(nearby.x);
-    var avgY = mean(nearby.y);
-    vx += (avgX - x) * inputs.pullFactor;
-    vy += (avgY - y) * inputs.pullFactor;
-}
-
-// Random exploration force
-var wx = (inputs.r - 0.5) * inputs.wanderForce;
-var wy = (inputs.r - 0.5) * inputs.wanderForce;
-vx += wx;
-vy += wy;
-
-// Dampen velocity
-vx = vx * inputs.dampening;
-vy = vy * inputs.dampening;
-
-// Limit speed
-limitSpeed(inputs.maxSpeed);
-
-// Bounce off walls
-borderBounce();
-
-// Update position
-updatePosition(inputs.dt);
-`,
-
-    "Langton's Ant": `
-input speed = 5; // [0,20]
-input depositAmount = 5.0; // [0,10]
-input decayFactor = 0.01; // [0,0.1]
-input threshold = 0.5; // [0,5]
-
-// Trail system for cell state
-enableTrails(inputs.depositAmount, inputs.decayFactor);
-
-// Sense trail value at current position
-var here = sense(0, 0);
-
-// Classic Langton's ant rule:
-// On empty cell (low trail): turn right, deposit
-// On marked cell (high trail): turn left, don't deposit
-if (here < inputs.threshold) {
-    turn(-1.5708);
-    deposit(inputs.depositAmount);
-}
-else {
-    turn(1.5708);
-}
-
-// Move forward
-moveForward(inputs.speed);
-
-// Wrap at borders
-borderWrapping();
+updatePosition(1.0);
 `
 };

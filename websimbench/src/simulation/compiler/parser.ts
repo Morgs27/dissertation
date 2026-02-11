@@ -69,7 +69,7 @@ export type ParsedLineType =
     | { type: 'var'; name: string; expression: string }
     | { type: 'if'; condition: string }
     | { type: 'elseif'; condition: string }
-    | { type: 'foreach'; collection: string; varName: string }
+    | { type: 'foreach'; collection: string; varName?: string; itemAlias?: string }
     | { type: 'for'; init: string; condition: string; increment: string }
     | { type: 'assignment'; target: string; expression: string }
     | { type: 'command'; command: AVAILABLE_COMMANDS; argument: string }
@@ -132,11 +132,27 @@ export class DSLParser {
             }
         }
 
-        // Handle foreach loops: foreach (collection as item) {
-        if (trimmed.startsWith('foreach ')) {
-            const match = trimmed.match(/foreach\s*\(([^)]+)\s+as\s+(\w+)\)\s*\{?/);
+        // Handle foreach loops: foreach (collection as item) { or foreach (collection) {
+        if (trimmed.startsWith('foreach')) {
+            // Try matching "foreach (collection as item)"
+            let match = trimmed.match(/foreach\s*\(([^)]+)\s+as\s+(\w+)\)\s*\{?/);
             if (match) {
                 return { type: 'foreach', collection: match[1].trim(), varName: match[2] };
+            }
+
+            // Try matching "foreach (collection)" - implicit variable name same as collection singleton? 
+            // Actually, usually this implies we iterate and access properties directly or via a standard name like 'it'?
+            // Looking at the presets: `foreach(nearby) { ... nearby.vx ... }` 
+            // attempting to access properties on the collection name itself inside the loop is not standard JS/TS behavior for arrays.
+            // However, the user's DSL might want `foreach(nearby)` to mean "iterate nearby, and inside the loop, 'nearby' refers to the current item".
+            // OR the presets meant `foreach(nearby as other)` and the preset code is just wrong?
+            // "foreach(nearby) { if (nearby.species == 0) ... }" 
+            // This looks like it treats 'nearby' as the current item inside the loop.
+
+            match = trimmed.match(/foreach\s*\(([^)]+)\)\s*\{?/);
+            if (match) {
+                const collection = match[1].trim();
+                return { type: 'foreach', collection: collection, itemAlias: collection };
             }
         }
 
