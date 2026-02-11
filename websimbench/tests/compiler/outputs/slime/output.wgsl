@@ -101,9 +101,6 @@ fn main(
         var sL: f32 = _sense(agent.x, agent.y, agent.vx, agent.vy, inputs.sensorAngle, inputs.sensorDist);
         var sF: f32 = _sense(agent.x, agent.y, agent.vx, agent.vy, 0, inputs.sensorDist);
         var sR: f32 = _sense(agent.x, agent.y, agent.vx, agent.vy, -inputs.sensorAngle, inputs.sensorDist);
-        agentLogs[i] = vec2<f32>(1.0, sL);
-        agentLogs[i] = vec2<f32>(1.0, sF);
-        agentLogs[i] = vec2<f32>(1.0, sR);
         if (sF < sL && sF < sR) {
             if (r < 0.5) {
                 let _ang_t = inputs.turnAngle; let _c_t = cos(_ang_t); let _s_t = sin(_ang_t); let _term1_t = vx * _c_t; let _term2_t = vy * _s_t; let _term3_t = vx * _s_t; let _term4_t = vy * _c_t; let _vx_new_t = _term1_t - _term2_t; let _vy_new_t = _term3_t + _term4_t; vx = _vx_new_t; vy = _vy_new_t;

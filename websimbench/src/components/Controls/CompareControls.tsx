@@ -144,7 +144,7 @@ export const CompareControls = ({ code, definedInputs, canvasRef }: CompareContr
 
         if (requiredInputs.includes('randomValues')) {
             const randomValues = new Float32Array(numAgents);
-            let seed = 12345 + frameNum;
+            let seed = frameNum;
             for (let i = 0; i < numAgents; i++) {
                 seed = (seed * 1103515245 + 12345) & 0x7fffffff;
                 randomValues[i] = seed / 0x7fffffff;
@@ -162,14 +162,14 @@ export const CompareControls = ({ code, definedInputs, canvasRef }: CompareContr
         isRunningRef.current = true;
         setFrame(0);
 
-        const width = canvasRef.current?.width || 800;
+        const width = canvasRef.current?.width || 600;
         const height = canvasRef.current?.height || 600;
         const numAgents = 500;
 
         const compiler = new Compiler();
         const compiled = compiler.compileAgentCode(code);
         const requiredInputs = compiled.requiredInputs;
-        const seedAgents = generateAgents(numAgents, width, height, 12345);
+        const seedAgents = generateAgents(numAgents, width, height, 42);
 
         const engines: Record<Method, ComputeEngine> = {} as Record<Method, ComputeEngine>;
         const methodAgents: Record<Method, Agent[]> = {} as Record<Method, Agent[]>;
@@ -191,7 +191,7 @@ export const CompareControls = ({ code, definedInputs, canvasRef }: CompareContr
         const needsTrailMap = requiredInputs.includes('trailMap');
 
         for (const method of selectedMethods) {
-            const engine = new ComputeEngine(compiled, perfMonitor, numAgents);
+            const engine = new ComputeEngine(compiled, perfMonitor, numAgents, 4);
             if (method === 'WebGPU' && gpuDevice) {
                 engine.initGPU(gpuDevice);
             }
