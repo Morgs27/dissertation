@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Simulation } from '../simulation/simulation';
+import Logger from '../simulation/helpers/logger';
 import { Method, RenderMode } from '../simulation/types';
 import { SimulationAppearanceOptions } from './useSimulationOptions';
 
@@ -99,7 +100,12 @@ export function useSimulationRunner(code: string, inputs: Record<string, number>
       loop();
 
     } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      // Log to both console and UI Logger
       console.error("Simulation init error", e);
+      const logger = new Logger('SimulationRunner', 'red');
+      logger.error(`Simulation init error: ${message}`);
+
       isRunningRef.current = false;
       setIsRunning(false);
     }
