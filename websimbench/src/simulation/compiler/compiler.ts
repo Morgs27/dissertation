@@ -17,10 +17,11 @@ export class Compiler {
     /**
      * Preprocesses DSL code by removing comments and extracting input variables
      */
-    private preprocessDSL(dsl: string): { lines: LineInfo[]; inputs: string[]; definedInputs: any[]; trailEnvironmentConfig?: any; randomInputs: string[] } {
+    private preprocessDSL(dsl: string): { lines: LineInfo[]; inputs: string[]; definedInputs: any[]; trailEnvironmentConfig?: any; randomInputs: string[]; speciesCount?: number } {
         const lines: LineInfo[] = [];
         const definedInputs: any[] = [];
         const randomInputs: string[] = [];
+        let speciesCount: number | undefined;
         const rawLines = dsl.split('\n');
 
         rawLines.forEach((line, index) => {
@@ -85,6 +86,7 @@ export class Compiler {
             borderBounce: ['width', 'height'],
             sense: ['width', 'height'], // Removed trailMap implicit
             deposit: ['width', 'height'], // Removed trailMap implicit
+            avoidObstacles: [],
         };
 
         for (const line of lines) {
@@ -124,6 +126,17 @@ export class Compiler {
             }
         }
 
+        // Check for species() command to extract species count
+        for (const line of lines) {
+            const parsed = DSLParser.parseCommandLine(line.content.trim());
+            if (parsed && parsed.command === 'species') {
+                const count = parseInt(parsed.argument, 10);
+                if (!isNaN(count) && count > 0) {
+                    speciesCount = count;
+                }
+            }
+        }
+
         // Handle random syntax sugar dependency
         // If we have random inputs, we definitely need randomValues
         if ((inputs.includes('random') && !inputs.includes('randomValues')) || randomInputs.length > 0) {
@@ -132,7 +145,7 @@ export class Compiler {
             }
         }
 
-        return { lines, inputs, definedInputs, trailEnvironmentConfig, randomInputs };
+        return { lines, inputs, definedInputs, trailEnvironmentConfig, randomInputs, speciesCount };
     }
 
     /**
@@ -145,7 +158,7 @@ export class Compiler {
         const script = agentCode?.trim() ?? '';
         this.Logger.info('Compiling agent code');
 
-        const { lines, inputs, definedInputs, trailEnvironmentConfig, randomInputs } = this.preprocessDSL(script);
+        const { lines, inputs, definedInputs, trailEnvironmentConfig, randomInputs, speciesCount } = this.preprocessDSL(script);
 
         // Pass the original script to compilers for error context logging
         const jsCode = compileDSLtoJS(lines, inputs, this.Logger, script, randomInputs);
@@ -165,6 +178,7 @@ export class Compiler {
             jsCode,
             WASMCode: watCode,
             trailEnvironmentConfig,
+            speciesCount,
         };
     }
 }

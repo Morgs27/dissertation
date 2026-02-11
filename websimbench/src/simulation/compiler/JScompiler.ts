@@ -23,6 +23,8 @@ const COMMANDS: CommandMap = {
     sense: '', // Handled as expression
     enableTrails: '',
     print: 'if (inputs.print) inputs.print(id, {arg});',
+    species: '', // Configuration only
+    avoidObstacles: '_avoidObstacles({arg});',
 };
 
 /**
@@ -141,8 +143,9 @@ export const compileDSLtoJS = (lines: LineInfo[], _inputs: string[], logger: Log
 
         return `(agent, inputs) => {
                     let { id, x, y, vx, vy } = agent;
+                    let species = agent.species || 0;
             ${statements.join('\n            ')}
-                    return { id, x, y, vx, vy };
+                    return { id, x, y, vx, vy, species };
                 } `;
     }
 
@@ -158,6 +161,7 @@ export const compileDSLtoJS = (lines: LineInfo[], _inputs: string[], logger: Log
                     let y = f(agent.y);
                     let vx = f(agent.vx);
                     let vy = f(agent.vy);
+                    let species = agent.species || 0;
 
                     // Get agents array
                     const agents = inputs.agents || [];
@@ -245,13 +249,40 @@ export const compileDSLtoJS = (lines: LineInfo[], _inputs: string[], logger: Log
                         writeMap[iy * w + ix] = f(writeMap[iy * w + ix] + amt);
                     };
 
+                    const _avoidObstacles = (strength) =&gt; {
+                        const obstacles = inputs.obstacles || [];
+                        const str = f(strength || 1);
+                        for (let oi = 0; oi &lt; obstacles.length; oi++) {
+                            const ob = obstacles[oi];
+                            const margin = f(5);
+                            const ox1 = f(ob.x - margin);
+                            const oy1 = f(ob.y - margin);
+                            const ox2 = f(ob.x + ob.w + margin);
+                            const oy2 = f(ob.y + ob.h + margin);
+                            if (x &gt; ox1 &amp;&amp; x &lt; ox2 &amp;&amp; y &gt; oy1 &amp;&amp; y &lt; oy2) {
+                                // Inside obstacle region — push away from center
+                                const cx = f(ob.x + f(ob.w * f(0.5)));
+                                const cy = f(ob.y + f(ob.h * f(0.5)));
+                                let dx = f(x - cx);
+                                let dy = f(y - cy);
+                                const dist = f(Math.sqrt(f(f(dx * dx) + f(dy * dy))));
+                                if (dist &gt; f(0.001)) {
+                                    dx = f(dx / dist);
+                                    dy = f(dy / dist);
+                                }
+                                vx = f(vx + f(dx * str));
+                                vy = f(vy + f(dy * str));
+                            }
+                        }
+                    };
+
 
 
         // Execute DSL code
         ${boidStatements.join('\n        ')}
 
                     // Return updated agent (ensure Float32 values)
-                    return { id, x: f(x), y: f(y), vx: f(vx), vy: f(vy) };
+                    return { id, x: f(x), y: f(y), vx: f(vx), vy: f(vy), species };
                 } `;
 
     logger.info('Generated boids-style JavaScript function');

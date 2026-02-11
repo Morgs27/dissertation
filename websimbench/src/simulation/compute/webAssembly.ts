@@ -18,7 +18,7 @@ export const compileWATtoWASM = async (watCode: string, logger: Logger): Promise
   }
 };
 
-const bytesPerAgent = 20; // 5 floats × 4 bytes
+const bytesPerAgent = 24; // 6 floats × 4 bytes (id, x, y, vx, vy, species)
 const f32PerAgent = bytesPerAgent / 4;
 const basePtr = 0;
 const baseF32 = basePtr >>> 2;
@@ -138,6 +138,7 @@ export class WebAssemblyCompute {
       f32[o + 2] = a.y;
       f32[o + 3] = a.vx;
       f32[o + 4] = a.vy;
+      f32[o + 5] = a.species || 0;
     }
 
     // Copy agents to read buffer (snapshot for neighbor queries)
@@ -150,6 +151,7 @@ export class WebAssemblyCompute {
       f32[dstOffset + 2] = f32[srcOffset + 2]; // y
       f32[dstOffset + 3] = f32[srcOffset + 3]; // vx
       f32[dstOffset + 4] = f32[srcOffset + 4]; // vy
+      f32[dstOffset + 5] = f32[srcOffset + 5]; // species
     }
 
     // Set agentsReadPtr global
@@ -229,6 +231,7 @@ export class WebAssemblyCompute {
         y: this.f32![o + 2],
         vx: this.f32![o + 3],
         vy: this.f32![o + 4],
+        species: this.f32![o + 5],
       };
     });
 

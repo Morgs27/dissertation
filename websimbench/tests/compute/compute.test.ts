@@ -42,7 +42,8 @@ function generateAgents(count: number, width: number, height: number, seed: numb
         x: random() * width,
         y: random() * height,
         vx: (random() - 0.5) * 2,
-        vy: (random() - 0.5) * 2
+        vy: (random() - 0.5) * 2,
+        species: 0
     }));
 }
 

@@ -114,6 +114,7 @@ export const CompareControls = ({ code, definedInputs, canvasRef }: CompareContr
                 y: nextRandom() * height,
                 vx: (nextRandom() - 0.5) * 2,
                 vy: (nextRandom() - 0.5) * 2,
+                species: 0,
             });
         }
         return agents;

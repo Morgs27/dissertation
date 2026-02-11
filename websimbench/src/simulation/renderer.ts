@@ -4,12 +4,24 @@ import type { Agent, SimulationAppearance } from "./types";
 import type { WebGPURenderResources } from "./compute/webGPU";
 
 const GPU_FLOAT_SIZE = 4;
-const GPU_AGENT_COMPONENTS = 5; // id, x, y, vx, vy
+const GPU_AGENT_COMPONENTS = 6; // id, x, y, vx, vy, species
 const GPU_AGENT_STRIDE = GPU_AGENT_COMPONENTS * GPU_FLOAT_SIZE;
 const GPU_QUAD_VERTICES = new Float32Array([
     -1, -1, 1, -1, 1, 1,
     -1, -1, 1, 1, -1, 1,
 ]);
+
+// 8 distinct species colors
+const SPECIES_PALETTE = [
+    '#00FFFF', // Cyan (species 0 - default)
+    '#FF4466', // Red-pink
+    '#44FF66', // Green
+    '#FFAA22', // Orange
+    '#AA66FF', // Purple
+    '#FFFF44', // Yellow
+    '#FF66AA', // Pink
+    '#66AAFF', // Light blue
+];
 
 // Helper to convert hex to rgb 0-1
 function hexToRgb(hex: string) {
@@ -125,13 +137,12 @@ export class Renderer {
         // this.Logger.log("Rendering agents with CPU"); // Commented out to reduce log spam
         const ctx = this.ensureContext();
 
-        // Use appearance settings
-        ctx.fillStyle = this.appearance.agentColor;
-
         const radius = this.appearance.agentSize;
         const isCircle = this.appearance.agentShape === 'circle';
 
         agents.forEach(agent => {
+            const speciesIdx = agent.species || 0;
+            ctx.fillStyle = SPECIES_PALETTE[speciesIdx % SPECIES_PALETTE.length];
             ctx.beginPath();
             if (isCircle) {
                 ctx.arc(agent.x, agent.y, radius, 0, Math.PI * 2);
@@ -171,10 +182,13 @@ export class Renderer {
         }
 
         this.gpuBindGroupLayout = device.createBindGroupLayout({
-            entries: [{ binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: "uniform" } }],
+            entries: [
+                { binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: "uniform" } },
+                { binding: 1, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: "uniform" } },
+            ],
         });
 
-        // WGSL Shader with appearance support
+        // WGSL Shader with species color support
         const shaderCode = `
             struct RenderUniforms {
                 width: f32, 
@@ -184,15 +198,20 @@ export class Renderer {
                 colorR: f32,
                 colorG: f32,
                 colorB: f32,
-                _pad: f32,
+                speciesCount: f32,
+            };
+            struct SpeciesColors {
+                colors: array<vec4<f32>, 8>,
             };
             struct VertexOutput { 
                 @builtin(position) position: vec4<f32>, 
-                @location(0) uv: vec2<f32> 
+                @location(0) uv: vec2<f32>,
+                @location(1) @interpolate(flat) speciesIdx: u32 
             };
             @group(0) @binding(0) var<uniform> uniforms: RenderUniforms;
+            @group(0) @binding(1) var<uniform> speciesColors: SpeciesColors;
 
-            @vertex fn vs_main(@location(0) quadPos: vec2<f32>, @location(1) agentPos: vec2<f32>) -> VertexOutput {
+            @vertex fn vs_main(@location(0) quadPos: vec2<f32>, @location(1) agentPos: vec2<f32>, @location(2) agentSpecies: f32) -> VertexOutput {
                 var out: VertexOutput;
                 let scaled = quadPos * uniforms.radius;
                 let world = agentPos + scaled;
@@ -200,6 +219,7 @@ export class Renderer {
                 let clipY = 1.0 - (world.y / uniforms.height) * 2.0;
                 out.position = vec4<f32>(clipX, clipY, 0.0, 1.0);
                 out.uv = quadPos; // -1 to 1
+                out.speciesIdx = u32(agentSpecies);
                 return out;
             }
 
@@ -210,7 +230,9 @@ export class Renderer {
                         discard;
                     }
                 }
-                return vec4<f32>(uniforms.colorR, uniforms.colorG, uniforms.colorB, 1.0);
+                let idx = input.speciesIdx % 8u;
+                let col = speciesColors.colors[idx];
+                return vec4<f32>(col.r, col.g, col.b, 1.0);
             }
         `;
 
@@ -222,8 +244,13 @@ export class Renderer {
                 module: shaderModule,
                 entryPoint: "vs_main",
                 buffers: [
-                    { arrayStride: 2 * GPU_FLOAT_SIZE, attributes: [{ shaderLocation: 0, format: "float32x2", offset: 0 }] },
-                    { arrayStride: GPU_AGENT_STRIDE, stepMode: "instance", attributes: [{ shaderLocation: 1, format: "float32x2", offset: GPU_FLOAT_SIZE }] },
+                    { arrayStride: 2 * GPU_FLOAT_SIZE, attributes: [{ shaderLocation: 0, format: "float32x2" as GPUVertexFormat, offset: 0 }] },
+                    {
+                        arrayStride: GPU_AGENT_STRIDE, stepMode: "instance" as GPUVertexStepMode, attributes: [
+                            { shaderLocation: 1, format: "float32x2" as GPUVertexFormat, offset: GPU_FLOAT_SIZE },  // x, y (skip id)
+                            { shaderLocation: 2, format: "float32" as GPUVertexFormat, offset: 5 * GPU_FLOAT_SIZE }, // species
+                        ]
+                    },
                 ],
             },
             fragment: { module: shaderModule, entryPoint: "fs_main", targets: [{ format: this.gpuHelper.getFormat()! }] },
@@ -315,7 +342,7 @@ export class Renderer {
     private prepareAgentBuffer(device: GPUDevice, agents: Agent[]): WebGPURenderResources {
         const data = new Float32Array(agents.length * GPU_AGENT_COMPONENTS);
         for (let i = 0; i < agents.length; i++) {
-            data.set([agents[i].id, agents[i].x, agents[i].y, agents[i].vx, agents[i].vy], i * GPU_AGENT_COMPONENTS);
+            data.set([agents[i].id, agents[i].x, agents[i].y, agents[i].vx, agents[i].vy, agents[i].species || 0], i * GPU_AGENT_COMPONENTS);
         }
 
         if (!this.gpuAgentBuffer || this.gpuAgentBufferSize < data.byteLength) {
@@ -373,9 +400,27 @@ export class Renderer {
         }
         this.gpuHelper.writeBuffer(device, this.gpuUniformBuffer, uniformData);
 
+        // Create species color palette uniform (8 colors × vec4<f32>)
+        const paletteData = new Float32Array(8 * 4);
+        for (let i = 0; i < 8; i++) {
+            const { r, g, b } = hexToRgb(SPECIES_PALETTE[i]);
+            paletteData[i * 4] = r;
+            paletteData[i * 4 + 1] = g;
+            paletteData[i * 4 + 2] = b;
+            paletteData[i * 4 + 3] = 1.0;
+        }
+        const paletteBuffer = this.gpuHelper.createBuffer(
+            device,
+            paletteData,
+            GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        );
+
         const bindGroup = device.createBindGroup({
             layout: this.gpuBindGroupLayout!,
-            entries: [{ binding: 0, resource: { buffer: this.gpuUniformBuffer } }],
+            entries: [
+                { binding: 0, resource: { buffer: this.gpuUniformBuffer } },
+                { binding: 1, resource: { buffer: paletteBuffer } },
+            ],
         });
 
         const bgRgb = hexToRgb(this.appearance.backgroundColor);
