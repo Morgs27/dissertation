@@ -126,7 +126,7 @@
     (if (f32.gt (local.get $y) (global.get $inputs_height)) (then (local.set $y (f32.sub (local.get $y) (global.get $inputs_height)))))
     (call $deposit (local.get $x) (local.get $y) (global.get $inputs_depositAmount))
 
-    ;; store back
+    ;; store back (species at offset 20 is preserved, not modified)
     (f32.store (i32.add (local.get $ptr) (i32.const 4)) (local.get $x))
     (f32.store (i32.add (local.get $ptr) (i32.const 8)) (local.get $y))
     (f32.store (i32.add (local.get $ptr) (i32.const 12)) (local.get $vx))
@@ -203,14 +203,14 @@
     (if (f32.gt (local.get $y) (global.get $inputs_height)) (then (local.set $y (f32.sub (local.get $y) (global.get $inputs_height)))))
     (call $deposit (local.get $x) (local.get $y) (global.get $inputs_depositAmount))
 
-    ;; store back
+    ;; store back (species at offset 20 is preserved, not modified)
     (f32.store (i32.add (local.get $ptr) (i32.const 4)) (local.get $x))
     (f32.store (i32.add (local.get $ptr) (i32.const 8)) (local.get $y))
     (f32.store (i32.add (local.get $ptr) (i32.const 12)) (local.get $vx))
     (f32.store (i32.add (local.get $ptr) (i32.const 16)) (local.get $vy))
   
           (local.set $_outer_i (i32.add (local.get $_outer_i) (i32.const 1)))
-          (local.set $ptr (i32.add (local.get $ptr) (i32.const 20)))
+          (local.set $ptr (i32.add (local.get $ptr) (i32.const 24)))
           (br $loop)
         )
       )

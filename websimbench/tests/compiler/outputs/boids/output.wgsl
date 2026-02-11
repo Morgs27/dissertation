@@ -4,6 +4,7 @@ struct Agent {
     y  : f32,
     vx : f32,
     vy : f32,
+    species : f32,
 };
 
 @group(0) @binding(0) var<storage, read_write> agents : array<Agent>;
@@ -127,6 +128,7 @@ fn main(
         agent.y = y;
         agent.vx = vx;
         agent.vy = vy;
+        // species is preserved (not modified by DSL code)
         agents[i] = agent;
     }
 }

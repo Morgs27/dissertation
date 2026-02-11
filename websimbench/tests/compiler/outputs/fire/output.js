@@ -8,6 +8,7 @@
                     let y = f(agent.y);
                     let vx = f(agent.vx);
                     let vy = f(agent.vy);
+                    let species = agent.species || 0;
 
                     // Get agents array
                     const agents = inputs.agents || [];
@@ -22,7 +23,7 @@
                     };
 
         // Initialize random input variables (Float32)
-        let r = f((inputs.randomValues && inputs.randomValues[id] !== undefined) ? inputs.randomValues[id] : _random());
+        
 
                     // Helper function: calculate mean of an array or array property (returns Float32)
                     const _mean = (arr, prop) => {
@@ -96,17 +97,71 @@
                     };
 
 
+                    const _avoidObstacles = (strength) => {
+                        const obstacles = inputs.obstacles || [];
+                        const str = f(strength || 1);
+                        for (let oi = 0; oi < obstacles.length; oi++) {
+                            const ob = obstacles[oi];
+                            const margin = f(5);
+                            const ox1 = f(ob.x - margin);
+                            const oy1 = f(ob.y - margin);
+                            const ox2 = f(ob.x + ob.w + margin);
+                            const oy2 = f(ob.y + ob.h + margin);
+                            if (x > ox1 && x < ox2 && y > oy1 && y < oy2) {
+                                // Inside obstacle region — push away from center
+                                const cx = f(ob.x + f(ob.w * f(0.5)));
+                                const cy = f(ob.y + f(ob.h * f(0.5)));
+                                let dx = f(x - cx);
+                                let dy = f(y - cy);
+                                const dist = f(Math.sqrt(f(f(dx * dx) + f(dy * dy))));
+                                if (dist > f(0.001)) {
+                                    dx = f(dx / dist);
+                                    dy = f(dy / dist);
+                                }
+                                vx = f(vx + f(dx * str));
+                                vy = f(vy + f(dy * str));
+                            }
+                        }
+                    };
+
+
 
         // Execute DSL code
         
+        if ((species == f(0))) {
+    
+        y = f(y - f(0.5));
+        if (_random()) {
+    
+        species = f(1); 
+        }
+        }
+        else if ((species == f(1))) {
+        
         y = f(y - f(inputs.riseSpeed));
-        let drift = f(f(r - f(0.5)) * f(inputs.spread)); 
-        x = f(x + drift);
-        let turnAmount = f(f(r - f(0.5)) * f(inputs.flickerAmount)); 
-        const __c = f(Math.cos(turnAmount)); const __s = f(Math.sin(turnAmount)); const __vx = f(f(vx * __c) - f(vy * __s)); vy = f(f(vx * __s) + f(vy * __c)); vx = __vx;
-        _deposit(f(inputs.depositAmount));
+        let r = _random(); 
+        let dx = f(f(r - f(0.5)) * f(inputs.turbulence)); 
+        x = f(x + dx);
+        _deposit(f(1.0));
+        if (_random()) {
+    
+        species = f(f(f(2) / ) / Become); 
+        }
+        }
+        else {
+        y = f(y - f(f(inputs.riseSpeed) * f(0.5)));
+        let r = _random(); 
+        let dx = f(f(f(r - f(0.5)) * f(inputs.turbulence)) * f(0.5)); 
+        x = f(x + dx);
+        if ((y < f(0))) {
+    
+        species = f(f(f(0) / ) / Recycle); 
+        y = f(inputs.height); 
+        x = f(_random() * f(inputs.width)); 
+        }
+        }
         if (x < 0) x = f(x + f(inputs.width)); if (x > f(inputs.width)) x = f(x - f(inputs.width)); if (y < 0) y = f(y + f(inputs.height)); if (y > f(inputs.height)) y = f(y - f(inputs.height));
 
                     // Return updated agent (ensure Float32 values)
-                    return { id, x: f(x), y: f(y), vx: f(vx), vy: f(vy) };
+                    return { id, x: f(x), y: f(y), vx: f(vx), vy: f(vy), species };
                 } 

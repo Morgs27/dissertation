@@ -271,10 +271,11 @@ function transpileLine(line: string, context: WGSLContext): string[] {
 
         case 'foreach': {
             const collection = parsed.collection;
-            const loopVar = parsed.varName;
+            const loopVar = parsed.varName || parsed.itemAlias;
+
             const collectionInfo = context.variables.get(collection);
 
-            if (collectionInfo?.type === 'neighbors') {
+            if (collectionInfo?.type === 'neighbors' && loopVar) {
                 const radiusExpr = collectionInfo.radiusExpr!;
 
                 context.currentLoopVar = loopVar;

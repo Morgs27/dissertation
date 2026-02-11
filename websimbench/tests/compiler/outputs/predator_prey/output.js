@@ -8,6 +8,7 @@
                     let y = f(agent.y);
                     let vx = f(agent.vx);
                     let vy = f(agent.vy);
+                    let species = agent.species || 0;
 
                     // Get agents array
                     const agents = inputs.agents || [];
@@ -96,70 +97,109 @@
                     };
 
 
+                    const _avoidObstacles = (strength) => {
+                        const obstacles = inputs.obstacles || [];
+                        const str = f(strength || 1);
+                        for (let oi = 0; oi < obstacles.length; oi++) {
+                            const ob = obstacles[oi];
+                            const margin = f(5);
+                            const ox1 = f(ob.x - margin);
+                            const oy1 = f(ob.y - margin);
+                            const ox2 = f(ob.x + ob.w + margin);
+                            const oy2 = f(ob.y + ob.h + margin);
+                            if (x > ox1 && x < ox2 && y > oy1 && y < oy2) {
+                                // Inside obstacle region — push away from center
+                                const cx = f(ob.x + f(ob.w * f(0.5)));
+                                const cy = f(ob.y + f(ob.h * f(0.5)));
+                                let dx = f(x - cx);
+                                let dy = f(y - cy);
+                                const dist = f(Math.sqrt(f(f(dx * dx) + f(dy * dy))));
+                                if (dist > f(0.001)) {
+                                    dx = f(dx / dist);
+                                    dy = f(dy / dist);
+                                }
+                                vx = f(vx + f(dx * str));
+                                vy = f(vy + f(dy * str));
+                            }
+                        }
+                    };
+
+
 
         // Execute DSL code
-        let nearby = _neighbors(f(inputs.perceptionRadius)); 
-        if (id) {
+        
+        let nearby = _neighbors(f(inputs.perception)); 
+        if ((species == f(0))) {
     
-        if ((nearby.length > f(0))) {
-    
-        let avgX = _mean(nearby, 'x'); 
-        let avgY = _mean(nearby, 'y'); 
-        vx = f(vx + f(f(avgX - x) * f(inputs.cohesionFactor))); 
-        vy = f(vy + f(f(avgY - y) * f(inputs.cohesionFactor))); 
-        }
-        for (const other of nearby) {
+        let avgVx = f(0); 
+        let avgX = f(0); 
+        let count = f(0); 
+        for (const nearby of nearby) {
             
-        let other_id = f(other.id); 
-        if (other_id) {
+        if ((f(nearby.species) == f(0))) {
     
-        let other_x = f(other.x); 
-        let other_y = f(other.y); 
-        let dx = f(x - other_x); 
-        let dy = f(y - other_y); 
-        vx = f(vx + f(dx * f(inputs.fleeFactor))); 
-        vy = f(vy + f(dy * f(inputs.fleeFactor))); 
-        }
-        }
-        const __speed2 = f(f(vx*vx) + f(vy*vy)); if (__speed2 > f(f(inputs.preySpeed)*f(inputs.preySpeed))) { const __scale = f(Math.sqrt(f(f(f(inputs.preySpeed)*f(inputs.preySpeed)) / __speed2))); vx = f(vx * __scale); vy = f(vy * __scale); };
-        }
-        if (id) {
-    
-        for (const other of nearby) {
-            
-        let other_id = f(other.id); 
-        if (other_id) {
-    
-        let other_x = f(other.x); 
-        let other_y = f(other.y); 
-        let dx = f(other_x - x); 
-        let dy = f(other_y - y); 
-        vx = f(vx + f(dx * f(inputs.chaseFactor))); 
-        vy = f(vy + f(dy * f(inputs.chaseFactor))); 
-        }
-        }
-        for (const other of nearby) {
-            
-        let other_id = f(other.id); 
-        if (other_id) {
-    
-        let other_x = f(other.x); 
-        let other_y = f(other.y); 
-        let dx = f(x - other_x); 
-        let dy = f(y - other_y); 
+        avgVx = f(avgVx + f(nearby.vx)); 
+        avgX = f(avgX + f(nearby.x)); 
+        let dx = f(x - f(nearby.x)); 
+        let dy = f(y - f(nearby.y)); 
         let dist2 = f(f(dx * dx) + f(dy * dy)); 
-        if (((dist2 < f(f(inputs.separationDist) * f(inputs.separationDist))) && (dist2 > f(0)))) {
+        if ((dist2 < f(100))) {
     
-        vx = f(vx + f(f(dx / dist2) * f(inputs.separationFactor))); 
-        vy = f(vy + f(f(dy / dist2) * f(inputs.separationFactor))); 
+        vx = f(vx + f(dx * f(inputs.preySeparation))); 
+        vy = f(vy + f(dy * f(inputs.preySeparation))); 
+        }
+        count = f(count + f(1)); 
+        else {
+        let dx = f(x - f(nearby.x)); 
+        let dy = f(y - f(nearby.y)); 
+        vx = f(vx + f(f(f(dx * f(0.2)) / ) / Strong)); 
+        vy = f(vy + f(dy * f(0.2))); 
         }
         }
+        if ((count > f(0))) {
+    
+        avgVx = f(avgVx / count); 
+        avgX = f(avgX / count); 
+        vx = f(vx + f(f(avgX - x) * f(inputs.preyCohesion))); 
+        vy = f(vy + f(f(avgY - y) * f(inputs.preyCohesion))); 
+        vx = f(vx + f(f(avgVx - vx) * f(inputs.preyAlignment))); 
+        vy = f(vy + f(f(avgVy - vy) * f(inputs.preyAlignment))); 
+        }
+        const __speed2 = f(f(vx*vx) + f(vy*vy)); if (__speed2 > f(f(inputs.preyeSpeed)*f(inputs.preyeSpeed))) { const __scale = f(Math.sqrt(f(f(f(inputs.preyeSpeed)*f(inputs.preyeSpeed)) / __speed2))); vx = f(vx * __scale); vy = f(vy * __scale); };
+        }
+        else {
+        let nearestDist = f(999999); 
+        let targetX = f(0); 
+        let foundPrey = f(0); 
+        for (const nearby of nearby) {
+            
+        if ((f(nearby.species) == f(0))) {
+    
+        let dx = f(f(nearby.x) - x); 
+        let dy = f(f(nearby.y) - y); 
+        let d2 = f(f(dx * dx) + f(dy * dy)); 
+        if ((d2 < nearestDist)) {
+    
+        nearestDist = d2; 
+        targetX = f(nearby.x); 
+        targetY = f(nearby.y); 
+        foundPrey = f(1); 
+        }
+        }
+        }
+        if (foundPrey) {
+    
+        vx = f(vx + f(f(targetX - x) * f(inputs.predatorChasing))); 
+        vy = f(vy + f(f(targetY - y) * f(inputs.predatorChasing))); 
+        else {
+        let r = _random(); 
+        const __c = f(Math.cos(f(r - f(0.5)))); const __s = f(Math.sin(f(r - f(0.5)))); const __vx = f(f(vx * __c) - f(vy * __s)); vy = f(f(vx * __s) + f(vy * __c)); vx = __vx;
         }
         const __speed2 = f(f(vx*vx) + f(vy*vy)); if (__speed2 > f(f(inputs.predatorSpeed)*f(inputs.predatorSpeed))) { const __scale = f(Math.sqrt(f(f(f(inputs.predatorSpeed)*f(inputs.predatorSpeed)) / __speed2))); vx = f(vx * __scale); vy = f(vy * __scale); };
         }
         if (x < 0) x = f(x + f(inputs.width)); if (x > f(inputs.width)) x = f(x - f(inputs.width)); if (y < 0) y = f(y + f(inputs.height)); if (y > f(inputs.height)) y = f(y - f(inputs.height));
-        x = f(x + f(vx * f(inputs.dt))); y = f(y + f(vy * f(inputs.dt)));
+        x = f(x + f(vx * f(1.0))); y = f(y + f(vy * f(1.0)));
 
                     // Return updated agent (ensure Float32 values)
-                    return { id, x: f(x), y: f(y), vx: f(vx), vy: f(vy) };
+                    return { id, x: f(x), y: f(y), vx: f(vx), vy: f(vy), species };
                 } 

@@ -8,6 +8,7 @@
                     let y = f(agent.y);
                     let vx = f(agent.vx);
                     let vy = f(agent.vy);
+                    let species = agent.species || 0;
 
                     // Get agents array
                     const agents = inputs.agents || [];
@@ -22,7 +23,7 @@
                     };
 
         // Initialize random input variables (Float32)
-        
+        let r = f((inputs.randomValues && inputs.randomValues[id] !== undefined) ? inputs.randomValues[id] : _random());
 
                     // Helper function: calculate mean of an array or array property (returns Float32)
                     const _mean = (arr, prop) => {
@@ -96,29 +97,64 @@
                     };
 
 
+                    const _avoidObstacles = (strength) => {
+                        const obstacles = inputs.obstacles || [];
+                        const str = f(strength || 1);
+                        for (let oi = 0; oi < obstacles.length; oi++) {
+                            const ob = obstacles[oi];
+                            const margin = f(5);
+                            const ox1 = f(ob.x - margin);
+                            const oy1 = f(ob.y - margin);
+                            const ox2 = f(ob.x + ob.w + margin);
+                            const oy2 = f(ob.y + ob.h + margin);
+                            if (x > ox1 && x < ox2 && y > oy1 && y < oy2) {
+                                // Inside obstacle region — push away from center
+                                const cx = f(ob.x + f(ob.w * f(0.5)));
+                                const cy = f(ob.y + f(ob.h * f(0.5)));
+                                let dx = f(x - cx);
+                                let dy = f(y - cy);
+                                const dist = f(Math.sqrt(f(f(dx * dx) + f(dy * dy))));
+                                if (dist > f(0.001)) {
+                                    dx = f(dx / dist);
+                                    dy = f(dy / dist);
+                                }
+                                vx = f(vx + f(dx * str));
+                                vy = f(vy + f(dy * str));
+                            }
+                        }
+                    };
+
+
 
         // Execute DSL code
+        vy = f(vy + f(inputs.gravity)); 
         let nearby = _neighbors(f(inputs.repulsionRadius)); 
-        for (const other of nearby) {
+        for (const nearby of nearby) {
             
-        let other_x = f(other.x); 
-        let other_y = f(other.y); 
-        let dx = f(x - other_x); 
-        let dy = f(y - other_y); 
+        let dx = f(x - f(nearby.x)); 
+        let dy = f(y - f(nearby.y)); 
         let dist2 = f(f(dx * dx) + f(dy * dy)); 
-        if ((dist2 > f(0))) {
+        if (((dist2 > f(0)) && (dist2 < f(f(inputs.repulsionRadius) * f(inputs.repulsionRadius))))) {
     
-        let force = f(f(inputs.repulsionForce) / dist2); 
+        let force = f(f(inputs.repulsionForce) / f(dist2 + f(0.1))); 
         vx = f(vx + f(dx * force)); 
         vy = f(vy + f(dy * force)); 
         }
         }
-        vx = f(vx * f(inputs.dampening)); 
-        vy = f(vy * f(inputs.dampening)); 
-        const __speed2 = f(f(vx*vx) + f(vy*vy)); if (__speed2 > f(f(inputs.maxSpeed)*f(inputs.maxSpeed))) { const __scale = f(Math.sqrt(f(f(f(inputs.maxSpeed)*f(inputs.maxSpeed)) / __speed2))); vx = f(vx * __scale); vy = f(vy * __scale); };
-        if (x < 0 || x > f(inputs.width)) vx = f(-vx); if (y < 0 || y > f(inputs.height)) vy = f(-vy); x = f(Math.max(0, Math.min(f(inputs.width), x))); y = f(Math.max(0, Math.min(f(inputs.height), y)));
-        x = f(x + f(vx * f(inputs.dt))); y = f(y + f(vy * f(inputs.dt)));
+        vx = f(vx * f(inputs.damping)); 
+        vy = f(vy * f(inputs.damping)); 
+        if ((y >= f(inputs.height))) {
+    
+        y = f(f(inputs.height) - f(1)); 
+        vy = f(vy * f(-f(0.8))); 
+        vx = f(f(f(vx * f(0.9)) / ) / Friction); 
+        }
+        if (((x <= f(0)) || (x >= f(inputs.width)))) {
+    
+        vx = f(vx * f(-f(0.8))); 
+        }
+        x = f(x + f(vx * f(1.0))); y = f(y + f(vy * f(1.0)));
 
                     // Return updated agent (ensure Float32 values)
-                    return { id, x: f(x), y: f(y), vx: f(vx), vy: f(vy) };
+                    return { id, x: f(x), y: f(y), vx: f(vx), vy: f(vy), species };
                 } 

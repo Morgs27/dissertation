@@ -4,6 +4,7 @@ struct Agent {
     y  : f32,
     vx : f32,
     vy : f32,
+    species : f32,
 };
 
 @group(0) @binding(0) var<storage, read_write> agents : array<Agent>;
@@ -11,13 +12,12 @@ struct Agent {
 @group(0) @binding(6) var<storage, read_write> agentLogs : array<vec2<f32>>;
 
 struct Inputs {
+    gravity: f32,
     repulsionRadius: f32,
     repulsionForce: f32,
-    dampening: f32,
-    maxSpeed: f32,
-    dt: f32,
-    width: f32,
+    damping: f32,
     height: f32,
+    width: f32,
 };
 
 @group(0) @binding(1) var<uniform> inputs: Inputs;
@@ -26,7 +26,7 @@ struct Inputs {
 
 
 
-
+@group(0) @binding(3) var<storage, read> randomValues : array<f32>;
 
 
 
@@ -49,8 +49,9 @@ fn main(
         var vy = agent.vy;
         
         // Load random values based on agent.id for parity with JS
+        var r = randomValues[u32(agent.id)];
         
-        
+        vy = vy + inputs.gravity;
         // Find neighbors for nearby
         var nearby_count: u32 = 0u;
         var nearby_sum_x: f32 = 0.0;
@@ -79,27 +80,32 @@ fn main(
             let _loop_dy = y - _loop_other.y;
             let _loop_dist = sqrt(_loop_dx*_loop_dx + _loop_dy*_loop_dy);
             if (_loop_dist >= inputs.repulsionRadius) { continue; }
-            var other_x: f32 = _loop_other.x;
-            var other_y: f32 = _loop_other.y;
-            var dx: f32 = x - other_x;
-            var dy: f32 = y - other_y;
+            var dx: f32 = x - _loop_other.x;
+            var dy: f32 = y - _loop_other.y;
             var dist2: f32 = dx*dx + dy*dy;
-            if (dist2 > 0) {
-                var force: f32 = inputs.repulsionForce / dist2;
+            if (dist2 > 0 && dist2 < (inputs.repulsionRadius)*(inputs.repulsionRadius)) {
+                var force: f32 = inputs.repulsionForce / (dist2 + 0.1);
                 vx = vx + dx * force;
                 vy = vy + dy * force;
             }
         }
-        vx = vx * inputs.dampening;
-        vy = vy * inputs.dampening;
-        let _spd_ls = inputs.maxSpeed; let _spd_ls2 = _spd_ls * _spd_ls; let _vx2_ls = vx * vx; let _vy2_ls = vy * vy; let _cur_ls2 = _vx2_ls + _vy2_ls; if (_cur_ls2 > _spd_ls2) { let _scale_ls = sqrt(_spd_ls2 / _cur_ls2); vx = vx * _scale_ls; vy = vy * _scale_ls; }
-        if (x < 0.0 || x >= inputs.width) { vx = -vx; } if (y < 0.0 || y >= inputs.height) { vy = -vy; } x = clamp(x, 0.0, inputs.width); y = clamp(y, 0.0, inputs.height);
-        let _dt_up = inputs.dt; let _dx_mf_t1 = vx * _dt_up; let _dy_mf_t1 = vy * _dt_up; x = x + _dx_mf_t1; y = y + _dy_mf_t1;
+        vx = vx * inputs.damping;
+        vy = vy * inputs.damping;
+        if (y >= inputs.height) {
+            y = inputs.height - 1;
+            vy = vy * -0.8;
+            vx = vx * 0.9; // Friction;
+        }
+        if (x <= 0 || x >= inputs.width) {
+            vx = vx * -0.8;
+        }
+        let _dt_up = 1.0; let _dx_mf_t1 = vx * _dt_up; let _dy_mf_t1 = vy * _dt_up; x = x + _dx_mf_t1; y = y + _dy_mf_t1;
         
         agent.x = x;
         agent.y = y;
         agent.vx = vx;
         agent.vy = vy;
+        // species is preserved (not modified by DSL code)
         agents[i] = agent;
     }
 }

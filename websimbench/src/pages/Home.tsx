@@ -12,6 +12,7 @@ import { useCodeCompiler } from '../hooks/useCodeCompiler';
 import { useSimulationRunner } from '../hooks/useSimulationRunner';
 import { useLogger } from '../hooks/useLogger';
 import { useSimulationOptions } from '../hooks/useSimulationOptions';
+import { useObstacles } from '../hooks/useObstacles';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { useState, useRef } from 'react';
@@ -40,6 +41,15 @@ export const Home = () => {
 
     const { options } = useSimulationOptions();
 
+    // Obstacles
+    const {
+        obstacles,
+        isPlacing,
+        setIsPlacing,
+        addObstacle,
+        clearObstacles
+    } = useObstacles();
+
     const {
         method,
         setMethod,
@@ -50,11 +60,16 @@ export const Home = () => {
         canvasRef,
         gpuCanvasRef,
         handleRun
-    } = useSimulationRunner(code, inputs, options);
+    } = useSimulationRunner(code, inputs, options, obstacles);
 
     const { addReport } = useBenchmarkHistory();
 
     const { logs, clearLogs } = useLogger();
+
+    const handlePlaceObstacle = (x: number, y: number) => {
+        // Place 50x50 obstacle centered at click
+        addObstacle({ x: x - 25, y: y - 25, w: 50, h: 50 });
+    };
 
     return (
         <PanelGroup direction="horizontal">
@@ -122,6 +137,9 @@ export const Home = () => {
                                             inputs={inputs}
                                             definedInputs={definedInputs}
                                             handleInputChange={handleInputChange}
+                                            isPlacingObstacles={isPlacing}
+                                            setIsPlacingObstacles={setIsPlacing}
+                                            onClearObstacles={clearObstacles}
                                         />
                                     </TabsContent>
 
@@ -158,6 +176,9 @@ export const Home = () => {
                                         gpuCanvasRef={gpuCanvasRef}
                                         renderMode={activeHomeTab === 'benchmark' ? benchmarkRenderMode : (activeHomeTab === 'playground' ? renderMode : 'cpu')}
                                         isHidden={activeHomeTab === 'benchmark' && !isBenchmarkRunning}
+                                        isPlacing={isPlacing}
+                                        onPlaceObstacle={handlePlaceObstacle}
+                                        obstacles={obstacles}
                                     />
                                 </div>
                             </Panel>

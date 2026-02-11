@@ -1,32 +1,40 @@
 export const FLUID_SIMULATION = `
-input repulsionRadius = 30;
-input repulsionForce = 0.08;
-input dampening = 0.95;
-input maxSpeed = 3;
-input dt = 1;
+input gravity = 0.1;
+input repulsionRadius = 15;
+input repulsionForce = 0.5;
+input damping = 0.96;
+input r = random();
 
+// Apply gravity
+vy += inputs.gravity;
+
+// SPH-like repulsion (simulating pressure)
 var nearby = neighbors(inputs.repulsionRadius);
-
-foreach (nearby as other) {
-  var other_x = other.x;
-  var other_y = other.y;
-  var dx = x - other_x;
-  var dy = y - other_y;
-  var dist2 = dx*dx + dy*dy;
-
-  if (dist2 > 0) {
-    var force = inputs.repulsionForce / dist2;
-    vx += dx * force;
-    vy += dy * force;
-  }
+foreach(nearby) {
+    var dx = x - nearby.x;
+    var dy = y - nearby.y;
+    var dist2 = dx*dx + dy*dy;
+    
+    if (dist2 > 0 && dist2 < inputs.repulsionRadius^2) {
+        var force = inputs.repulsionForce / (dist2 + 0.1);
+        vx += dx * force;
+        vy += dy * force;
+    }
 }
 
-vx = vx * inputs.dampening;
-vy = vy * inputs.dampening;
+// Apply damping (viscosity)
+vx *= inputs.damping;
+vy *= inputs.damping;
 
-limitSpeed(inputs.maxSpeed);
+// Boundary handling with bounce
+if (y >= inputs.height) {
+    y = inputs.height - 1;
+    vy *= -0.8;
+    vx *= 0.9; // Friction
+}
+if (x <= 0 || x >= inputs.width) {
+    vx *= -0.8;
+}
 
-borderBounce();
-
-updatePosition(inputs.dt);
+updatePosition(1.0);
 `;

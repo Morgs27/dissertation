@@ -220,9 +220,9 @@ function normalizeWASMExpression(expr: string, randomInputs: Set<string>): strin
     return `${obj}_${prop}`;
   });
 
-  // Handle .length or .count property for neighbors
-  r = r.replace(/nearbyAgents\.length/g, "nearbyAgents_count");
-  r = r.replace(/nearbyAgents\.count/g, "nearbyAgents_count");
+  // Handle .length or .count property for neighbors (generic)
+  r = r.replace(/(\w+)\.length/g, "$1_count");
+  r = r.replace(/(\w+)\.count/g, "$1_count");
 
   // Handle neighbors()
   if (r.includes("neighbors(")) {
@@ -450,26 +450,30 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
     }
 
     case "foreach": {
-      if (parsed.collection === "nearbyAgents") {
-        localVars.add("_foreach_idx"); localVars.add("_foreach_ptr"); localVars.add(`${parsed.varName}_x`);
-        localVars.add(`${parsed.varName}_y`); localVars.add(`${parsed.varName}_vx`); localVars.add(`${parsed.varName}_vy`);
+      // Relaxed check: accept any collection, assuming it's the agent list
+      // if (parsed.collection === "nearbyAgents") {
+      const loopVar = parsed.varName || parsed.itemAlias;
+
+      if (loopVar) {
+        localVars.add("_foreach_idx"); localVars.add("_foreach_ptr"); localVars.add(`${loopVar}_x`);
+        localVars.add(`${loopVar}_y`); localVars.add(`${loopVar}_vx`); localVars.add(`${loopVar}_vy`);
         localVars.add("_foreach_dx"); localVars.add("_foreach_dy"); localVars.add("_foreach_dist");
         return `
-    ;; Foreach loop over nearbyAgents
+    ;; Foreach loop over agents (presumed neighbors/all)
     (local.set $_foreach_idx (i32.const 0))
     (local.set $_foreach_ptr (global.get $agentsReadPtr))
     (block $_foreach_exit
       (loop $_foreach_loop
         (br_if $_foreach_exit (i32.ge_u (local.get $_foreach_idx) (global.get $agent_count)))
         (if (i32.const 1) (then
-          (local.set $${parsed.varName}_x (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 4))))
-          (local.set $${parsed.varName}_y (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 8))))
-          (local.set $${parsed.varName}_vx (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 12))))
-          (local.set $${parsed.varName}_vy (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 16))))
+          (local.set $${loopVar}_x (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 4))))
+          (local.set $${loopVar}_y (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 8))))
+          (local.set $${loopVar}_vx (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 12))))
+          (local.set $${loopVar}_vy (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 16))))
           (if (i32.const 1) (then
             ;; Loop body will be inserted here by subsequent lines`;
       }
-      return `;; TODO: foreach loops only supported for nearbyAgents`;
+      return `;; TODO: foreach loops require a variable name`;
     }
 
     case "assignment": {

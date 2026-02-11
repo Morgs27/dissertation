@@ -22,7 +22,7 @@ export type SimulationAppearance = {
 }
 
 export type InputValues = {
-    [key: string]: number | Agent[] | Float32Array | Uint32Array | Function;
+    [key: string]: number | Agent[] | Float32Array | Uint32Array | Function | Obstacle[];
 }
 
 export type InputDefinition = {
