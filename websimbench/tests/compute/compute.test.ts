@@ -9,8 +9,8 @@ import GPU from '../../src/simulation/helpers/gpu';
 import Logger, { LogLevel } from '../../src/simulation/helpers/logger';
 
 // Test configuration
-const NUM_FRAMES = 300;
-const NUM_AGENTS = 100;
+const NUM_FRAMES = 100; // Reduced to prevent WebSocket payload overflow with 500 agents
+const NUM_AGENTS = 500; // Increased to stress test GPU precision
 const WIDTH = 600;
 const HEIGHT = 600;
 
@@ -168,6 +168,9 @@ describe('Compute Cross-Method Comparison', () => {
             let gpuDevice: any | null = null;
 
             beforeAll(async () => {
+                // Reduce log level to prevent WebSocket payload overflow with large agent counts
+                Logger.setGlobalLogLevel(LogLevel.Error);
+
                 // Compile the simulation
                 const compiler = new Compiler();
                 compilationResult = compiler.compileAgentCode(sourceCode);
@@ -355,14 +358,18 @@ describe('Compute Cross-Method Comparison', () => {
                             overallMinError = Math.min(overallMinError, minPosDiff > 0 ? minPosDiff : Infinity);
                         }
 
-                        const status = comparison.maxPosDiff <= tolerance ? '✓ PASS' : '✗ FAIL';
-                        console.log(
-                            `${String(frame).padStart(5)} | ` +
-                            `${comparison.avgPosDiff.toFixed(6).padStart(10)} | ` +
-                            `${comparison.maxPosDiff.toFixed(6).padStart(10)} | ` +
-                            `${minPosDiff.toFixed(6).padStart(10)} | ` +
-                            status
-                        );
+                        // Only log every 50 frames or on failure to reduce output
+                        const shouldLog = frame % 50 === 0 || frame === NUM_FRAMES - 1 || comparison.maxPosDiff > tolerance;
+                        if (shouldLog) {
+                            const status = comparison.maxPosDiff <= tolerance ? '✓ PASS' : '✗ FAIL';
+                            console.log(
+                                `${String(frame).padStart(5)} | ` +
+                                `${comparison.avgPosDiff.toFixed(6).padStart(10)} | ` +
+                                `${comparison.maxPosDiff.toFixed(6).padStart(10)} | ` +
+                                `${minPosDiff.toFixed(6).padStart(10)} | ` +
+                                status
+                            );
+                        }
 
                         // Assert positions match within tolerance
                         expect(

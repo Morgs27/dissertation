@@ -88,9 +88,6 @@
     (local.set $sL (call $sense (local.get $x) (local.get $y) (local.get $vx) (local.get $vy) (global.get $inputs_sensorAngle) (global.get $inputs_sensorDist)))
     (local.set $sF (call $sense (local.get $x) (local.get $y) (local.get $vx) (local.get $vy) (f32.const 0) (global.get $inputs_sensorDist)))
     (local.set $sR (call $sense (local.get $x) (local.get $y) (local.get $vx) (local.get $vy) (f32.neg (global.get $inputs_sensorAngle)) (global.get $inputs_sensorDist)))
-    (call $print (local.get $_agent_id) (local.get $sL))
-    (call $print (local.get $_agent_id) (local.get $sF))
-    (call $print (local.get $_agent_id) (local.get $sR))
     (if (i32.and (f32.lt (local.get $sF) (local.get $sL)) (f32.lt (local.get $sF) (local.get $sR))) (then
     (if (f32.lt (local.get $r) (f32.const 0.5)) (then
     (local.set $__c (call $cos (global.get $inputs_turnAngle)))
@@ -168,9 +165,6 @@
     (local.set $sL (call $sense (local.get $x) (local.get $y) (local.get $vx) (local.get $vy) (global.get $inputs_sensorAngle) (global.get $inputs_sensorDist)))
     (local.set $sF (call $sense (local.get $x) (local.get $y) (local.get $vx) (local.get $vy) (f32.const 0) (global.get $inputs_sensorDist)))
     (local.set $sR (call $sense (local.get $x) (local.get $y) (local.get $vx) (local.get $vy) (f32.neg (global.get $inputs_sensorAngle)) (global.get $inputs_sensorDist)))
-    (call $print (local.get $_agent_id) (local.get $sL))
-    (call $print (local.get $_agent_id) (local.get $sF))
-    (call $print (local.get $_agent_id) (local.get $sR))
     (if (i32.and (f32.lt (local.get $sF) (local.get $sL)) (f32.lt (local.get $sF) (local.get $sR))) (then
     (if (f32.lt (local.get $r) (f32.const 0.5)) (then
     (local.set $__c (call $cos (global.get $inputs_turnAngle)))
