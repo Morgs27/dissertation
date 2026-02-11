@@ -1,13 +1,21 @@
 import { useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { CircleNotch, FloppyDisk, UploadSimple, PencilLineIcon, CubeIcon, FileJsIcon, GraphicsCardIcon } from "@phosphor-icons/react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { CircleNotch, FloppyDisk, UploadSimple, PencilLineIcon, CubeIcon, FileJsIcon, GraphicsCardIcon, BookOpen } from "@phosphor-icons/react";
 import Editor from 'react-simple-code-editor';
 import { highlight, languages } from 'prismjs';
 import 'prismjs/components/prism-clike';
 import 'prismjs/components/prism-javascript';
 import 'prismjs/components/prism-wasm';
 import 'prismjs/themes/prism-dark.css';
+
+import { PREMADE_SIMULATIONS } from '../config/premadeSimulations';
 
 interface EditorPanelProps {
   code: string;
@@ -34,6 +42,13 @@ export const EditorPanel = ({
   isCompiling
 }: EditorPanelProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLoadPremade = (simCode: string) => {
+    // Confirm before overwriting if the code is not empty? 
+    // For now, just overwrite as requested by "load" behavior usually implies replacement.
+    // If we wanted to be safer we could check if code !== DEFAULT_CODE etc.
+    setCode(simCode);
+  };
 
   return (
     <Tabs defaultValue="sim-code" className="h-full flex flex-col bg-[#16262b]">
@@ -64,6 +79,30 @@ export const EditorPanel = ({
               Compiling...
             </div>
           )}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-lg"
+                className="h-8 w-8 text-tropicalTeal hover:text-tropicalTeal hover:bg-white/10"
+                title="Premade Simulations"
+              >
+                <BookOpen size={18} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 bg-[#16262b] border-white/10 text-white">
+              {Object.entries(PREMADE_SIMULATIONS).map(([name, simCode]) => (
+                <DropdownMenuItem
+                  key={name}
+                  onClick={() => handleLoadPremade(simCode)}
+                  className="cursor-pointer hover:bg-white/10 focus:bg-white/10 focus:text-white"
+                >
+                  {name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <Button
             variant="ghost"
