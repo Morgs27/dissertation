@@ -1,6 +1,6 @@
 {
-  "simulation": "gravity",
-  "generatedAt": "2026-02-16T21:43:40.733Z",
+  "simulation": "obstacles",
+  "generatedAt": "2026-02-16T21:44:01.441Z",
   "numFrames": 100,
   "numAgents": 500,
   "comparisons": [

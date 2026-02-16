@@ -46,7 +46,6 @@ export const AVAILABLE_COMMANDS_LIST: AVAILABLE_COMMANDS[] = [
     'avoidObstacles',
 ];
 
-export type CommandMap = Record<AVAILABLE_COMMANDS, string>;
 
 /**
  * Represents a parsed command with its name and argument
@@ -244,29 +243,30 @@ export class DSLParser {
     }
 
     /**
-     * Applies a command template by replacing {arg} placeholder
+     * Replaces all occurrences of {arg} in a template string with the given argument
      */
-    static applyCommandTemplate(template: string, argument: string): string {
-        return template.replace(/{arg}/g, argument);
+    static applyCommandTemplate(template: string, arg: string): string {
+        return template.replace(/\{arg\}/g, arg);
     }
 
     /**
-     * Parses multiple lines using a command map
+     * Parses an array of LineInfo objects, expanding any recognised commands
+     * via the supplied command-template map. Non-command lines are skipped.
      */
-    static parseLines(lines: LineInfo[], commandMap: CommandMap): string[] {
-        const statements: string[] = [];
-
+    static parseLines(
+        lines: LineInfo[],
+        commandMap: Record<AVAILABLE_COMMANDS, string>,
+    ): string[] {
+        const result: string[] = [];
         for (const line of lines) {
             const parsed = DSLParser.parseCommandLine(line.content.trim());
-            if (parsed && commandMap[parsed.command]) {
-                const statement = DSLParser.applyCommandTemplate(
-                    commandMap[parsed.command],
-                    parsed.argument
-                );
-                statements.push(statement);
+            if (parsed) {
+                const template = commandMap[parsed.command];
+                if (template) {
+                    result.push(DSLParser.applyCommandTemplate(template, parsed.argument));
+                }
             }
         }
-
-        return statements;
+        return result;
     }
 }

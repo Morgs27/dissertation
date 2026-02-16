@@ -57,7 +57,10 @@ export default class WebGPU {
     private trailMapCapacity = 0;
     private randomValuesBuffer: GPUBuffer | null = null;
     private randomValuesCapacity = 0;
+    private obstaclesBuffer: GPUBuffer | null = null;
+    private obstaclesCapacity = 0;
     private hasTrailMap = false;
+    private hasObstacles = false;
     private trailMapGPUSeeded = false; // Track if trail map is initialized on GPU
 
     // Diffuse/decay compute pipeline
@@ -79,7 +82,7 @@ export default class WebGPU {
     async init(device: GPUDevice, agentCount: number) {
         const AGENT_BUFFER_SIZE = agentCount * COMPONENTS_PER_AGENT * FLOAT_SIZE;
 
-        console.log("Initializing WebGPU with device:", device);
+        this.Logger.log("Initializing WebGPU with device:", device);
 
         // Push error scope to capture initialization errors
         device.pushErrorScope('validation');
@@ -87,7 +90,7 @@ export default class WebGPU {
         const module = device.createShaderModule({ code: this.wgslCode });
 
         // Check for compilation errors
-        console.log("GENERATED WGSL:\n", this.wgslCode);
+        this.Logger.log("Generated WGSL shader for WebGPU");
         module.getCompilationInfo().then(info => {
             for (const message of info.messages) {
                 const type = message.type === 'error' ? 'error' : 'warning';
@@ -98,6 +101,7 @@ export default class WebGPU {
         });
 
         this.hasTrailMap = this.inputsExpected.includes('trailMap');
+        this.hasObstacles = this.inputsExpected.includes('obstacles');
 
         const bindGroupEntries: GPUBindGroupLayoutEntry[] = [
             { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: "storage" } },
@@ -141,6 +145,15 @@ export default class WebGPU {
             buffer: { type: "storage" }
         });
 
+        // obstacles: binding 7, read-only for obstacle avoidance
+        if (this.hasObstacles) {
+            bindGroupEntries.push({
+                binding: 7,
+                visibility: GPUShaderStage.COMPUTE,
+                buffer: { type: "read-only-storage" }
+            });
+        }
+
         this.bindGroupLayout = device.createBindGroupLayout({
             entries: bindGroupEntries,
         });
@@ -154,7 +167,7 @@ export default class WebGPU {
         device.popErrorScope().then(error => {
             if (error) {
                 this.Logger.error("WebGPU Validation Error during initialization:", error.message);
-                console.error("WGSL Code that failed:\n", this.wgslCode);
+                this.Logger.error("WGSL Code that failed:\n", this.wgslCode);
             }
         });
 
@@ -264,7 +277,7 @@ export default class WebGPU {
                         if (ny < 0) { ny += i32(h); }
                         if (ny >= i32(h)) { ny -= i32(h); }
 
-                        // Sample from merged value (inputMap + despositMap at that location)
+                        // Sample from merged value (inputMap + depositMap at that location)
                         let neighborIdx = u32(ny) * w + u32(nx);
                         let neighborDeposit = f32(depositMap[neighborIdx]) / 10000.0;
                         sum += inputMap[neighborIdx] + neighborDeposit;
@@ -444,6 +457,11 @@ export default class WebGPU {
         // agentsRead (binding 5): read-only snapshot for neighbor queries
         bindGroupEntries.push({ binding: 5, resource: { buffer: this.agentsReadBuffer! } });
 
+        // obstacles (binding 7): obstacle data for avoidObstacles
+        if (this.hasObstacles && this.obstaclesBuffer) {
+            bindGroupEntries.push({ binding: 7, resource: { buffer: this.obstaclesBuffer } });
+        }
+
         const bindGroup = device.createBindGroup({
             layout,
             entries: bindGroupEntries,
@@ -617,8 +635,18 @@ export default class WebGPU {
     }
 
     private ensureAndWriteInputs(device: GPUDevice, inputs: InputValues) {
+        const bufferInputs = ['trailMap', 'randomValues', 'obstacles']; // these have their own storage bindings
+        
+        // If obstacles are used, inject obstacleCount as a scalar input for the uniform buffer
+        const obstacleCount = this.hasObstacles
+            ? (Array.isArray(inputs.obstacles) ? (inputs.obstacles as any[]).length : 0)
+            : 0;
+        if (this.hasObstacles) {
+            inputs.obstacleCount = obstacleCount;
+        }
+
         const values = this.inputsExpected
-            .filter(n => n !== 'trailMap') // don't put trailMap in uniform buffer
+            .filter(n => !bufferInputs.includes(n))
             .map((n) => {
                 const value = inputs[n];
                 // Only convert numeric inputs, default to 0 for non-numeric
@@ -707,6 +735,37 @@ export default class WebGPU {
             }
 
             device.queue.writeBuffer(this.randomValuesBuffer!, 0, randomValues.buffer, randomValues.byteOffset, randomValues.byteLength);
+        }
+
+        // Handle Obstacles — written every frame so real-time changes propagate
+        if (this.hasObstacles) {
+            const obstacleArray = Array.isArray(inputs.obstacles) ? inputs.obstacles as any[] : [];
+            // Each obstacle: 4 floats (x, y, w, h) = 16 bytes
+            // Minimum 16 bytes to avoid zero-size buffer
+            const numObstacles = Math.max(obstacleArray.length, 1);
+            const size = numObstacles * 4 * FLOAT_SIZE;
+
+            if (!this.obstaclesBuffer || this.obstaclesCapacity < size) {
+                if (this.obstaclesBuffer) this.obstaclesBuffer.destroy();
+                this.obstaclesBuffer = this.gpuHelper.createEmptyBuffer(
+                    device,
+                    size,
+                    GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+                    "Obstacles"
+                );
+                this.obstaclesCapacity = size;
+            }
+
+            const obstacleData = new Float32Array(numObstacles * 4);
+            for (let i = 0; i < obstacleArray.length; i++) {
+                const ob = obstacleArray[i];
+                obstacleData[i * 4] = ob.x;
+                obstacleData[i * 4 + 1] = ob.y;
+                obstacleData[i * 4 + 2] = ob.w;
+                obstacleData[i * 4 + 3] = ob.h;
+            }
+
+            device.queue.writeBuffer(this.obstaclesBuffer!, 0, obstacleData.buffer, obstacleData.byteOffset, obstacleData.byteLength);
         }
     }
 

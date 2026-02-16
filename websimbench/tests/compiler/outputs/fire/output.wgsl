@@ -24,9 +24,13 @@ struct Inputs {
 
 @group(0) @binding(2) var<storage, read> trailMapRead : array<f32>;
 
-
+@group(0) @binding(3) var<storage, read> randomValues : array<f32>;
 
 @group(0) @binding(4) var<storage, read_write> trailMapWrite : array<atomic<i32>>;
+
+
+
+
 
 
 
@@ -94,35 +98,35 @@ fn main(
         var vy = agent.vy;
         var species = agent.species;
         
-        // Load random values based on agent.id for parity with JS
+        // Load random values based on agent.id for parity with JS (indexed by stride)
         
         
         if (species == 0) {
         y = y - 0.5;
-        if (randomValues[u32(agent.id)] < 0.1) {
+        if (randomValues[u32(agent.id) * 5u + 0u] < 0.1) {
         species = 1.0;
         }
         }
         else {
         if (species == 1) {
         y = y - inputs.riseSpeed;
-        var r: f32 = randomValues[u32(agent.id)];
+        var r: f32 = randomValues[u32(agent.id) * 5u + 1u];
         var dx: f32 = (r - 0.5) * inputs.turbulence;
         x = x + dx;
         _deposit(x, y, 1.0);
-        if (randomValues[u32(agent.id)] < inputs.coolingRate) {
+        if (randomValues[u32(agent.id) * 5u + 2u] < inputs.coolingRate) {
         species = 2.0;
         }
         }
         else {
         y = y - inputs.riseSpeed * 0.5;
-        var r: f32 = randomValues[u32(agent.id)];
+        var r: f32 = randomValues[u32(agent.id) * 5u + 3u];
         var dx: f32 = (r - 0.5) * inputs.turbulence * 0.5;
         x = x + dx;
         if (y < 0) {
         species = 0.0;
         y = inputs.height;
-        x = randomValues[u32(agent.id)] * inputs.width;
+        x = randomValues[u32(agent.id) * 5u + 4u] * inputs.width;
         }
         }
         }

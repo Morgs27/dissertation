@@ -11,12 +11,20 @@
                     const agents = inputs.agents || [];
 
                     // Helper function for random values (returns Float32)
-                    const _random = (min, max) => {
-                        if (max === undefined) {
-                            if (min === undefined) return f(Math.random());
-                            return f(f(Math.random()) * f(min));
+                    // callIndex is a compile-time constant assigned to each random() call site
+                    const _NRC = 0;
+                    const _random = (callIndex, min, max) => {
+                        let val;
+                        if (inputs.randomValues && inputs.randomValues.length >= (id + 1) * _NRC) {
+                            val = f(inputs.randomValues[id * _NRC + callIndex]);
+                        } else {
+                            val = f(Math.random());
                         }
-                        return f(f(min) + f(f(Math.random()) * f(f(max) - f(min))));
+                        if (max === undefined) {
+                            if (min === undefined) return val;
+                            return f(val * f(min));
+                        }
+                        return f(f(min) + f(val * f(f(max) - f(min))));
                     };
 
   // Execute DSL code

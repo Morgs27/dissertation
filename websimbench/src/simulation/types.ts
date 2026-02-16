@@ -45,6 +45,8 @@ export type CompilationResult = {
     WASMCode: string;
     trailEnvironmentConfig?: TrailEnvironmentConfig;
     speciesCount?: number;
+    /** Number of random values needed per agent per frame (randomInputs + inline random() calls) */
+    numRandomCalls: number;
 }
 
 export type Agent = {

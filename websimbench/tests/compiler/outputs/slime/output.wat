@@ -18,9 +18,19 @@
     (global $trailMapReadPtr (export "trailMapReadPtr") (mut i32) (i32.const 0))
     (global $trailMapWritePtr (export "trailMapWritePtr") (mut i32) (i32.const 0))
     (global $randomValuesPtr (export "randomValuesPtr") (mut i32) (i32.const 0))
+    
     (global $agentsReadPtr (export "agentsReadPtr") (mut i32) (i32.const 0))
 
-    (func $random (param $id f32) (param $x f32) (param $y f32) (result f32) (call $random_js))
+    (func $random (param $id f32) (param $callIndex i32) (result f32)
+      ;; Load randomValues[id * numRandomCalls + callIndex]
+      (f32.load
+        (i32.add
+          (global.get $randomValuesPtr)
+          (i32.shl
+            (i32.add
+              (i32.mul (i32.trunc_f32_u (local.get $id)) (i32.const 1))
+              (local.get $callIndex))
+            (i32.const 2)))))
 
     
     (func $sense (param $x f32) (param $y f32) (param $vx f32) (param $vy f32) (param $angleOffset f32) (param $dist f32) (result f32)
@@ -81,8 +91,8 @@
     (local.set $vy (f32.load (i32.add (local.get $ptr) (i32.const 16))))
     (local.set $species (f32.load (i32.add (local.get $ptr) (i32.const 20))))
 
-    ;; load random values
-    (local.set $r (f32.load (i32.add (global.get $randomValuesPtr) (i32.shl (i32.trunc_f32_u (local.get $_agent_id)) (i32.const 2)))))
+    ;; load random values (indexed: agent_id * numRandomCalls + ri)
+    (local.set $r (f32.load (i32.add (global.get $randomValuesPtr) (i32.shl (i32.add (i32.mul (i32.trunc_f32_u (local.get $_agent_id)) (i32.const 1)) (i32.const 0)) (i32.const 2)))))
 
     ;; execute DSL
     nop
@@ -122,9 +132,9 @@
     (local.set $x (f32.add (local.get $x) (f32.mul (local.get $vx) (global.get $inputs_speed))))
     (local.set $y (f32.add (local.get $y) (f32.mul (local.get $vy) (global.get $inputs_speed))))
     (if (f32.lt (local.get $x) (f32.const 0)) (then (local.set $x (f32.add (local.get $x) (global.get $inputs_width)))))
-    (if (f32.gt (local.get $x) (global.get $inputs_width)) (then (local.set $x (f32.sub (local.get $x) (global.get $inputs_width)))))
+    (if (f32.ge (local.get $x) (global.get $inputs_width)) (then (local.set $x (f32.sub (local.get $x) (global.get $inputs_width)))))
     (if (f32.lt (local.get $y) (f32.const 0)) (then (local.set $y (f32.add (local.get $y) (global.get $inputs_height)))))
-    (if (f32.gt (local.get $y) (global.get $inputs_height)) (then (local.set $y (f32.sub (local.get $y) (global.get $inputs_height)))))
+    (if (f32.ge (local.get $y) (global.get $inputs_height)) (then (local.set $y (f32.sub (local.get $y) (global.get $inputs_height)))))
     (call $deposit (local.get $x) (local.get $y) (global.get $inputs_depositAmount))
 
     ;; store back (species at offset 20 is preserved, not modified)
@@ -160,8 +170,8 @@
     (local.set $vy (f32.load (i32.add (local.get $ptr) (i32.const 16))))
     (local.set $species (f32.load (i32.add (local.get $ptr) (i32.const 20))))
 
-    ;; load random values
-    (local.set $r (f32.load (i32.add (global.get $randomValuesPtr) (i32.shl (i32.trunc_f32_u (local.get $_agent_id)) (i32.const 2)))))
+    ;; load random values (indexed: agent_id * numRandomCalls + ri)
+    (local.set $r (f32.load (i32.add (global.get $randomValuesPtr) (i32.shl (i32.add (i32.mul (i32.trunc_f32_u (local.get $_agent_id)) (i32.const 1)) (i32.const 0)) (i32.const 2)))))
 
     ;; execute DSL
     nop
@@ -201,9 +211,9 @@
     (local.set $x (f32.add (local.get $x) (f32.mul (local.get $vx) (global.get $inputs_speed))))
     (local.set $y (f32.add (local.get $y) (f32.mul (local.get $vy) (global.get $inputs_speed))))
     (if (f32.lt (local.get $x) (f32.const 0)) (then (local.set $x (f32.add (local.get $x) (global.get $inputs_width)))))
-    (if (f32.gt (local.get $x) (global.get $inputs_width)) (then (local.set $x (f32.sub (local.get $x) (global.get $inputs_width)))))
+    (if (f32.ge (local.get $x) (global.get $inputs_width)) (then (local.set $x (f32.sub (local.get $x) (global.get $inputs_width)))))
     (if (f32.lt (local.get $y) (f32.const 0)) (then (local.set $y (f32.add (local.get $y) (global.get $inputs_height)))))
-    (if (f32.gt (local.get $y) (global.get $inputs_height)) (then (local.set $y (f32.sub (local.get $y) (global.get $inputs_height)))))
+    (if (f32.ge (local.get $y) (global.get $inputs_height)) (then (local.set $y (f32.sub (local.get $y) (global.get $inputs_height)))))
     (call $deposit (local.get $x) (local.get $y) (global.get $inputs_depositAmount))
 
     ;; store back (species at offset 20 is preserved, not modified)

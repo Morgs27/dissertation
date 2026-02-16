@@ -12,7 +12,7 @@
 
                     // Helper function for random values (returns Float32)
                     // callIndex is a compile-time constant assigned to each random() call site
-                    const _NRC = 5;
+                    const _NRC = 0;
                     const _random = (callIndex, min, max) => {
                         let val;
                         if (inputs.randomValues && inputs.randomValues.length >= (id + 1) * _NRC) {
@@ -27,51 +27,35 @@
                         return f(f(min) + f(val * f(f(max) - f(min))));
                     };
 
-                    const _deposit = (amount) => {
-                        const writeMap = inputs.trailMapWrite || inputs.trailMap;
-                        if (!writeMap) return;
-                        const amt = f(amount);
-                        let ix = Math.trunc(x);
-                        let iy = Math.trunc(y);
-                        const w = Math.trunc(f(inputs.width));
-                        const h = Math.trunc(f(inputs.height));
-                        if (ix < 0) ix += w;
-                        if (ix >= w) ix -= w;
-                        if (iy < 0) iy += h;
-                        if (iy >= h) iy -= h;
-                        writeMap[iy * w + ix] = f(writeMap[iy * w + ix] + amt);
+                    const _avoidObstacles = (strength) => {
+                        const obstacles = inputs.obstacles || [];
+                        const str = f(strength || 1);
+                        for (let oi = 0; oi < obstacles.length; oi++) {
+                            const ob = obstacles[oi];
+                            const margin = f(5);
+                            const ox1 = f(ob.x - margin);
+                            const oy1 = f(ob.y - margin);
+                            const ox2 = f(ob.x + ob.w + margin);
+                            const oy2 = f(ob.y + ob.h + margin);
+                            if (x > ox1 && x < ox2 && y > oy1 && y < oy2) {
+                                const cx = f(ob.x + f(ob.w * f(0.5)));
+                                const cy = f(ob.y + f(ob.h * f(0.5)));
+                                let dx = f(x - cx);
+                                let dy = f(y - cy);
+                                const dist = f(Math.sqrt(f(f(dx * dx) + f(dy * dy))));
+                                if (dist > f(0.001)) {
+                                    dx = f(dx / dist);
+                                    dy = f(dy / dist);
+                                }
+                                vx = f(vx + f(dx * str));
+                                vy = f(vy + f(dy * str));
+                            }
+                        }
                     };
 
   // Execute DSL code
-  if ((species == f(0))) {
-  y = f(y - f(0.5));
-  if ((_random(f(0)) < f(0.1))) {
-  species = f(1); 
-  }
-  }
-  else {
-  if ((species == f(1))) {
-  y = f(y - f(inputs.riseSpeed));
-  let r = _random(1); 
-  let dx = f(f(r - f(0.5)) * f(inputs.turbulence)); 
-  x = f(x + dx);
-  _deposit(f(1.0));
-  if ((_random(f(2)) < f(inputs.coolingRate))) {
-  species = f(2); 
-  }
-  }
-  else {
-  y = f(y - f(f(inputs.riseSpeed) * f(0.5)));
-  let r = _random(3); 
-  let dx = f(f(f(r - f(0.5)) * f(inputs.turbulence)) * f(0.5)); 
-  x = f(x + dx);
-  if ((y < f(0))) {
-  species = f(0); 
-  y = f(inputs.height); 
-  x = f(_random(f(4)) * f(inputs.width)); 
-  }
-  }
-  }
+  y = f(y + f(inputs.speed));
+  _avoidObstacles(f(inputs.avoidStrength));
   if (x < 0) x = f(x + f(inputs.width)); if (x >= f(inputs.width)) x = f(x - f(inputs.width)); if (y < 0) y = f(y + f(inputs.height)); if (y >= f(inputs.height)) y = f(y - f(inputs.height));
 
   // Return updated agent (ensure Float32 values)

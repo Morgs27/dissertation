@@ -11,16 +11,24 @@
                     const agents = inputs.agents || [];
 
                     // Helper function for random values (returns Float32)
-                    const _random = (min, max) => {
-                        if (max === undefined) {
-                            if (min === undefined) return f(Math.random());
-                            return f(f(Math.random()) * f(min));
+                    // callIndex is a compile-time constant assigned to each random() call site
+                    const _NRC = 1;
+                    const _random = (callIndex, min, max) => {
+                        let val;
+                        if (inputs.randomValues && inputs.randomValues.length >= (id + 1) * _NRC) {
+                            val = f(inputs.randomValues[id * _NRC + callIndex]);
+                        } else {
+                            val = f(Math.random());
                         }
-                        return f(f(min) + f(f(Math.random()) * f(f(max) - f(min))));
+                        if (max === undefined) {
+                            if (min === undefined) return val;
+                            return f(val * f(min));
+                        }
+                        return f(f(min) + f(val * f(f(max) - f(min))));
                     };
 
-        // Initialize random input variables (Float32)
-        let r = f((inputs.randomValues && inputs.randomValues[id] !== undefined) ? inputs.randomValues[id] : _random());
+        // Initialize random input variables (Float32) from indexed randomValues
+        let r = f((inputs.randomValues && inputs.randomValues.length >= (id + 1) * 1) ? inputs.randomValues[id * 1 + 0] : Math.random());
 
                     // Helper function: find nearby neighbors (uses Float32 for distance calc)
                     const _neighbors = (radius) => {

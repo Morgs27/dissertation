@@ -15,6 +15,51 @@ export const WORKGROUP_SIZE = 64;
 
 // ─── WGSL Helper Functions ───────────────────────────────────────────
 
+const WGSL_OBSTACLE_HELPERS = `
+
+struct Obstacle {
+    x: f32,
+    y: f32,
+    w: f32,
+    h: f32,
+}
+
+fn _avoidObstacles(strength: f32, px: ptr<function, f32>, py: ptr<function, f32>, pvx: ptr<function, f32>, pvy: ptr<function, f32>) {
+    let x_val = *px;
+    let y_val = *py;
+    var vx_val = *pvx;
+    var vy_val = *pvy;
+    let obs_count = u32(inputs.obstacleCount);
+    let str = strength;
+    let margin: f32 = 5.0;
+    
+    for (var oi: u32 = 0u; oi < obs_count; oi++) {
+        let ob = obstacles[oi];
+        let ox1 = ob.x - margin;
+        let oy1 = ob.y - margin;
+        let ox2 = ob.x + ob.w + margin;
+        let oy2 = ob.y + ob.h + margin;
+        
+        if (x_val > ox1 && x_val < ox2 && y_val > oy1 && y_val < oy2) {
+            let cx = ob.x + ob.w * 0.5;
+            let cy = ob.y + ob.h * 0.5;
+            var dx = x_val - cx;
+            var dy = y_val - cy;
+            let dist = sqrt(dx * dx + dy * dy);
+            if (dist > 0.001) {
+                dx = dx / dist;
+                dy = dy / dist;
+            }
+            vx_val = vx_val + dx * str;
+            vy_val = vy_val + dy * str;
+        }
+    }
+    
+    *pvx = vx_val;
+    *pvy = vy_val;
+}
+`;
+
 const WGSL_HELPERS = `
 
 
@@ -124,10 +169,12 @@ function transpileExpression(expr: string, ctx: CompilationContext): string {
     result = result.replace(/inputs\.random\b/g, 'randomValues[u32(agent.id)]');
     result = result.replace(/inputs\.randomValues/g, 'randomValues');
 
-    // Handle random() calls
+    // Handle random() calls — each call site gets a unique index for buffer parity
     result = result.replace(/random\(([^)]*)\)/g, (_match, args) => {
         const parts = args.split(',').filter((s: string) => s.trim().length > 0).map((s: string) => s.trim());
-        const randVal = 'randomValues[u32(agent.id)]';
+        const callIndex = ctx.randomInputs.size + ctx.randomCallCount;
+        ctx.randomCallCount++;
+        const randVal = `randomValues[u32(agent.id) * ${ctx.numRandomCalls}u + ${callIndex}u]`;
 
         if (parts.length === 0) {
             return randVal;
@@ -194,16 +241,28 @@ export const WGSLTarget: CompilerTarget = {
         let cond = transpileExpression(condition, ctx);
         // Fix type consistency: _count (u32) vs 0
         cond = cond.replace(/(\w+_count)\s*>\s*0\b/g, '$1 > 0u');
+        // WGSL requires bool in if conditions — convert bare f32 variables to != 0.0
+        // A bare variable like "foundPrey" must become "foundPrey != 0.0"
+        if (/^[a-zA-Z_]\w*$/.test(cond) && !cond.includes('_count')) {
+            cond = `${cond} != 0.0`;
+        }
+        ctx.blockStack.push('control');
         return [`if (${cond}) {`];
     },
 
     emitElseIf(condition: string, ctx: CompilationContext): string[] {
         let cond = transpileExpression(condition, ctx);
         cond = cond.replace(/(\w+_count)\s*>\s*0\b/g, '$1 > 0u');
+        // WGSL requires bool — convert bare f32 variables to != 0.0
+        if (/^[a-zA-Z_]\w*$/.test(cond) && !cond.includes('_count')) {
+            cond = `${cond} != 0.0`;
+        }
+        ctx.blockStack.push('control');
         return [`else if (${cond}) {`];
     },
 
-    emitElse(_ctx: CompilationContext): string[] {
+    emitElse(ctx: CompilationContext): string[] {
+        ctx.blockStack.push('control');
         return ['else {'];
     },
 
@@ -220,6 +279,7 @@ export const WGSLTarget: CompilerTarget = {
                 const uniqueLoopVar = `_${loopVar}_loop`;
                 ctx.currentLoopVar = uniqueLoopVar;
                 ctx.loopDepth++;
+                ctx.blockStack.push('loop');
 
                 return [
                     `// Loop over ${collection}`,
@@ -239,6 +299,7 @@ export const WGSLTarget: CompilerTarget = {
         const jsInit = init.replace(/^var\s+/, '');
         const cond = transpileExpression(condition, ctx);
         ctx.loopDepth++;
+        ctx.blockStack.push('loop');
         return [`for (var ${jsInit}; ${cond}; ${increment}) {`];
     },
 
@@ -250,6 +311,7 @@ export const WGSLTarget: CompilerTarget = {
             const radiusExpr = collectionInfo.radiusExpr!;
             ctx.currentLoopVar = loopVar;
             ctx.loopDepth++;
+            ctx.blockStack.push('loop');
 
             return [
                 `// Foreach over ${collection}`,
@@ -278,7 +340,8 @@ export const WGSLTarget: CompilerTarget = {
     },
 
     emitCloseBrace(ctx: CompilationContext): string[] {
-        if (ctx.loopDepth > 0) {
+        const closedBlock = ctx.blockStack.pop();
+        if (closedBlock === 'loop') {
             ctx.loopDepth--;
             if (ctx.loopDepth === 0) ctx.currentLoopVar = undefined;
         }
@@ -287,10 +350,11 @@ export const WGSLTarget: CompilerTarget = {
 
     emitProgram(statements: string[], inputs: string[], randomInputs: string[], _ctx: CompilationContext): string {
         // Identify scalar inputs vs buffer inputs
-        const bufferInputs = ['trailMap', 'randomValues'];
+        const bufferInputs = ['trailMap', 'randomValues', 'obstacles'];
         const scalarInputs = inputs.filter(i => !bufferInputs.includes(i));
         const hasTrailMap = inputs.includes('trailMap');
         const hasRandomValues = inputs.includes('randomValues');
+        const hasObstacles = inputs.includes('obstacles');
 
         // Generate structs
         const inputFields =
@@ -328,6 +392,9 @@ struct Agent {
         const randomValuesBinding = hasRandomValues
             ? `@group(0) @binding(3) var<storage, read> randomValues : array<f32>;`
             : '';
+        const obstaclesBinding = hasObstacles
+            ? `@group(0) @binding(7) var<storage, read> obstacles : array<Obstacle>;`
+            : '';
 
         let mainBody = statements.join('\n        ');
         if (statements.length === 0) {
@@ -354,8 +421,8 @@ fn main(
         var vy = agent.vy;
         var species = agent.species;
         
-        // Load random values based on agent.id for parity with JS
-        ${randomInputs.map(r => `var ${r} = randomValues[u32(agent.id)];`).join('\n        ')}
+        // Load random values based on agent.id for parity with JS (indexed by stride)
+        ${randomInputs.map((r, ri) => `var ${r} = randomValues[u32(agent.id) * ${_ctx.numRandomCalls}u + ${ri}u];`).join('\n        ')}
         
         ${mainBody}
         
@@ -369,8 +436,9 @@ fn main(
 }`.trim();
 
         const helpers = hasTrailMap ? WGSL_HELPERS : '';
+        const obstacleHelpers = hasObstacles ? WGSL_OBSTACLE_HELPERS : '';
 
-        return [agentStruct, inputStruct, trailMapReadBinding, randomValuesBinding, trailMapWriteBinding, helpers, computeFn].join('\n\n');
+        return [agentStruct, inputStruct, trailMapReadBinding, randomValuesBinding, trailMapWriteBinding, obstaclesBinding, obstacleHelpers, helpers, computeFn].join('\n\n');
     },
 };
 
@@ -382,8 +450,9 @@ export const compileDSLtoWGSL = (
     logger: Logger,
     rawScript: string,
     randomInputs: string[] = [],
+    numRandomCalls: number = 0,
 ): string => {
-    const ctx = createContext(randomInputs);
+    const ctx = createContext(randomInputs, numRandomCalls);
     const statements = transpileDSL(lines, WGSLTarget, logger, rawScript, ctx);
 
     return WGSLTarget.emitProgram(statements, inputs, randomInputs, ctx);

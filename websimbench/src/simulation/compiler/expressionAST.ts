@@ -301,6 +301,10 @@ export function generateJS(node: ExprNode, wrapArithmetic: boolean = true, rando
                 case 'sense':
                     return `_sense(${argsCode})`;
                 case 'random':
+                    // random() calls should already be pre-processed to _random(INDEX, ...)
+                    // by indexRandomCalls() before reaching the AST
+                    return `_random(${argsCode})`;
+                case '_random':
                     return `_random(${argsCode})`;
                 default:
                     return `${node.name}(${argsCode})`;
