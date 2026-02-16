@@ -24,6 +24,8 @@ interface PreprocessResult {
     trailEnvironmentConfig?: TrailEnvironmentConfig;
     randomInputs: string[];
     speciesCount?: number;
+    /** Total random values needed per agent per frame */
+    numRandomCalls: number;
 }
 
 const COMMAND_INPUT_DEPENDENCIES: Record<string, string[]> = {
@@ -31,7 +33,7 @@ const COMMAND_INPUT_DEPENDENCIES: Record<string, string[]> = {
     borderBounce: ['width', 'height'],
     sense: ['width', 'height'],
     deposit: ['width', 'height', 'trailMap'],
-    avoidObstacles: [],
+    avoidObstacles: ['obstacles', 'obstacleCount'],
 };
 
 export class Compiler {
@@ -59,9 +61,21 @@ export class Compiler {
         const trailEnvironmentConfig = this.extractTrailConfig(lines, inputs);
         const speciesCount = this.extractSpeciesCount(lines);
 
-        this.ensureRandomValuesDependency(inputs, randomInputs);
+        this.ensureRandomValuesDependency(inputs, randomInputs, lines);
 
-        return { lines, inputs, definedInputs, trailEnvironmentConfig, randomInputs, speciesCount };
+        const inlineRandomCount = this.countInlineRandomCalls(lines);
+        const numRandomCalls = randomInputs.length + inlineRandomCount;
+
+        return { lines, inputs, definedInputs, trailEnvironmentConfig, randomInputs, speciesCount, numRandomCalls };
+    }
+
+    private countInlineRandomCalls(lines: LineInfo[]): number {
+        let count = 0;
+        for (const line of lines) {
+            const matches = line.content.match(/\brandom\s*\(/g);
+            if (matches) count += matches.length;
+        }
+        return count;
     }
 
     private parseLines(dsl: string): {
@@ -202,8 +216,20 @@ export class Compiler {
         return undefined;
     }
 
-    private ensureRandomValuesDependency(inputs: string[], randomInputs: string[]): void {
-        const needsRandomValues = inputs.includes('random') || randomInputs.length > 0;
+    private ensureRandomValuesDependency(inputs: string[], randomInputs: string[], lines: LineInfo[]): void {
+        // Check for input-declared random values or explicit inputs.random references
+        let needsRandomValues = inputs.includes('random') || randomInputs.length > 0;
+
+        // Also check for inline random() calls in DSL code (e.g., "if (random() < 0.1)")
+        if (!needsRandomValues) {
+            for (const line of lines) {
+                if (/\brandom\s*\(/.test(line.content)) {
+                    needsRandomValues = true;
+                    break;
+                }
+            }
+        }
+
         if (needsRandomValues && !inputs.includes('randomValues')) {
             inputs.push('randomValues');
         }
@@ -213,12 +239,12 @@ export class Compiler {
         preprocessed: PreprocessResult,
         script: string
     ): { jsCode: string; wgslCode: string; watCode: string } {
-        const { lines, inputs, randomInputs } = preprocessed;
+        const { lines, inputs, randomInputs, numRandomCalls } = preprocessed;
 
         return {
-            jsCode: compileDSLtoJS(lines, inputs, this.logger, script, randomInputs),
-            wgslCode: compileDSLtoWGSL(lines, inputs, this.logger, script, randomInputs),
-            watCode: compileDSLtoWAT(lines, inputs, this.logger, script, randomInputs),
+            jsCode: compileDSLtoJS(lines, inputs, this.logger, script, randomInputs, numRandomCalls),
+            wgslCode: compileDSLtoWGSL(lines, inputs, this.logger, script, randomInputs, numRandomCalls),
+            watCode: compileDSLtoWAT(lines, inputs, this.logger, script, randomInputs, numRandomCalls),
         };
     }
 
@@ -245,6 +271,7 @@ export class Compiler {
             WASMCode: compiled.watCode,
             trailEnvironmentConfig: preprocessed.trailEnvironmentConfig,
             speciesCount: preprocessed.speciesCount,
+            numRandomCalls: preprocessed.numRandomCalls,
         };
     }
 }

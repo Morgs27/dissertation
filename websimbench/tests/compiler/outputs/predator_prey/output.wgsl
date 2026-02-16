@@ -27,6 +27,10 @@ struct Inputs {
 
 
 
+@group(0) @binding(3) var<storage, read> randomValues : array<f32>;
+
+
+
 
 
 
@@ -52,7 +56,7 @@ fn main(
         var vy = agent.vy;
         var species = agent.species;
         
-        // Load random values based on agent.id for parity with JS
+        // Load random values based on agent.id for parity with JS (indexed by stride)
         
         
         // Find neighbors for nearby
@@ -103,8 +107,8 @@ fn main(
         }
         count = count + 1;
         } else {
-        var dx: f32 = x - nearby.x;
-        var dy: f32 = y - nearby.y;
+        var dx: f32 = x - _loop_other.x;
+        var dy: f32 = y - _loop_other.y;
         vx = vx + dx * 0.2;
         vy = vy + dy * 0.2;
         }
@@ -146,11 +150,11 @@ fn main(
         }
         }
         }
-        if (foundPrey) {
+        if (foundPrey != 0.0) {
         vx = vx + (targetX - x) * inputs.predatorChasing;
         vy = vy + (targetY - y) * inputs.predatorChasing;
         } else {
-        var r: f32 = randomValues[u32(agent.id)];
+        var r: f32 = randomValues[u32(agent.id) * 1u + 0u];
         let _ang_t = (r - 0.5) * 0.5; let _c_t = cos(_ang_t); let _s_t = sin(_ang_t); let _term1_t = vx * _c_t; let _term2_t = vy * _s_t; let _term3_t = vx * _s_t; let _term4_t = vy * _c_t; let _vx_new_t = _term1_t - _term2_t; let _vy_new_t = _term3_t + _term4_t; vx = _vx_new_t; vy = _vy_new_t;
         }
         let _spd_ls = inputs.predatorSpeed; let _spd_ls2 = _spd_ls * _spd_ls; let _vx2_ls = vx * vx; let _vy2_ls = vy * vy; let _cur_ls2 = _vx2_ls + _vy2_ls; if (_cur_ls2 > _spd_ls2) { let _scale_ls = sqrt(_spd_ls2 / _cur_ls2); vx = vx * _scale_ls; vy = vy * _scale_ls; }

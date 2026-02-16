@@ -5,6 +5,7 @@ export { GRAVITY_SIMULATION } from './gravity';
 export { FIRE_SIMULATION } from './fire';
 export { FLUID_SIMULATION } from './fluid';
 export { PREDATOR_PREY_SIMULATION } from './predator_prey';
+export { OBSTACLES_SIMULATION } from './obstacles';
 
 // Convenient object with all simulations
 import { BOIDS_SIMULATION } from './boids';
@@ -13,6 +14,7 @@ import { GRAVITY_SIMULATION } from './gravity';
 import { FIRE_SIMULATION } from './fire';
 import { FLUID_SIMULATION } from './fluid';
 import { PREDATOR_PREY_SIMULATION } from './predator_prey';
+import { OBSTACLES_SIMULATION } from './obstacles';
 
 export const SIMULATIONS: Record<string, string> = {
     boids: BOIDS_SIMULATION,
@@ -21,4 +23,5 @@ export const SIMULATIONS: Record<string, string> = {
     fire: FIRE_SIMULATION,
     fluid: FLUID_SIMULATION,
     predator_prey: PREDATOR_PREY_SIMULATION,
+    obstacles: OBSTACLES_SIMULATION,
 };

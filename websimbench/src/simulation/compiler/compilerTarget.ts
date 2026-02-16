@@ -32,15 +32,24 @@ export interface CompilationContext {
     usedFunctions: Set<string>;
     /** Track local variables (needed for WAT) */
     localVars: Set<string>;
+    /** Track block types so emitCloseBrace knows whether it's closing a loop or control flow */
+    blockStack: ('loop' | 'control')[];
+    /** Count of inline random() call sites (for indexed randomValues buffer) */
+    randomCallCount: number;
+    /** Total random values per agent (set after preprocessing: randomInputs.length + inlineRandomCount) */
+    numRandomCalls: number;
 }
 
-export function createContext(randomInputs: string[]): CompilationContext {
+export function createContext(randomInputs: string[], numRandomCalls: number = 0): CompilationContext {
     return {
         variables: new Map(),
         loopDepth: 0,
         randomInputs: new Set(randomInputs),
         usedFunctions: new Set(),
         localVars: new Set(),
+        blockStack: [],
+        randomCallCount: 0,
+        numRandomCalls,
     };
 }
 

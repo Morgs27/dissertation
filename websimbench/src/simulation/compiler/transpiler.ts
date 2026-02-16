@@ -37,6 +37,16 @@ export function transpileDSL(
         // for elseif/else patterns (e.g., "} else if (...)" or "} else {")
         const startsWithBrace = trimmed.startsWith('}') && parsed.type !== 'brace';
 
+        // If the line starts with '}' (e.g., "} else {"), handle the implicit close brace
+        // by popping the blockStack — the '}' closes one block, the else/elseif opens another
+        if (startsWithBrace) {
+            const closedBlock = ctx.blockStack.pop();
+            if (closedBlock === 'loop') {
+                ctx.loopDepth--;
+                if (ctx.loopDepth === 0) ctx.currentLoopVar = undefined;
+            }
+        }
+
         switch (parsed.type) {
             case 'empty':
                 continue;

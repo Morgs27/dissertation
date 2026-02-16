@@ -33,6 +33,10 @@ struct Inputs {
 
 
 
+
+
+
+
 fn _sense(x: f32, y: f32, vx: f32, vy: f32, angle_offset: f32, dist: f32) -> f32 {
     let angle_cur = atan2(vy, vx);
     let angle_new = angle_cur + angle_offset;
@@ -96,8 +100,8 @@ fn main(
         var vy = agent.vy;
         var species = agent.species;
         
-        // Load random values based on agent.id for parity with JS
-        var r = randomValues[u32(agent.id)];
+        // Load random values based on agent.id for parity with JS (indexed by stride)
+        var r = randomValues[u32(agent.id) * 1u + 0u];
         
         var sL: f32 = _sense(x, y, vx, vy, inputs.sensorAngle, inputs.sensorDist);
         var sF: f32 = _sense(x, y, vx, vy, 0.0, inputs.sensorDist);

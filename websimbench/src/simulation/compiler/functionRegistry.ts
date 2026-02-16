@@ -253,12 +253,17 @@ registerFunction({
         const args = match[1].split(',').filter(s => s.trim().length > 0).map(s => s.trim());
 
         if (target.name === 'js') {
-            if (args.length === 0) return [`let ${varName} = _random(); `];
-            if (args.length === 1) return [`let ${varName} = _random(${target.emitExpression(args[0], ctx)}); `];
-            return [`let ${varName} = _random(${target.emitExpression(args[0], ctx)}, ${target.emitExpression(args[1], ctx)}); `];
+            // Use compile-time call index for parity with WGSL/WAT
+            const callIndex = ctx.randomInputs.size + ctx.randomCallCount;
+            ctx.randomCallCount++;
+            if (args.length === 0) return [`let ${varName} = _random(${callIndex}); `];
+            if (args.length === 1) return [`let ${varName} = _random(${callIndex}, ${target.emitExpression(args[0], ctx)}); `];
+            return [`let ${varName} = _random(${callIndex}, ${target.emitExpression(args[0], ctx)}, ${target.emitExpression(args[1], ctx)}); `];
         }
         if (target.name === 'wgsl') {
-            const randVal = 'randomValues[u32(agent.id)]';
+            const callIndex = ctx.randomInputs.size + ctx.randomCallCount;
+            ctx.randomCallCount++;
+            const randVal = `randomValues[u32(agent.id) * ${ctx.numRandomCalls}u + ${callIndex}u]`;
             if (args.length === 0) return [`var ${varName}: f32 = ${randVal};`];
             if (args.length === 1) {
                 const max = target.emitExpression(args[0], ctx);
@@ -270,7 +275,6 @@ registerFunction({
         }
         if (target.name === 'wat') {
             ctx.localVars.add(varName);
-            // WAT uses the global random value per-agent
             return [`(local.set $${varName} (call $_random (local.get $_agent_id)))`];
         }
         return [];
@@ -279,12 +283,17 @@ registerFunction({
         const args = match[1].split(',').filter(s => s.trim().length > 0).map(s => s.trim());
 
         if (target.name === 'js') {
-            if (args.length === 0) return `_random()`;
-            if (args.length === 1) return `_random(${target.emitExpression(args[0], ctx)})`;
-            return `_random(${target.emitExpression(args[0], ctx)}, ${target.emitExpression(args[1], ctx)})`;
+            // Use compile-time call index for parity with WGSL/WAT
+            const callIndex = ctx.randomInputs.size + ctx.randomCallCount;
+            ctx.randomCallCount++;
+            if (args.length === 0) return `_random(${callIndex})`;
+            if (args.length === 1) return `_random(${callIndex}, ${target.emitExpression(args[0], ctx)})`;
+            return `_random(${callIndex}, ${target.emitExpression(args[0], ctx)}, ${target.emitExpression(args[1], ctx)})`;
         }
         if (target.name === 'wgsl') {
-            const randVal = 'randomValues[u32(agent.id)]';
+            const callIndex = ctx.randomInputs.size + ctx.randomCallCount;
+            ctx.randomCallCount++;
+            const randVal = `randomValues[u32(agent.id) * ${ctx.numRandomCalls}u + ${callIndex}u]`;
             if (args.length === 0) return randVal;
             if (args.length === 1) {
                 const max = target.emitExpression(args[0], ctx);

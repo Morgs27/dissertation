@@ -10,9 +10,10 @@
     (global $inputs_gravity (export "inputs_gravity") (mut f32) (f32.const 0))
     
     
+    
     (global $agentsReadPtr (export "agentsReadPtr") (mut i32) (i32.const 0))
 
-    (func $random (param $id f32) (param $x f32) (param $y f32) (result f32) (call $random_js))
+    ;; No random function needed (no randomValues input)
 
     
 
@@ -30,7 +31,7 @@
     (local.set $vy (f32.load (i32.add (local.get $ptr) (i32.const 16))))
     (local.set $species (f32.load (i32.add (local.get $ptr) (i32.const 20))))
 
-    ;; load random values
+    ;; load random values (indexed: agent_id * numRandomCalls + ri)
     
 
     ;; execute DSL
@@ -62,7 +63,7 @@
     (local.set $vy (f32.load (i32.add (local.get $ptr) (i32.const 16))))
     (local.set $species (f32.load (i32.add (local.get $ptr) (i32.const 20))))
 
-    ;; load random values
+    ;; load random values (indexed: agent_id * numRandomCalls + ri)
     
 
     ;; execute DSL

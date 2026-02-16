@@ -213,8 +213,10 @@ registerCommand({
 registerCommand({
     name: 'borderWrapping',
     emit(_argument, target, _ctx) {
+        // All targets must use consistent >= for upper bound to ensure parity
+        // (position == width means agent is at the edge and should wrap to 0)
         if (target.name === 'js') {
-            return [`if (x < 0) x = f(x + f(inputs.width)); if (x > f(inputs.width)) x = f(x - f(inputs.width)); if (y < 0) y = f(y + f(inputs.height)); if (y > f(inputs.height)) y = f(y - f(inputs.height));`];
+            return [`if (x < 0) x = f(x + f(inputs.width)); if (x >= f(inputs.width)) x = f(x - f(inputs.width)); if (y < 0) y = f(y + f(inputs.height)); if (y >= f(inputs.height)) y = f(y - f(inputs.height));`];
         }
         if (target.name === 'wgsl') {
             return [`if (x < 0.0) { x = x + inputs.width; } if (x >= inputs.width) { x = x - inputs.width; } if (y < 0.0) { y = y + inputs.height; } if (y >= inputs.height) { y = y - inputs.height; }`];
@@ -222,9 +224,9 @@ registerCommand({
         // WAT
         return [
             `(if (f32.lt (local.get $x) (f32.const 0)) (then (local.set $x (f32.add (local.get $x) (global.get $inputs_width)))))`,
-            `(if (f32.gt (local.get $x) (global.get $inputs_width)) (then (local.set $x (f32.sub (local.get $x) (global.get $inputs_width)))))`,
+            `(if (f32.ge (local.get $x) (global.get $inputs_width)) (then (local.set $x (f32.sub (local.get $x) (global.get $inputs_width)))))`,
             `(if (f32.lt (local.get $y) (f32.const 0)) (then (local.set $y (f32.add (local.get $y) (global.get $inputs_height)))))`,
-            `(if (f32.gt (local.get $y) (global.get $inputs_height)) (then (local.set $y (f32.sub (local.get $y) (global.get $inputs_height)))))`,
+            `(if (f32.ge (local.get $y) (global.get $inputs_height)) (then (local.set $y (f32.sub (local.get $y) (global.get $inputs_height)))))`,
         ];
     },
 });
@@ -295,8 +297,63 @@ registerCommand({
     emit(argument, target, ctx) {
         const a = arg(argument, target, ctx);
         if (target.name === 'js') return [`_avoidObstacles(${a});`];
-        if (target.name === 'wat') return ['nop'];
-        return []; // JS-only for now
+        if (target.name === 'wgsl') return [`_avoidObstacles(${a}, &x, &y, &vx, &vy);`];
+        if (target.name === 'wat') {
+            // WAT: call the avoidObstacles function, passing strength, then reload modified vx/vy
+            ctx.localVars.add('_obs_idx');
+            ctx.localVars.add('_obs_ptr');
+            ctx.localVars.add('_obs_x');
+            ctx.localVars.add('_obs_y');
+            ctx.localVars.add('_obs_w');
+            ctx.localVars.add('_obs_h');
+            ctx.localVars.add('_obs_cx');
+            ctx.localVars.add('_obs_cy');
+            ctx.localVars.add('_obs_dx');
+            ctx.localVars.add('_obs_dy');
+            ctx.localVars.add('_obs_dist');
+            return [
+                `;; avoidObstacles (strength=${a})`,
+                `(local.set $_obs_idx (i32.const 0))`,
+                `(local.set $_obs_ptr (global.get $obstaclesPtr))`,
+                `(block $_obs_exit`,
+                `  (loop $_obs_loop`,
+                `    (br_if $_obs_exit (i32.ge_u (local.get $_obs_idx) (global.get $inputs_obstacleCount)))`,
+                `    (local.set $_obs_x (f32.load (local.get $_obs_ptr)))`,
+                `    (local.set $_obs_y (f32.load (i32.add (local.get $_obs_ptr) (i32.const 4))))`,
+                `    (local.set $_obs_w (f32.load (i32.add (local.get $_obs_ptr) (i32.const 8))))`,
+                `    (local.set $_obs_h (f32.load (i32.add (local.get $_obs_ptr) (i32.const 12))))`,
+                `    ;; Check if agent is inside obstacle + 5px margin`,
+                `    (if (i32.and`,
+                `      (i32.and`,
+                `        (f32.gt (local.get $x) (f32.sub (local.get $_obs_x) (f32.const 5)))`,
+                `        (f32.lt (local.get $x) (f32.add (f32.add (local.get $_obs_x) (local.get $_obs_w)) (f32.const 5)))`,
+                `      )`,
+                `      (i32.and`,
+                `        (f32.gt (local.get $y) (f32.sub (local.get $_obs_y) (f32.const 5)))`,
+                `        (f32.lt (local.get $y) (f32.add (f32.add (local.get $_obs_y) (local.get $_obs_h)) (f32.const 5)))`,
+                `      )`,
+                `    ) (then`,
+                `      ;; Compute direction away from obstacle center`,
+                `      (local.set $_obs_cx (f32.add (local.get $_obs_x) (f32.mul (local.get $_obs_w) (f32.const 0.5))))`,
+                `      (local.set $_obs_cy (f32.add (local.get $_obs_y) (f32.mul (local.get $_obs_h) (f32.const 0.5))))`,
+                `      (local.set $_obs_dx (f32.sub (local.get $x) (local.get $_obs_cx)))`,
+                `      (local.set $_obs_dy (f32.sub (local.get $y) (local.get $_obs_cy)))`,
+                `      (local.set $_obs_dist (f32.sqrt (f32.add (f32.mul (local.get $_obs_dx) (local.get $_obs_dx)) (f32.mul (local.get $_obs_dy) (local.get $_obs_dy)))))`,
+                `      (if (f32.gt (local.get $_obs_dist) (f32.const 0.001)) (then`,
+                `        (local.set $_obs_dx (f32.div (local.get $_obs_dx) (local.get $_obs_dist)))`,
+                `        (local.set $_obs_dy (f32.div (local.get $_obs_dy) (local.get $_obs_dist)))`,
+                `      ))`,
+                `      (local.set $vx (f32.add (local.get $vx) (f32.mul (local.get $_obs_dx) ${a})))`,
+                `      (local.set $vy (f32.add (local.get $vy) (f32.mul (local.get $_obs_dy) ${a})))`,
+                `    ))`,
+                `    (local.set $_obs_idx (i32.add (local.get $_obs_idx) (i32.const 1)))`,
+                `    (local.set $_obs_ptr (i32.add (local.get $_obs_ptr) (i32.const 16)))`,
+                `    (br $_obs_loop)`,
+                `  )`,
+                `)`,
+            ];
+        }
+        return [];
     },
 });
 

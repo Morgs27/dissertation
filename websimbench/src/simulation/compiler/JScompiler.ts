@@ -12,34 +12,56 @@ import type { CompilerTarget, CompilationContext } from './compilerTarget';
 import { createContext } from './compilerTarget';
 import { transpileDSL } from './transpiler';
 
+/**
+ * Pre-process an expression to replace random(...) calls with _random(INDEX, ...)
+ * so that each call site gets a compile-time fixed index, matching WGSL/WAT behavior.
+ * This ensures parity: all backends read the same randomValues[id * stride + callIndex].
+ */
+function indexRandomCalls(expr: string, ctx: CompilationContext): string {
+    return expr.replace(/\brandom\(([^)]*)\)/g, (_match, args) => {
+        const callIndex = ctx.randomInputs.size + ctx.randomCallCount;
+        ctx.randomCallCount++;
+        const parts = args.split(',').filter((s: string) => s.trim().length > 0).map((s: string) => s.trim());
+        if (parts.length === 0) {
+            return `_random(${callIndex})`;
+        }
+        return `_random(${callIndex}, ${parts.join(', ')})`;
+    });
+}
+
 export const JSTarget: CompilerTarget = {
     name: 'js',
 
     emitExpression(expr: string, ctx: CompilationContext): string {
-        return transformExpression(expr, ctx.randomInputs);
+        return transformExpression(indexRandomCalls(expr, ctx), ctx.randomInputs);
     },
 
     emitVar(name: string, expression: string, ctx: CompilationContext): string[] {
-        const exprTranspiled = transformExpression(expression, ctx.randomInputs);
+        const exprTranspiled = transformExpression(indexRandomCalls(expression, ctx), ctx.randomInputs);
         ctx.variables.set(name, { type: 'scalar' });
         return [`let ${name} = ${exprTranspiled}; `];
     },
 
     emitIf(condition: string, ctx: CompilationContext): string[] {
-        return [`if (${transformExpression(condition, ctx.randomInputs)}) {`];
+        ctx.blockStack.push('control');
+        return [`if (${transformExpression(indexRandomCalls(condition, ctx), ctx.randomInputs)}) {`];
     },
 
     emitElseIf(condition: string, ctx: CompilationContext): string[] {
-        return [`else if (${transformExpression(condition, ctx.randomInputs)}) {`];
+        ctx.blockStack.push('control');
+        return [`else if (${transformExpression(indexRandomCalls(condition, ctx), ctx.randomInputs)}) {`];
     },
 
-    emitElse(_ctx: CompilationContext): string[] {
+    emitElse(ctx: CompilationContext): string[] {
+        ctx.blockStack.push('control');
         return [`else {`];
     },
 
     emitFor(init: string, condition: string, increment: string, ctx: CompilationContext): string[] {
         const jsInit = init.replace(/^var\s+/, 'let ');
-        const jsCond = transformExpression(condition, ctx.randomInputs);
+        const jsCond = transformExpression(indexRandomCalls(condition, ctx), ctx.randomInputs);
+        ctx.loopDepth++;
+        ctx.blockStack.push('loop');
         return [`for (${jsInit}; ${jsCond}; ${increment}) {`];
     },
 
@@ -49,6 +71,7 @@ export const JSTarget: CompilerTarget = {
 
         ctx.loopDepth++;
         ctx.currentLoopVar = loopVar;
+        ctx.blockStack.push('loop');
 
         if (loopVar === collection) {
             return [
@@ -60,12 +83,13 @@ export const JSTarget: CompilerTarget = {
     },
 
     emitAssignment(target: string, expression: string, ctx: CompilationContext): string[] {
-        const exprTranspiled = transformExpression(expression, ctx.randomInputs);
+        const exprTranspiled = transformExpression(indexRandomCalls(expression, ctx), ctx.randomInputs);
         return [`${target.trim()} = ${exprTranspiled}; `];
     },
 
     emitCloseBrace(ctx: CompilationContext): string[] {
-        if (ctx.loopDepth > 0) {
+        const closedBlock = ctx.blockStack.pop();
+        if (closedBlock === 'loop') {
             ctx.loopDepth--;
             if (ctx.loopDepth === 0) ctx.currentLoopVar = undefined;
         }
@@ -81,22 +105,33 @@ export const JSTarget: CompilerTarget = {
         const used = ctx.usedFunctions;
         const helpers: string[] = [];
 
-        // Random helper is always included (needed for random() calls and random inputs)
+        // Random helper: uses compile-time call index for parity across all backends
+        // Each random() call site gets a fixed index (assigned during compilation),
+        // so all backends (JS/WASM/WebGPU) read randomValues[id * stride + callIndex].
+        const numRandomCalls = ctx.numRandomCalls;
         helpers.push(`
                     // Helper function for random values (returns Float32)
-                    const _random = (min, max) => {
-                        if (max === undefined) {
-                            if (min === undefined) return f(Math.random());
-                            return f(f(Math.random()) * f(min));
+                    // callIndex is a compile-time constant assigned to each random() call site
+                    const _NRC = ${numRandomCalls};
+                    const _random = (callIndex, min, max) => {
+                        let val;
+                        if (inputs.randomValues && inputs.randomValues.length >= (id + 1) * _NRC) {
+                            val = f(inputs.randomValues[id * _NRC + callIndex]);
+                        } else {
+                            val = f(Math.random());
                         }
-                        return f(f(min) + f(f(Math.random()) * f(f(max) - f(min))));
+                        if (max === undefined) {
+                            if (min === undefined) return val;
+                            return f(val * f(min));
+                        }
+                        return f(f(min) + f(val * f(f(max) - f(min))));
                     };`);
 
-        // Random input initialization
+        // Random input initialization (uses indices 0..randomInputs.length-1)
         if (randomInputs.length > 0) {
             helpers.push(`
-        // Initialize random input variables (Float32)
-        ${randomInputs.map(r => `let ${r} = f((inputs.randomValues && inputs.randomValues[id] !== undefined) ? inputs.randomValues[id] : _random());`).join('\n        ')}`);
+        // Initialize random input variables (Float32) from indexed randomValues
+        ${randomInputs.map((r, ri) => `let ${r} = f((inputs.randomValues && inputs.randomValues.length >= (id + 1) * ${numRandomCalls}) ? inputs.randomValues[id * ${numRandomCalls} + ${ri}] : Math.random());`).join('\n        ')}`);
         }
 
         if (used.has('mean')) {
@@ -234,8 +269,9 @@ export const compileDSLtoJS = (
     logger: Logger,
     rawScript: string,
     randomInputs: string[] = [],
+    numRandomCalls: number = 0,
 ): string => {
-    const ctx = createContext(randomInputs);
+    const ctx = createContext(randomInputs, numRandomCalls);
     const statements = transpileDSL(lines, JSTarget, logger, rawScript, ctx);
 
     const result = JSTarget.emitProgram(statements, inputs, randomInputs, ctx);

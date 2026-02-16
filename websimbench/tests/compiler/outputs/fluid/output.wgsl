@@ -30,6 +30,10 @@ struct Inputs {
 
 
 
+
+
+
+
 @compute @workgroup_size(64, 1, 1)
 fn main(
     @builtin(global_invocation_id) global_id : vec3<u32>,
@@ -49,8 +53,8 @@ fn main(
         var vy = agent.vy;
         var species = agent.species;
         
-        // Load random values based on agent.id for parity with JS
-        var r = randomValues[u32(agent.id)];
+        // Load random values based on agent.id for parity with JS (indexed by stride)
+        var r = randomValues[u32(agent.id) * 1u + 0u];
         
         vy = vy + inputs.gravity;
         // Find neighbors for nearby

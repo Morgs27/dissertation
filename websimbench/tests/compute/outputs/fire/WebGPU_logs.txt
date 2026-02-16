@@ -1,7 +1,0 @@
-[Error] [WebGPUCompute] WGSL error: unresolved value 'randomValues' at line 103, col 17
-[Error] [WebGPUCompute] WebGPU Validation Error during initialization: Error while parsing WGSL: :103:17 error: unresolved value 'randomValues'
-            if (randomValues[u32(agent.id)] < 0.1) {
-                ^^^^^^^^^^^^
-
-
- - While calling [Device].CreateShaderModule([ShaderModuleDescriptor]).

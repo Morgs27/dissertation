@@ -25,6 +25,10 @@ struct Inputs {
 
 
 
+
+
+
+
 @compute @workgroup_size(64, 1, 1)
 fn main(
     @builtin(global_invocation_id) global_id : vec3<u32>,
@@ -44,7 +48,7 @@ fn main(
         var vy = agent.vy;
         var species = agent.species;
         
-        // Load random values based on agent.id for parity with JS
+        // Load random values based on agent.id for parity with JS (indexed by stride)
         
         
         y = y + inputs.gravity;

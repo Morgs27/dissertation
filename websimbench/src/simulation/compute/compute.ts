@@ -36,7 +36,7 @@ export class ComputeEngine {
         this.agentCount = agentCount;
         this.Logger = new Logger('ComputeEngine', 'purple');
 
-        console.log("ComputeEngine initialized");
+        this.Logger.log("ComputeEngine initialized");
     }
 
     /**
@@ -168,7 +168,7 @@ export class ComputeEngine {
     }
 
     initGPU(device: GPUDevice) {
-        console.log("Initializing ComputeEngine with GPU device:", device, "and agent count:", this.agentCount);
+        this.Logger.log("Initializing ComputeEngine with GPU device:", device, "and agent count:", this.agentCount);
         this.gpuDevice = device;
 
         // If WebGPU instance exists but wasn't initialized with device (though the getter checks for device)
@@ -379,6 +379,11 @@ export class ComputeEngine {
     }
 
     private buildAgentFunction(): AgentFunction {
-        return new Function(`return ${this.compilationResult.jsCode}`)() as AgentFunction;
+        try {
+            return new Function(`return ${this.compilationResult.jsCode}`)() as AgentFunction;
+        } catch (err) {
+            this.Logger?.error("Failed to build agent function from compiled JS:", err);
+            throw new Error(`Failed to compile agent function: ${err instanceof Error ? err.message : String(err)}`);
+        }
     }
 }

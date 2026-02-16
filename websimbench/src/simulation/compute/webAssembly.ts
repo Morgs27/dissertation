@@ -6,7 +6,7 @@ export const compileWATtoWASM = async (watCode: string, logger: Logger): Promise
   try {
 
     const wabtModule = await wabt();
-    // console.log("GENERATED WAT:\n", watCode); // Log for debugging
+    
     const parsed = wabtModule.parseWat("dsl_module.wat", watCode);
     const { buffer } = parsed.toBinary({ write_debug_names: true });
     return WebAssembly.compile(new Uint8Array(buffer));
@@ -69,7 +69,7 @@ export class WebAssemblyCompute {
         atan2: Math.atan2,
         random: Math.random, // Fallback if we don't use internal RNG
         print: (id: number, val: number) => this.Logger.info(`AGENT[${id}] PRINT:`, val), // Main log function
-        log: (id: number, val: number) => console.log('WASM Log:', id, val) // Debug helper
+        log: (id: number, val: number) => this.Logger.info(`WASM Log[${id}]:`, val)
       }
     });
 
@@ -109,11 +109,18 @@ export class WebAssemblyCompute {
 
     let randomValuesSize = 0;
     if (inputs.randomValues) {
-      randomValuesSize = this.agentCount * 4;
+      const rv = inputs.randomValues as Float32Array;
+      randomValuesSize = rv.byteLength;
     }
 
-    // Total memory: agentsWrite + agentsRead + trailMapRead + trailMapWrite + randomValues
-    const totalBytesNeeded = agentsReadEnd + (trailMapSize * 2) + randomValuesSize;
+    let obstaclesSize = 0;
+    if (inputs.obstacles && Array.isArray(inputs.obstacles)) {
+      // Each obstacle: 4 floats (x, y, w, h) = 16 bytes
+      obstaclesSize = (inputs.obstacles as any[]).length * 16;
+    }
+
+    // Total memory: agentsWrite + agentsRead + trailMapRead + trailMapWrite + randomValues + obstacles
+    const totalBytesNeeded = agentsReadEnd + (trailMapSize * 2) + randomValuesSize + obstaclesSize;
     const currentBytes = this.memory!.buffer.byteLength;
 
     if (totalBytesNeeded > currentBytes) {
@@ -205,6 +212,33 @@ export class WebAssemblyCompute {
       // Update randomValuesPtr global
       if (this.exports.randomValuesPtr) {
         this.exports.randomValuesPtr.value = randomValuesPtr;
+      }
+    }
+
+    // Write obstacles if present — written every frame for real-time updates
+    if (inputs.obstacles && Array.isArray(inputs.obstacles)) {
+      const obstacleArray = inputs.obstacles as any[];
+      const obstaclesPtr = agentsReadEnd + (trailMapSize * 2) + randomValuesSize;
+
+      for (let i = 0; i < obstacleArray.length; i++) {
+        const ob = obstacleArray[i];
+        const offset = (obstaclesPtr >>> 2) + i * 4;
+        f32[offset] = ob.x;
+        f32[offset + 1] = ob.y;
+        f32[offset + 2] = ob.w;
+        f32[offset + 3] = ob.h;
+      }
+
+      if (this.exports.obstaclesPtr) {
+        this.exports.obstaclesPtr.value = obstaclesPtr;
+      }
+      if (this.exports.inputs_obstacleCount) {
+        this.exports.inputs_obstacleCount.value = obstacleArray.length;
+      }
+    } else {
+      // No obstacles — set count to 0
+      if (this.exports.inputs_obstacleCount) {
+        this.exports.inputs_obstacleCount.value = 0;
       }
     }
 
