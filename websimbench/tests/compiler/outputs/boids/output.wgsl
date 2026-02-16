@@ -50,6 +50,7 @@ fn main(
     let i = group_index * 64u + local_id.x;
     if (i < arrayLength(&agents)) {
         var agent = agents[i];
+        var id = agent.id;
         var x = agent.x;
         var y = agent.y;
         var vx = agent.vx;

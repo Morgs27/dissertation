@@ -1,8 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { Trash, Terminal } from "@phosphor-icons/react";
 import { LogMessage } from '../hooks/useLogger';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { LogLevel } from '../simulation/helpers/logger';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface LogsPanelProps {
   logs: LogMessage[];
@@ -10,7 +17,9 @@ interface LogsPanelProps {
 }
 
 export const LogsPanel = ({ logs, onClear }: LogsPanelProps) => {
-  const [filterLevel] = useState<string>('All');
+  const [filterLevel, setFilterLevel] = useState<string>('All');
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
 
   const filteredLogs = logs.filter(log => {
     if (filterLevel === 'All') return true;
@@ -26,13 +35,28 @@ export const LogsPanel = ({ logs, onClear }: LogsPanelProps) => {
     return currentLogValue <= filterValue;
   });
 
+  useEffect(() => {
+    if (shouldAutoScroll && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
+  }, [filteredLogs, shouldAutoScroll]);
+
+  const handleScroll = () => {
+    if (scrollContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+      // If user is within 50px of the bottom, enable auto-scroll
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 50;
+      setShouldAutoScroll(isNearBottom);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-[#0d1619]">
       <div className="h-10 flex px-4 items-center bg-black/40 border-b border-white/5 shrink-0">
         <Terminal className="mr-2 text-tropicalTeal" size={16} />
         {/* <span className="font-bold mr-4 text-xs tracking-wider uppercase text-gray-400">Console</span> */}
 
-        {/* <Select value={filterLevel} onValueChange={setFilterLevel}>
+        <Select value={filterLevel} onValueChange={setFilterLevel}>
           <SelectTrigger className="w-[110px] h-7 text-[10px] bg-white/5 border-none focus:ring-0">
             <SelectValue placeholder="All Levels" />
           </SelectTrigger>
@@ -43,7 +67,7 @@ export const LogsPanel = ({ logs, onClear }: LogsPanelProps) => {
             <SelectItem value="Warning">Warning</SelectItem>
             <SelectItem value="Error">Error</SelectItem>
           </SelectContent>
-        </Select> */}
+        </Select>
 
         <Button
           className="ml-auto text-gray-300 hover:text-red-400 hover:bg-red-500/10 px-2 flex items-center gap-1.5"
@@ -54,7 +78,11 @@ export const LogsPanel = ({ logs, onClear }: LogsPanelProps) => {
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 font-mono text-[13px] leading-relaxed">
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto p-3 font-mono text-[13px] leading-relaxed"
+      >
         {filteredLogs.length === 0 ? (
           <div className="h-full flex items-center justify-center text-gray-600 italic text-xs">
             No logs to display

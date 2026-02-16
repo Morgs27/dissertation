@@ -145,9 +145,7 @@ export const Inputs = ({ inputs, definedInputs, handleInputChange }: InputsProps
 };
 
 
-import { Switch } from "@/components/ui/switch";
-import { Trash, MapPin } from "@phosphor-icons/react";
-import { Button } from "@/components/ui/button";
+
 
 interface PlaygroundControlsProps {
     method: Method;
@@ -160,40 +158,9 @@ interface PlaygroundControlsProps {
     inputs: Record<string, number>;
     definedInputs: InputDefinition[];
     handleInputChange: (key: string, value: number) => void;
-    isPlacingObstacles: boolean;
-    setIsPlacingObstacles: (v: boolean) => void;
-    onClearObstacles: () => void;
 }
 
 // ... (keep Controls and Inputs components same, maybe add obstacle controls to Controls or new component)
-
-export const ObstacleControls = ({
-    isPlacing,
-    setIsPlacing,
-    onClear
-}: {
-    isPlacing: boolean,
-    setIsPlacing: (v: boolean) => void,
-    onClear: () => void
-}) => {
-    return (
-        <div className="flex items-center justify-between bg-[#1a2e33] p-3 rounded-xl border border-white/5">
-            <div className="flex items-center gap-2">
-                <MapPin className={isPlacing ? "text-tropicalTeal" : "text-gray-500"} size={20} weight="fill" />
-                <span className="text-xs font-bold text-gray-300 uppercase tracking-wider">Obstacles</span>
-            </div>
-            <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 mr-2">
-                    <span className="text-[10px] font-bold text-gray-500 uppercase">{isPlacing ? "Placing" : "View"}</span>
-                    <Switch checked={isPlacing} onCheckedChange={setIsPlacing} />
-                </div>
-                <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-400 hover:text-red-400" onClick={onClear}>
-                    <Trash size={14} />
-                </Button>
-            </div>
-        </div>
-    );
-};
 
 export const PlaygroundControls = ({
     method,
@@ -206,9 +173,6 @@ export const PlaygroundControls = ({
     inputs,
     definedInputs,
     handleInputChange,
-    isPlacingObstacles,
-    setIsPlacingObstacles,
-    onClearObstacles
 }: PlaygroundControlsProps) => {
     return (
         <div className="flex flex-col gap-4">
@@ -221,11 +185,6 @@ export const PlaygroundControls = ({
                 handleRun={handleRun}
             />
             <PerformanceCard fps={fps} />
-            <ObstacleControls
-                isPlacing={isPlacingObstacles}
-                setIsPlacing={setIsPlacingObstacles}
-                onClear={onClearObstacles}
-            />
             <Inputs
                 inputs={inputs}
                 definedInputs={definedInputs}

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 
-import { Obstacle } from '../simulation/types';
+import { Obstacle, SimulationAppearance } from '../simulation/types';
+import { ObstacleToolbar } from './ObstacleToolbar';
 
 interface CanvasAreaProps {
     canvasRef: React.RefObject<HTMLCanvasElement>;
@@ -8,8 +9,11 @@ interface CanvasAreaProps {
     renderMode: 'cpu' | 'gpu';
     isHidden?: boolean;
     isPlacing?: boolean;
+    setIsPlacing?: (v: boolean) => void;
     onPlaceObstacle?: (x: number, y: number) => void;
+    onClearObstacles?: () => void;
     obstacles?: Obstacle[];
+    options?: SimulationAppearance;
 }
 
 export const CanvasArea = ({
@@ -18,8 +22,11 @@ export const CanvasArea = ({
     renderMode,
     isHidden,
     isPlacing,
+    setIsPlacing,
     onPlaceObstacle,
-    obstacles
+    onClearObstacles,
+    obstacles,
+    options
 }: CanvasAreaProps) => {
 
     const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -40,7 +47,7 @@ export const CanvasArea = ({
     return (
         <div
             onClick={handleCanvasClick}
-            className={`w-full h-full border-t border-white/5 relative flex bg-transparent items-center justify-center transition-opacity duration-300 ${isHidden ? 'hidden' : ''} ${isPlacing ? 'cursor-crosshair' : ''}`}
+            className={`w-full h-full relative flex bg-transparent items-center justify-center transition-opacity duration-300 ${isHidden ? 'hidden' : ''} ${isPlacing ? 'cursor-crosshair' : ''}`}
         >
             {/* CPU rendering canvas */}
             <canvas
@@ -58,14 +65,37 @@ export const CanvasArea = ({
             />
 
             {/* Obstacles Overlay */}
-            {obstacles?.map((ob, i) => (
-                <div key={i} className="absolute border border-red-500 bg-red-500/20" style={{
-                    left: `${(ob.x / 800) * 100}%`,
-                    top: `${(ob.y / 600) * 100}%`,
-                    width: `${(ob.w / 800) * 100}%`,
-                    height: `${(ob.h / 600) * 100}%`,
-                }} />
-            ))}
+            <div className="absolute inset-0 w-full h-full pointer-events-none">
+                {obstacles?.map((ob, i) => (
+                    <div
+                        key={i}
+                        className="absolute"
+                        style={{
+                            left: `${(ob.x / 800) * 100}%`,
+                            top: `${(ob.y / 600) * 100}%`,
+                            width: `${(ob.w / 800) * 100}%`,
+                            height: `${(ob.h / 600) * 100}%`,
+                            backgroundColor: options?.obstacleColor || 'rgba(255, 0, 0, 0.2)',
+                            borderColor: options?.obstacleBorderColor || 'red',
+                            opacity: options?.obstacleOpacity || 0.2,
+                            borderWidth: '1px',
+                            borderStyle: 'solid'
+                        }}
+                    />
+                ))}
+            </div>
+
+            {/* Floating Toolbar */}
+            {setIsPlacing && onClearObstacles && (
+                <div className="absolute bottom-0 w-full flex justify-center pb-6 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                    <ObstacleToolbar
+                        isPlacing={!!isPlacing}
+                        setIsPlacing={setIsPlacing}
+                        onClear={onClearObstacles}
+                        obstacleCount={obstacles?.length || 0}
+                    />
+                </div>
+            )}
         </div>
     );
 };

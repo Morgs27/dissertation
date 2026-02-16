@@ -137,9 +137,6 @@ export const Home = () => {
                                             inputs={inputs}
                                             definedInputs={definedInputs}
                                             handleInputChange={handleInputChange}
-                                            isPlacingObstacles={isPlacing}
-                                            setIsPlacingObstacles={setIsPlacing}
-                                            onClearObstacles={clearObstacles}
                                         />
                                     </TabsContent>
 
@@ -177,8 +174,11 @@ export const Home = () => {
                                         renderMode={activeHomeTab === 'benchmark' ? benchmarkRenderMode : (activeHomeTab === 'playground' ? renderMode : 'cpu')}
                                         isHidden={activeHomeTab === 'benchmark' && !isBenchmarkRunning}
                                         isPlacing={isPlacing}
+                                        setIsPlacing={setIsPlacing}
                                         onPlaceObstacle={handlePlaceObstacle}
+                                        onClearObstacles={clearObstacles}
                                         obstacles={obstacles}
+                                        options={options}
                                     />
                                 </div>
                             </Panel>

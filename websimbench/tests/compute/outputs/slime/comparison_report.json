@@ -1,6 +1,6 @@
 {
   "simulation": "slime",
-  "generatedAt": "2026-02-16T22:19:27.279Z",
+  "generatedAt": "2026-02-16T22:52:35.804Z",
   "numFrames": 100,
   "numAgents": 500,
   "comparisons": [
@@ -12,6 +12,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -19,6 +21,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -26,6 +30,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -33,6 +39,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -40,6 +48,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -47,6 +57,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -54,6 +66,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -61,6 +75,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -68,6 +84,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -75,6 +93,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -82,6 +102,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -89,6 +111,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -96,6 +120,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -103,6 +129,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -110,6 +138,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -117,6 +147,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -124,6 +156,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -131,6 +165,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -138,6 +174,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -145,6 +183,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -152,6 +192,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -159,6 +201,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -166,6 +210,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -173,6 +219,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -180,6 +228,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -187,6 +237,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -194,6 +246,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -201,6 +255,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -208,6 +264,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -215,6 +273,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -222,6 +282,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -229,6 +291,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -236,6 +300,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -243,6 +309,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -250,6 +318,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -257,6 +327,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -264,6 +336,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -271,6 +345,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -278,6 +354,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -285,6 +363,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -292,6 +372,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -299,6 +381,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -306,6 +390,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -313,6 +399,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -320,6 +408,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -327,6 +417,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -334,6 +426,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -341,6 +435,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -348,6 +444,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -355,6 +453,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -362,6 +462,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -369,6 +471,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -376,6 +480,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -383,6 +489,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -390,6 +498,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -397,6 +507,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -404,6 +516,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -411,6 +525,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -418,6 +534,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -425,6 +543,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -432,6 +552,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -439,6 +561,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -446,6 +570,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -453,6 +579,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -460,6 +588,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -467,6 +597,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -474,6 +606,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -481,6 +615,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -488,6 +624,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -495,6 +633,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -502,6 +642,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -509,6 +651,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -516,6 +660,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -523,6 +669,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -530,6 +678,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -537,6 +687,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -544,6 +696,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -551,6 +705,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -558,6 +714,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -565,6 +723,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -572,6 +732,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -579,6 +741,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -586,6 +750,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -593,6 +759,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -600,6 +768,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -607,6 +777,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -614,6 +786,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -621,6 +795,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -628,6 +804,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -635,6 +813,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -642,6 +822,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -649,6 +831,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -656,6 +840,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -663,6 +849,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -670,6 +858,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -677,6 +867,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -684,6 +876,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -691,6 +885,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -698,6 +894,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -705,6 +903,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         }
       ],
@@ -722,6 +922,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -729,6 +931,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -736,6 +940,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -743,6 +949,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -750,6 +958,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -757,6 +967,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -764,6 +976,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -771,6 +985,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -778,6 +994,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -785,6 +1003,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -792,6 +1012,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -799,6 +1021,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -806,6 +1030,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -813,6 +1039,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -820,6 +1048,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -827,6 +1057,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -834,6 +1066,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -841,6 +1075,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -848,6 +1084,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -855,6 +1093,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -862,6 +1102,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -869,6 +1111,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -876,6 +1120,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -883,6 +1129,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -890,6 +1138,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -897,6 +1147,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -904,6 +1156,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -911,6 +1165,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -918,6 +1174,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -925,6 +1183,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -932,6 +1192,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -939,6 +1201,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -946,6 +1210,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -953,6 +1219,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -960,6 +1228,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -967,6 +1237,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -974,6 +1246,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -981,6 +1255,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -988,6 +1264,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -995,6 +1273,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1002,6 +1282,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1009,6 +1291,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1016,6 +1300,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1023,6 +1309,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1030,6 +1318,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1037,6 +1327,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1044,6 +1336,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1051,6 +1345,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1058,6 +1354,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1065,6 +1363,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1072,6 +1372,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1079,6 +1381,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1086,6 +1390,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1093,6 +1399,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1100,6 +1408,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1107,6 +1417,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1114,6 +1426,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1121,6 +1435,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1128,6 +1444,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1135,6 +1453,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1142,6 +1462,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1149,6 +1471,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1156,6 +1480,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1163,6 +1489,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1170,6 +1498,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1177,6 +1507,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1184,6 +1516,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1191,6 +1525,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1198,6 +1534,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1205,6 +1543,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1212,6 +1552,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1219,6 +1561,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1226,6 +1570,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1233,6 +1579,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1240,6 +1588,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1247,6 +1597,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1254,6 +1606,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1261,6 +1615,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1268,6 +1624,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1275,6 +1633,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1282,6 +1642,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1289,6 +1651,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1296,6 +1660,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1303,6 +1669,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1310,6 +1678,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1317,6 +1687,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1324,6 +1696,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1331,6 +1705,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1338,6 +1714,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1345,6 +1723,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1352,6 +1732,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1359,6 +1741,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1366,6 +1750,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1373,6 +1759,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1380,6 +1768,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1387,6 +1777,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1394,6 +1786,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1401,6 +1795,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1408,6 +1804,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1415,6 +1813,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         }
       ],
@@ -1432,6 +1832,8 @@
           "maxPosDiff": 0,
           "avgPosDiff": 0,
           "minPosDiff": 0,
+          "maxVelDiff": 0,
+          "avgVelDiff": 0,
           "passed": true
         },
         {
@@ -1439,6 +1841,8 @@
           "maxPosDiff": 0.00006823937919616058,
           "avgPosDiff": 0.0000012169955050851519,
           "minPosDiff": 0.00003411968959808029,
+          "maxVelDiff": 0.000032226840220782564,
+          "avgVelDiff": 5.79238444199543e-7,
           "passed": true
         },
         {
@@ -1446,6 +1850,8 @@
           "maxPosDiff": 0.00018374015165393518,
           "avgPosDiff": 0.000005917419332779152,
           "minPosDiff": 0.0000057220458984375,
+          "maxVelDiff": 0.00006178871737802966,
+          "avgVelDiff": 0.00000230492979898054,
           "passed": true
         },
         {
@@ -1453,6 +1859,8 @@
           "maxPosDiff": 0.00036748030330787035,
           "avgPosDiff": 0.000015965807511984536,
           "minPosDiff": 0.000011444091796875,
+          "maxVelDiff": 0.00009216267852923088,
+          "avgVelDiff": 0.000004907039441677988,
           "passed": true
         },
         {
@@ -1460,6 +1868,8 @@
           "maxPosDiff": 0.0005982145930149127,
           "avgPosDiff": 0.00003220301520174616,
           "minPosDiff": 0.00001375408659158321,
+          "maxVelDiff": 0.00013529663556177457,
+          "avgVelDiff": 0.000008164316344436385,
           "passed": true
         },
         {
@@ -1467,6 +1877,8 @@
           "maxPosDiff": 0.0009063258303782652,
           "avgPosDiff": 0.000059821520105916216,
           "minPosDiff": 0.00000762939453125,
+          "maxVelDiff": 0.00020284617471171134,
+          "avgVelDiff": 0.000013926547605400915,
           "passed": true
         },
         {
@@ -1474,6 +1886,8 @@
           "maxPosDiff": 0.0012976252212810852,
           "avgPosDiff": 0.00010260222271809916,
           "minPosDiff": 0.00001528856233776226,
+          "maxVelDiff": 0.00023670817014045562,
+          "avgVelDiff": 0.00002261903696318969,
           "passed": true
         },
         {
@@ -1481,6 +1895,8 @@
           "maxPosDiff": 1.0356088206794862,
           "avgPosDiff": 0.00223932358905262,
           "minPosDiff": 0.0000152587890625,
+          "maxVelDiff": 0.5178195857578062,
+          "avgVelDiff": 0.0010711778503056375,
           "passed": false
         },
         {
@@ -1488,6 +1904,8 @@
           "maxPosDiff": 1.4263301783090279,
           "avgPosDiff": 0.003115454302361261,
           "minPosDiff": 0.0000152587890625,
+          "maxVelDiff": 0.19535756307694413,
+          "avgVelDiff": 0.00044175333989086445,
           "passed": false
         },
         {
@@ -1495,6 +1913,8 @@
           "maxPosDiff": 1.426298979272704,
           "avgPosDiff": 0.00324000987488786,
           "minPosDiff": 0.00000762939453125,
+          "maxVelDiff": 0.00037209274016193063,
+          "avgVelDiff": 0.0000686467558490599,
           "passed": false
         },
         {
@@ -1502,6 +1922,8 @@
           "maxPosDiff": 1.4262492339385413,
           "avgPosDiff": 0.00441723905570174,
           "minPosDiff": 0.0000152587890625,
+          "maxVelDiff": 0.2550418428838619,
+          "avgVelDiff": 0.0005980928766606883,
           "passed": false
         },
         {
@@ -1509,6 +1931,8 @@
           "maxPosDiff": 1.426425597830811,
           "avgPosDiff": 0.0035922883438916286,
           "minPosDiff": 0.00000762939453125,
+          "maxVelDiff": 0.25504437753692993,
+          "avgVelDiff": 0.0006200500073273485,
           "passed": false
         },
         {
@@ -1516,6 +1940,8 @@
           "maxPosDiff": 1.4265099359248288,
           "avgPosDiff": 0.004843339197653465,
           "minPosDiff": 0.00002288818359375,
+          "maxVelDiff": 0.2550469084600451,
+          "avgVelDiff": 0.0006427952894906984,
           "passed": false
         },
         {
@@ -1523,6 +1949,8 @@
           "maxPosDiff": 1.4264294817215772,
           "avgPosDiff": 0.004094447244720721,
           "minPosDiff": 0.0000286102294921875,
+          "maxVelDiff": 0.2550555085050015,
+          "avgVelDiff": 0.0006666204289691923,
           "passed": false
         },
         {
@@ -1530,6 +1958,8 @@
           "maxPosDiff": 1.4266727720474819,
           "avgPosDiff": 0.007764239966936585,
           "minPosDiff": 0.0000152587890625,
+          "maxVelDiff": 0.5834424661594158,
+          "avgVelDiff": 0.0018580343987356061,
           "passed": false
         },
         {
@@ -1537,6 +1967,8 @@
           "maxPosDiff": 2.229543293497947,
           "avgPosDiff": 0.009231570425129919,
           "minPosDiff": 0.0000152587890625,
+          "maxVelDiff": 0.5834552224395819,
+          "avgVelDiff": 0.001883937591615014,
           "passed": false
         },
         {
@@ -1544,6 +1976,8 @@
           "maxPosDiff": 1.42666407159047,
           "avgPosDiff": 0.008529717872756247,
           "minPosDiff": 0.0000152587890625,
+          "maxVelDiff": 0.5834541846365271,
+          "avgVelDiff": 0.001910490865760145,
           "passed": false
         },
         {
@@ -1551,6 +1985,8 @@
           "maxPosDiff": 2.229497883639451,
           "avgPosDiff": 0.01008503177542805,
           "minPosDiff": 0.000030517578125,
+          "maxVelDiff": 0.5834737442371221,
+          "avgVelDiff": 0.0019374424851013247,
           "passed": false
         },
         {
@@ -1558,6 +1994,8 @@
           "maxPosDiff": 1.4264354119614204,
           "avgPosDiff": 0.009460160564640763,
           "minPosDiff": 0.0000152587890625,
+          "maxVelDiff": 0.5834727899694017,
+          "avgVelDiff": 0.00196441800004196,
           "passed": false
         },
         {
@@ -1565,6 +2003,8 @@
           "maxPosDiff": 2.229384644916428,
           "avgPosDiff": 0.011101931000039087,
           "minPosDiff": 0.00002288818359375,
+          "maxVelDiff": 0.5834923291372326,
+          "avgVelDiff": 0.001991700792349894,
           "passed": false
         },
         {
@@ -1572,6 +2012,8 @@
           "maxPosDiff": 1.4269458953086616,
           "avgPosDiff": 0.010578760612178507,
           "minPosDiff": 0.00004315837287515549,
+          "maxVelDiff": 0.5834913445565169,
+          "avgVelDiff": 0.0020192457629345135,
           "passed": false
         },
         {
@@ -1579,6 +2021,8 @@
           "maxPosDiff": 2.8749106961564395,
           "avgPosDiff": 0.021820605894254504,
           "minPosDiff": 0.000030517578125,
+          "maxVelDiff": 1.4337636688876914,
+          "avgVelDiff": 0.006826304397577463,
           "passed": false
         },
         {
@@ -1586,6 +2030,8 @@
           "maxPosDiff": 4.745937728206034,
           "avgPosDiff": 0.031249082860550982,
           "minPosDiff": 0.00009650505554713072,
+          "maxVelDiff": 1.4338169419395135,
+          "avgVelDiff": 0.008050204802481475,
           "passed": false
         },
         {
@@ -1593,6 +2039,8 @@
           "maxPosDiff": 4.798661418562708,
           "avgPosDiff": 0.049638534098881776,
           "minPosDiff": 0.000030517578125,
+          "maxVelDiff": 1.0513702222582177,
+          "avgVelDiff": 0.009490696091339828,
           "passed": false
         },
         {
@@ -1600,6 +2048,8 @@
           "maxPosDiff": 6.1948508238534945,
           "avgPosDiff": 0.049897820356891845,
           "minPosDiff": 0.000091552734375,
+          "maxVelDiff": 0.957589542646284,
+          "avgVelDiff": 0.009410747046732058,
           "passed": false
         },
         {
@@ -1607,6 +2057,8 @@
           "maxPosDiff": 5.51894842798119,
           "avgPosDiff": 0.04839615285568667,
           "minPosDiff": 0.000030517578125,
+          "maxVelDiff": 1.5467782028809316,
+          "avgVelDiff": 0.016303532943497574,
           "passed": false
         },
         {
@@ -1614,6 +2066,8 @@
           "maxPosDiff": 5.86560635931019,
           "avgPosDiff": 0.06787059772779287,
           "minPosDiff": 0.00012230849870209807,
+          "maxVelDiff": 1.4963944734110013,
+          "avgVelDiff": 0.016470864736775018,
           "passed": false
         },
         {
@@ -1621,6 +2075,8 @@
           "maxPosDiff": 8.21152919780835,
           "avgPosDiff": 0.08690337493051682,
           "minPosDiff": 0.00004315837287515549,
+          "maxVelDiff": 1.7805072158627406,
+          "avgVelDiff": 0.02604464116045852,
           "passed": false
         },
         {
@@ -1628,6 +2084,8 @@
           "maxPosDiff": 9.30723514083985,
           "avgPosDiff": 0.10868192446701914,
           "minPosDiff": 0.00009650505554713072,
+          "maxVelDiff": 1.6071795062629557,
+          "avgVelDiff": 0.018318009319188366,
           "passed": false
         },
         {
@@ -1635,6 +2093,8 @@
           "maxPosDiff": 12.24049639394769,
           "avgPosDiff": 0.1292557884942076,
           "minPosDiff": 0.00017059844799040144,
+          "maxVelDiff": 1.607202816722976,
+          "avgVelDiff": 0.022125351529320186,
           "passed": false
         },
         {
@@ -1642,6 +2102,8 @@
           "maxPosDiff": 15.017025931899411,
           "avgPosDiff": 0.16644084778562274,
           "minPosDiff": 0.0002502627482125355,
+          "maxVelDiff": 2.046668386865469,
+          "avgVelDiff": 0.023887127148656366,
           "passed": false
         },
         {
@@ -1649,6 +2111,8 @@
           "maxPosDiff": 17.69758910953469,
           "avgPosDiff": 0.19933155805619612,
           "minPosDiff": 0.0004369452228783067,
+          "maxVelDiff": 2.4821869741606424,
+          "avgVelDiff": 0.030084964888579344,
           "passed": false
         },
         {
@@ -1656,6 +2120,8 @@
           "maxPosDiff": 21.63521033091555,
           "avgPosDiff": 0.23730211508859264,
           "minPosDiff": 0.0005596045172391433,
+          "maxVelDiff": 2.423422983350597,
+          "avgVelDiff": 0.029180894230786864,
           "passed": false
         },
         {
@@ -1663,6 +2129,8 @@
           "maxPosDiff": 24.727907621549264,
           "avgPosDiff": 0.27746194228813065,
           "minPosDiff": 0.0009145095253766905,
+          "maxVelDiff": 2.148171824785958,
+          "avgVelDiff": 0.030144536881851702,
           "passed": false
         },
         {
@@ -1670,6 +2138,8 @@
           "maxPosDiff": 28.666660131972943,
           "avgPosDiff": 0.3191932371258367,
           "minPosDiff": 0.0012038014479563,
+          "maxVelDiff": 2.3195252852551724,
+          "avgVelDiff": 0.032752210363301344,
           "passed": false
         },
         {
@@ -1677,6 +2147,8 @@
           "maxPosDiff": 31.949831402174677,
           "avgPosDiff": 0.35463940835092755,
           "minPosDiff": 0.0013210974622749855,
+          "maxVelDiff": 2.4236147407163404,
+          "avgVelDiff": 0.033215435789685166,
           "passed": false
         },
         {
@@ -1684,6 +2156,8 @@
           "maxPosDiff": 598.6722715020785,
           "avgPosDiff": 1.6017489780459915,
           "minPosDiff": 0.0014395112811365668,
+          "maxVelDiff": 2.3195990888343347,
+          "avgVelDiff": 0.03995577586755213,
           "passed": false
         },
         {
@@ -1691,6 +2165,8 @@
           "maxPosDiff": 599.983097206722,
           "avgPosDiff": 1.6410716053876233,
           "minPosDiff": 0.0015368259658220425,
+          "maxVelDiff": 2.4236917707595,
+          "avgVelDiff": 0.04090752013391712,
           "passed": false
         },
         {
@@ -1698,6 +2174,8 @@
           "maxPosDiff": 43.21047755234592,
           "avgPosDiff": 0.5017644237746909,
           "minPosDiff": 0.001654154081160602,
+          "maxVelDiff": 2.423729333601337,
+          "avgVelDiff": 0.04131896224639718,
           "passed": false
         },
         {
@@ -1705,6 +2183,8 @@
           "maxPosDiff": 46.97834033504014,
           "avgPosDiff": 0.542084580872423,
           "minPosDiff": 0.001502816437041642,
+          "maxVelDiff": 2.4237689477916646,
+          "avgVelDiff": 0.040703403699667615,
           "passed": false
         },
         {
@@ -1712,6 +2192,8 @@
           "maxPosDiff": 50.09121480081297,
           "avgPosDiff": 0.5990434888542294,
           "minPosDiff": 0.0019009291384762496,
+          "maxVelDiff": 2.4238064366756795,
+          "avgVelDiff": 0.045811734111860326,
           "passed": false
         },
         {
@@ -1719,6 +2201,8 @@
           "maxPosDiff": 53.07985029330334,
           "avgPosDiff": 0.6401873990279917,
           "minPosDiff": 0.0019731473208221034,
+          "maxVelDiff": 1.86085289306291,
+          "avgVelDiff": 0.04347982593198634,
           "passed": false
         },
         {
@@ -1726,6 +2210,8 @@
           "maxPosDiff": 57.460436553265936,
           "avgPosDiff": 0.6864362753794018,
           "minPosDiff": 0.0021468850508986276,
+          "maxVelDiff": 2.4238836911375294,
+          "avgVelDiff": 0.045003373891214504,
           "passed": false
         },
         {
@@ -1733,6 +2219,8 @@
           "maxPosDiff": 60.541482680839934,
           "avgPosDiff": 0.7479168511329737,
           "minPosDiff": 0.0022667392095593163,
+          "maxVelDiff": 1.99879021094839,
+          "avgVelDiff": 0.05440764331019864,
           "passed": false
         },
         {
@@ -1740,6 +2228,8 @@
           "maxPosDiff": 65.03172889452628,
           "avgPosDiff": 0.8118700062028067,
           "minPosDiff": 0.0023928583720596508,
+          "maxVelDiff": 2.4239608136775277,
+          "avgVelDiff": 0.06537118938781855,
           "passed": false
         },
         {
@@ -1747,6 +2237,8 @@
           "maxPosDiff": 68.17572144813823,
           "avgPosDiff": 0.889946688684185,
           "minPosDiff": 0.0025209810092850808,
+          "maxVelDiff": 1.8609712869285928,
+          "avgVelDiff": 0.06381684132341821,
           "passed": false
         },
         {
@@ -1754,6 +2246,8 @@
           "maxPosDiff": 72.7421108615801,
           "avgPosDiff": 0.9323653277734196,
           "minPosDiff": 0.002628943671176974,
+          "maxVelDiff": 2.4240379171526607,
+          "avgVelDiff": 0.0644215088809314,
           "passed": false
         },
         {
@@ -1761,6 +2255,8 @@
           "maxPosDiff": 77.4268544731843,
           "avgPosDiff": 1.0230967631178194,
           "minPosDiff": 0.002759605894440503,
+          "maxVelDiff": 2.424077494382839,
+          "avgVelDiff": 0.07738318667780854,
           "passed": false
         },
         {
@@ -1768,6 +2264,8 @@
           "maxPosDiff": 80.68709509444824,
           "avgPosDiff": 1.0898751721320588,
           "minPosDiff": 0.002909591415174079,
+          "maxVelDiff": 2.04751533271997,
+          "avgVelDiff": 0.07719838551727934,
           "passed": false
         },
         {
@@ -1775,6 +2273,8 @@
           "maxPosDiff": 85.40229225763193,
           "avgPosDiff": 1.1868781481996336,
           "minPosDiff": 0.003071984968807407,
+          "maxVelDiff": 2.424154672083156,
+          "avgVelDiff": 0.09251203205922404,
           "passed": false
         },
         {
@@ -1782,6 +2282,8 @@
           "maxPosDiff": 88.75277795239447,
           "avgPosDiff": 1.2871883389047711,
           "minPosDiff": 0.0032279462456487676,
+          "maxVelDiff": 2.424194309358113,
+          "avgVelDiff": 0.08855325539694335,
           "passed": false
         },
         {
@@ -1789,6 +2291,8 @@
           "maxPosDiff": 595.8493003320178,
           "avgPosDiff": 2.5675934705090526,
           "minPosDiff": 0.0033912980514732914,
+          "maxVelDiff": 2.0476133986144824,
+          "avgVelDiff": 0.09370531423174784,
           "passed": false
         },
         {
@@ -1796,6 +2300,8 @@
           "maxPosDiff": 598.8441728096552,
           "avgPosDiff": 3.8651977372721635,
           "minPosDiff": 0.003551858048365851,
+          "maxVelDiff": 2.4242714775582432,
+          "avgVelDiff": 0.10570109653483618,
           "passed": false
         },
         {
@@ -1803,6 +2309,8 @@
           "maxPosDiff": 598.4062346771583,
           "avgPosDiff": 2.7859769851819705,
           "minPosDiff": 0.002271459236563525,
+          "maxVelDiff": 2.092221887848962,
+          "avgVelDiff": 0.10717295734635632,
           "passed": false
         },
         {
@@ -1810,6 +2318,8 @@
           "maxPosDiff": 101.00657860963143,
           "avgPosDiff": 1.7101374734617474,
           "minPosDiff": 0.003272681230844467,
+          "maxVelDiff": 2.4243486458926555,
+          "avgVelDiff": 0.10827371352788909,
           "passed": false
         },
         {
@@ -1817,6 +2327,8 @@
           "maxPosDiff": 103.65736345890488,
           "avgPosDiff": 1.8103263785801262,
           "minPosDiff": 0.004044126077760487,
+          "maxVelDiff": 1.9992028445091286,
+          "avgVelDiff": 0.11510706617599098,
           "passed": false
         },
         {
@@ -1824,6 +2336,8 @@
           "maxPosDiff": 107.55137307581383,
           "avgPosDiff": 1.9432304540553067,
           "minPosDiff": 0.004211204633573147,
+          "maxVelDiff": 2.4244258527002644,
+          "avgVelDiff": 0.13441062206975787,
           "passed": false
         },
         {
@@ -1831,6 +2345,8 @@
           "maxPosDiff": 108.84285908571273,
           "avgPosDiff": 2.0504811668461325,
           "minPosDiff": 0.004375522616370574,
+          "maxVelDiff": 2.265193872374485,
+          "avgVelDiff": 0.12761675417105622,
           "passed": false
         },
         {
@@ -1838,6 +2354,8 @@
           "maxPosDiff": 110.87083139820972,
           "avgPosDiff": 2.176936539235672,
           "minPosDiff": 0.004556530934373524,
+          "maxVelDiff": 2.3668448459602356,
+          "avgVelDiff": 0.12915228838375284,
           "passed": false
         },
         {
@@ -1845,6 +2363,8 @@
           "maxPosDiff": 112.19771876537641,
           "avgPosDiff": 2.3098917628785736,
           "minPosDiff": 0.0047607421875,
+          "maxVelDiff": 2.2652659435794713,
+          "avgVelDiff": 0.1380096530589515,
           "passed": false
         },
         {
@@ -1852,6 +2372,8 @@
           "maxPosDiff": 599.3650280922509,
           "avgPosDiff": 5.812947022657665,
           "minPosDiff": 0.0049453544675182246,
+          "maxVelDiff": 2.3669201737369,
+          "avgVelDiff": 0.146276066910986,
           "passed": false
         },
         {
@@ -1859,6 +2381,8 @@
           "maxPosDiff": 598.675924659665,
           "avgPosDiff": 5.9437006964271095,
           "minPosDiff": 0.004041707307408033,
+          "maxVelDiff": 2.265338012602055,
+          "avgVelDiff": 0.16830121840687037,
           "passed": false
         },
         {
@@ -1866,6 +2390,8 @@
           "maxPosDiff": 584.1683264636491,
           "avgPosDiff": 4.920994211104465,
           "minPosDiff": 0.0011917495233011862,
+          "maxVelDiff": 1.999424682632701,
+          "avgVelDiff": 0.1638340254246428,
           "passed": false
         },
         {
@@ -1873,6 +2399,8 @@
           "maxPosDiff": 583.9933574468847,
           "avgPosDiff": 5.819058574113599,
           "minPosDiff": 0.003504741564880861,
+          "maxVelDiff": 2.209955535811137,
+          "avgVelDiff": 0.1710264405431449,
           "passed": false
         },
         {
@@ -1880,6 +2408,8 @@
           "maxPosDiff": 584.5073957493115,
           "avgPosDiff": 5.986352399951683,
           "minPosDiff": 0.005759419774602256,
+          "maxVelDiff": 2.4245851402528893,
+          "avgVelDiff": 0.1948305425270483,
           "passed": false
         },
         {
@@ -1887,6 +2417,8 @@
           "maxPosDiff": 598.9920813511367,
           "avgPosDiff": 7.342350330399536,
           "minPosDiff": 0.005964137357142572,
+          "maxVelDiff": 2.30300122678032,
+          "avgVelDiff": 0.18634192865249224,
           "passed": false
         },
         {
@@ -1894,6 +2426,8 @@
           "maxPosDiff": 582.2903828348132,
           "avgPosDiff": 6.291939296305847,
           "minPosDiff": 0.006183030031092424,
+          "maxVelDiff": 2.424851269549162,
+          "avgVelDiff": 0.21098264070561662,
           "passed": false
         },
         {
@@ -1901,6 +2435,8 @@
           "maxPosDiff": 599.2515070136651,
           "avgPosDiff": 7.6504084494689195,
           "minPosDiff": 0.006155422742080772,
+          "maxVelDiff": 2.157740766330468,
+          "avgVelDiff": 0.20519899135202593,
           "passed": false
         },
         {
@@ -1908,6 +2444,8 @@
           "maxPosDiff": 585.2672314143871,
           "avgPosDiff": 6.626487414904395,
           "minPosDiff": 0.005749243630802369,
+          "maxVelDiff": 2.4649725111949783,
+          "avgVelDiff": 0.2170540467242643,
           "passed": false
         },
         {
@@ -1915,6 +2453,8 @@
           "maxPosDiff": 584.8692686088734,
           "avgPosDiff": 6.798234779654352,
           "minPosDiff": 0.0048678227652208675,
+          "maxVelDiff": 2.465012081619125,
+          "avgVelDiff": 0.19700329748830403,
           "passed": false
         },
         {
@@ -1922,6 +2462,8 @@
           "maxPosDiff": 587.3489212469111,
           "avgPosDiff": 7.971838768851015,
           "minPosDiff": 0.006248003670631609,
+          "maxVelDiff": 2.4650509409891064,
+          "avgVelDiff": 0.20697037476476116,
           "passed": false
         },
         {
@@ -1929,6 +2471,8 @@
           "maxPosDiff": 588.0595306240456,
           "avgPosDiff": 9.313797425411503,
           "minPosDiff": 0.007100769752271109,
+          "maxVelDiff": 2.465090440592466,
+          "avgVelDiff": 0.2250940889216375,
           "passed": false
         },
         {
@@ -1936,6 +2480,8 @@
           "maxPosDiff": 585.5664972093009,
           "avgPosDiff": 8.416510811662658,
           "minPosDiff": 0.007570574036480758,
+          "maxVelDiff": 2.4651293436740254,
+          "avgVelDiff": 0.24057146149016562,
           "passed": false
         },
         {
@@ -1943,6 +2489,8 @@
           "maxPosDiff": 599.9166845739753,
           "avgPosDiff": 11.036026532886908,
           "minPosDiff": 0.007801644412649168,
+          "maxVelDiff": 2.6109579871220543,
+          "avgVelDiff": 0.2383849389009292,
           "passed": false
         },
         {
@@ -1950,6 +2498,8 @@
           "maxPosDiff": 599.9226759693652,
           "avgPosDiff": 12.464790896703347,
           "minPosDiff": 0.008039977441442926,
+          "maxVelDiff": 2.6109983730518533,
+          "avgVelDiff": 0.24091283586757864,
           "passed": false
         },
         {
@@ -1957,6 +2507,8 @@
           "maxPosDiff": 599.2835706301144,
           "avgPosDiff": 11.50548618519168,
           "minPosDiff": 0.008270770405803011,
+          "maxVelDiff": 2.6110410438715617,
+          "avgVelDiff": 0.23795383029181513,
           "passed": false
         },
         {
@@ -1964,6 +2516,8 @@
           "maxPosDiff": 598.8344039463796,
           "avgPosDiff": 11.487357380987657,
           "minPosDiff": 0.008510192047915139,
+          "maxVelDiff": 2.6110814683837615,
+          "avgVelDiff": 0.24592261398215048,
           "passed": false
         },
         {
@@ -1971,6 +2525,8 @@
           "maxPosDiff": 598.8347753967237,
           "avgPosDiff": 11.753883031835576,
           "minPosDiff": 0.007192055046656948,
+          "maxVelDiff": 2.611124201763069,
+          "avgVelDiff": 0.2525919128530402,
           "passed": false
         },
         {
@@ -1978,6 +2534,8 @@
           "maxPosDiff": 591.8173375752878,
           "avgPosDiff": 11.964755852124037,
           "minPosDiff": 0.009007236171128087,
+          "maxVelDiff": 2.4653646331687438,
+          "avgVelDiff": 0.2608883071521378,
           "passed": false
         },
         {
@@ -1985,6 +2543,8 @@
           "maxPosDiff": 590.86263051846,
           "avgPosDiff": 12.288026807687482,
           "minPosDiff": 0.010915154809296264,
+          "maxVelDiff": 2.6746134800793735,
+          "avgVelDiff": 0.2900896678176351,
           "passed": false
         },
         {
@@ -1992,6 +2552,8 @@
           "maxPosDiff": 592.612448075081,
           "avgPosDiff": 13.702742229154762,
           "minPosDiff": 0.014301938530850386,
+          "maxVelDiff": 2.3776087406366377,
+          "avgVelDiff": 0.28373885728671355,
           "passed": false
         },
         {
@@ -1999,6 +2561,8 @@
           "maxPosDiff": 591.5323088043573,
           "avgPosDiff": 13.998832602851351,
           "minPosDiff": 0.011220180940886022,
+          "maxVelDiff": 2.674698698308715,
+          "avgVelDiff": 0.2840731207659033,
           "passed": false
         },
         {
@@ -2006,6 +2570,8 @@
           "maxPosDiff": 591.1805499012397,
           "avgPosDiff": 15.400276358647506,
           "minPosDiff": 0.007143199648479163,
+          "maxVelDiff": 2.4070748510458895,
+          "avgVelDiff": 0.2786882181450696,
           "passed": false
         },
         {
@@ -2013,6 +2579,8 @@
           "maxPosDiff": 590.275986735314,
           "avgPosDiff": 15.664615553451025,
           "minPosDiff": 0.008644235311993981,
+          "maxVelDiff": 2.6747839165517058,
+          "avgVelDiff": 0.31034924785256524,
           "passed": false
         },
         {
@@ -2020,6 +2588,8 @@
           "maxPosDiff": 599.622560623786,
           "avgPosDiff": 17.127945459609514,
           "minPosDiff": 0.010193830433545147,
+          "maxVelDiff": 2.4071515343181367,
+          "avgVelDiff": 0.29982550009928494,
           "passed": false
         },
         {
@@ -2027,6 +2597,8 @@
           "maxPosDiff": 586.5852234270233,
           "avgPosDiff": 17.34866834462916,
           "minPosDiff": 0.011380233619132273,
+          "maxVelDiff": 2.6748690896517546,
+          "avgVelDiff": 0.32302497863478136,
           "passed": false
         },
         {
@@ -2034,6 +2606,8 @@
           "maxPosDiff": 586.2601963393739,
           "avgPosDiff": 16.569108554352873,
           "minPosDiff": 0.01641848539328696,
+          "maxVelDiff": 2.3038775643150737,
+          "avgVelDiff": 0.3110793596345307,
           "passed": false
         },
         {
@@ -2041,6 +2615,8 @@
           "maxPosDiff": 598.0752862275248,
           "avgPosDiff": 19.186183605739004,
           "minPosDiff": 0.018432718238806205,
+          "maxVelDiff": 2.303912683065157,
+          "avgVelDiff": 0.32444497865944694,
           "passed": false
         },
         {
@@ -2048,6 +2624,8 @@
           "maxPosDiff": 598.425498610565,
           "avgPosDiff": 21.791845739008245,
           "minPosDiff": 0.018951440586928013,
+          "maxVelDiff": 2.1501606916516773,
+          "avgVelDiff": 0.33605450200966136,
           "passed": false
         },
         {
@@ -2055,6 +2633,8 @@
           "maxPosDiff": 597.7940658736694,
           "avgPosDiff": 19.84298650066812,
           "minPosDiff": 0.019471225293765167,
+          "maxVelDiff": 2.24069716427703,
+          "avgVelDiff": 0.34776355995437436,
           "passed": false
         },
         {
@@ -2062,6 +2642,8 @@
           "maxPosDiff": 599.8601833603652,
           "avgPosDiff": 19.006307885904636,
           "minPosDiff": 0.01995786613380096,
+          "maxVelDiff": 2.271961183435519,
+          "avgVelDiff": 0.34962659686659914,
           "passed": false
         },
         {
@@ -2069,6 +2651,8 @@
           "maxPosDiff": 599.6590394264701,
           "avgPosDiff": 20.298886523461228,
           "minPosDiff": 0.020446380212827246,
+          "maxVelDiff": 2.2719976322039086,
+          "avgVelDiff": 0.3447046250960838,
           "passed": false
         },
         {
@@ -2076,6 +2660,8 @@
           "maxPosDiff": 598.2028652817519,
           "avgPosDiff": 20.60688118512349,
           "minPosDiff": 0.01996782650550831,
+          "maxVelDiff": 2.260778700590121,
+          "avgVelDiff": 0.3618083966118074,
           "passed": false
         },
         {
@@ -2083,6 +2669,8 @@
           "maxPosDiff": 596.933488998901,
           "avgPosDiff": 20.954555363137196,
           "minPosDiff": 0.017299564197321166,
+          "maxVelDiff": 2.272069980502252,
+          "avgVelDiff": 0.3700473405587853,
           "passed": false
         },
         {
@@ -2090,6 +2678,8 @@
           "maxPosDiff": 598.195448241315,
           "avgPosDiff": 21.75167456372706,
           "minPosDiff": 0.014921691454013186,
+          "maxVelDiff": 2.3480424537342928,
+          "avgVelDiff": 0.38296014689683083,
           "passed": false
         },
         {
@@ -2097,6 +2687,8 @@
           "maxPosDiff": 596.9259417527421,
           "avgPosDiff": 22.11316401052989,
           "minPosDiff": 0.012094359163225932,
+          "maxVelDiff": 2.3480794776638,
+          "avgVelDiff": 0.3845117794462689,
           "passed": false
         },
         {
@@ -2104,6 +2696,8 @@
           "maxPosDiff": 595.4695795189074,
           "avgPosDiff": 22.4578985965505,
           "minPosDiff": 0.009878318956203327,
+          "maxVelDiff": 2.5688166747137706,
+          "avgVelDiff": 0.3782721725860237,
           "passed": false
         },
         {
@@ -2111,6 +2705,8 @@
           "maxPosDiff": 594.200693622173,
           "avgPosDiff": 22.850086283125844,
           "minPosDiff": 0.007071193513723863,
+          "maxVelDiff": 2.3482291547247716,
+          "avgVelDiff": 0.3990116787824374,
           "passed": false
         },
         {
@@ -2118,6 +2714,8 @@
           "maxPosDiff": 599.0742215617669,
           "avgPosDiff": 26.76273980413865,
           "minPosDiff": 0.005572028416111695,
+          "maxVelDiff": 2.5688984889318176,
+          "avgVelDiff": 0.4177746026371972,
           "passed": false
         },
         {
@@ -2125,6 +2723,8 @@
           "maxPosDiff": 589.583567443547,
           "avgPosDiff": 24.790176884111343,
           "minPosDiff": 0.003668842483797514,
+          "maxVelDiff": 2.481760744146704,
+          "avgVelDiff": 0.427648654322646,
           "passed": false
         }
       ],
