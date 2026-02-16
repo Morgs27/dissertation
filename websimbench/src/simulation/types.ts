@@ -20,6 +20,9 @@ export type SimulationAppearance = {
     trailOpacity?: number;
     trailColor: string;
     speciesColors?: string[];
+    obstacleColor: string;
+    obstacleBorderColor: string;
+    obstacleOpacity: number;
 }
 
 export type InputValues = {

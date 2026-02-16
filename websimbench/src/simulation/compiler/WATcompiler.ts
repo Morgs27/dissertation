@@ -80,6 +80,7 @@ function infixToSExpression(expr: string): string {
   }
 
   if (/^[a-zA-Z_]\w*$/.test(expr) && !/^__RANDOM_\d+__$/.test(expr)) {
+    if (expr === 'id') return `(local.get $_agent_id)`;
     return `(local.get $${expr})`;
   }
 
@@ -101,6 +102,7 @@ function infixToSExpression(expr: string): string {
     if (token.startsWith("(") && token.endsWith(")")) {
       return infixToSExpression(token.slice(1, -1));
     }
+    if (token === 'id') return `(local.get $_agent_id)`;
     return `(local.get $${token})`;
   }
 
@@ -159,6 +161,7 @@ function infixToSExpression(expr: string): string {
       if (/^GLOBAL_\w+$/.test(token)) return `(global.get $inputs_${token.substring(7)})`;
       if (/^-?\d+(\.\d+)?$/.test(token)) return `(f32.const ${token})`;
       if (/^[+\-*/]$/.test(token)) return token;
+      if (token === 'id') return `(local.get $_agent_id)`;
       return `(local.get $${token})`;
     })
     .join(" ");

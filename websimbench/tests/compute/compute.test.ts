@@ -109,11 +109,13 @@ function compareAgents(agents1: Agent[], agents2: Agent[]): {
     maxPosDiff: number;
     avgPosDiff: number;
     maxVelDiff: number;
+    avgVelDiff: number;
     agentDiffs: Array<{ id: number; posDiff: number; velDiff: number }>;
 } {
     let maxPosDiff = 0;
     let maxVelDiff = 0;
     let totalPosDiff = 0;
+    let totalVelDiff = 0;
     const agentDiffs: Array<{ id: number; posDiff: number; velDiff: number }> = [];
 
     for (let i = 0; i < agents1.length; i++) {
@@ -128,6 +130,7 @@ function compareAgents(agents1: Agent[], agents2: Agent[]): {
         maxPosDiff = Math.max(maxPosDiff, posDiff);
         maxVelDiff = Math.max(maxVelDiff, velDiff);
         totalPosDiff += posDiff;
+        totalVelDiff += velDiff;
 
         if (posDiff > 0 || velDiff > 0) {
             agentDiffs.push({ id: agents1[i].id, posDiff, velDiff });
@@ -138,6 +141,7 @@ function compareAgents(agents1: Agent[], agents2: Agent[]): {
         maxPosDiff,
         avgPosDiff: totalPosDiff / agents1.length,
         maxVelDiff,
+        avgVelDiff: totalVelDiff / agents1.length,
         agentDiffs
     };
 }
@@ -310,6 +314,8 @@ describe('Compute Cross-Method Comparison', () => {
                             maxPosDiff: number;
                             avgPosDiff: number;
                             minPosDiff: number;
+                            maxVelDiff: number;
+                            avgVelDiff: number;
                             passed: boolean;
                         }[];
                         overall: {
@@ -368,6 +374,8 @@ describe('Compute Cross-Method Comparison', () => {
                             maxPosDiff: comparison.maxPosDiff,
                             avgPosDiff: comparison.avgPosDiff,
                             minPosDiff,
+                            maxVelDiff: comparison.maxVelDiff,
+                            avgVelDiff: comparison.avgVelDiff,
                             passed: comparison.maxPosDiff <= tolerance
                         });
 

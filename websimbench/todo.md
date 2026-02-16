@@ -23,3 +23,14 @@ Features
 8. Domain
 
 Bugs
+
+
+
+
+Performance:
+1. Track simulation
+2. Improve analysis
+
+Prompts: 
+1. Make sure the computes are as efficient as possible
+2. 

@@ -11,7 +11,7 @@ import {
 } from '@/components/ui';
 import { SimulationAppearanceOptions, UpdateOptionFn } from '../hooks/useSimulationOptions';
 import { LogLevel } from '../simulation/helpers/logger';
-import { Gear, Palette, Monitor, ShootingStar, Info, Circle, Square } from "@phosphor-icons/react";
+import { Gear, Palette, Monitor, ShootingStar, Info, Circle, Square, Cube } from "@phosphor-icons/react";
 
 interface OptionsViewProps {
   options: SimulationAppearanceOptions;
@@ -118,6 +118,70 @@ export const OptionsView = ({ options, updateOption, resetOptions }: OptionsView
                   </div>
                 </div>
               )}
+            </div>
+
+            <div className="space-y-4 pt-6 border-t border-white/5 animate-in fade-in duration-500 delay-100">
+              <div className="flex items-center gap-2 mb-4">
+                <Cube size={16} className="text-tropicalTeal" weight="fill" />
+                <Label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Obstacle Appearance</Label>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-[10px] text-gray-500 uppercase font-bold">Fill Color</Label>
+                  <div className="flex items-center gap-3 bg-black/20 p-2 rounded-xl border border-white/5 focus-within:border-tropicalTeal/30 transition-all">
+                    <div className="relative w-8 h-8 shrink-0 rounded-lg overflow-hidden border border-white/10 shadow-sm">
+                      <Input
+                        type="color"
+                        className="absolute inset-[-5px] w-[200%] h-[200%] cursor-pointer border-none p-0"
+                        value={options.obstacleColor}
+                        onChange={(e) => updateOption('obstacleColor', e.target.value)}
+                      />
+                    </div>
+                    <Input
+                      type="text"
+                      className="flex-1 h-8 bg-transparent border-none text-xs font-mono focus:ring-0 text-white"
+                      value={options.obstacleColor}
+                      onChange={(e) => updateOption('obstacleColor', e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[10px] text-gray-500 uppercase font-bold">Border Color</Label>
+                  <div className="flex items-center gap-3 bg-black/20 p-2 rounded-xl border border-white/5 focus-within:border-tropicalTeal/30 transition-all">
+                    <div className="relative w-8 h-8 shrink-0 rounded-lg overflow-hidden border border-white/10 shadow-sm">
+                      <Input
+                        type="color"
+                        className="absolute inset-[-5px] w-[200%] h-[200%] cursor-pointer border-none p-0"
+                        value={options.obstacleBorderColor}
+                        onChange={(e) => updateOption('obstacleBorderColor', e.target.value)}
+                      />
+                    </div>
+                    <Input
+                      type="text"
+                      className="flex-1 h-8 bg-transparent border-none text-xs font-mono focus:ring-0 text-white"
+                      value={options.obstacleBorderColor}
+                      onChange={(e) => updateOption('obstacleBorderColor', e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3 mt-2 bg-black/20 p-4 rounded-xl border border-white/5">
+                <div className="flex justify-between items-center">
+                  <Label className="text-[10px] text-gray-500 uppercase font-bold">Opacity</Label>
+                  <span className="text-xs font-mono text-tropicalTeal bg-tropicalTeal/10 px-2 py-0.5 rounded">{options.obstacleOpacity?.toFixed(2) ?? "0.20"}</span>
+                </div>
+                <Slider
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={[options.obstacleOpacity ?? 0.2]}
+                  onValueChange={(v) => updateOption('obstacleOpacity', v[0])}
+                  className="py-1"
+                />
+              </div>
             </div>
           </section>
 

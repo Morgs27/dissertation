@@ -13,6 +13,9 @@ export interface SimulationAppearanceOptions {
   trailColor: string;
   logLevel: LogLevel;
   speciesColors: string[];
+  obstacleColor: string;
+  obstacleBorderColor: string;
+  obstacleOpacity: number;
 }
 
 export type UpdateOptionFn = <K extends keyof SimulationAppearanceOptions>(key: K, value: SimulationAppearanceOptions[K]) => void;
@@ -32,7 +35,10 @@ const DEFAULT_OPTIONS: SimulationAppearanceOptions = {
     '#44FF66', // Green
     '#FFAA22', // Orange
     '#AA66FF', // Purple
-  ]
+  ],
+  obstacleColor: '#FF0000',
+  obstacleBorderColor: '#FF0000',
+  obstacleOpacity: 0.2
 };
 
 export function useSimulationOptions() {

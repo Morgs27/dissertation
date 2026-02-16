@@ -13,9 +13,9 @@ export function useLogger() {
 
   useEffect(() => {
     const handleLog = (level: LogLevel, context: string, message: string) => {
-        // Convert LogLevel enum to string representation for display
-        const levelStr = LogLevel[level] || 'Unknown';
-        setLogs(prev => [...prev.slice(-99), { level: levelStr, context, message, timestamp: Date.now() }]);
+      // Convert LogLevel enum to string representation for display
+      const levelStr = LogLevel[level] || 'Unknown';
+      setLogs(prev => [...prev.slice(-999), { level: levelStr, context, message, timestamp: Date.now() }]);
     };
     Logger.addListener(handleLog);
     return () => {
