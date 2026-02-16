@@ -24,7 +24,7 @@
     (global $agent_count (export "agent_count") (mut i32) (i32.const 0))
 
     (func (export "step") (param $ptr i32)
-      (local $x f32) (local $y f32) (local $vx f32) (local $vy f32)
+      (local $x f32) (local $y f32) (local $vx f32) (local $vy f32) (local $species f32)
       (local $nearby f32)
       (local $nearby_count f32)
       (local $nearby_sum_x f32)
@@ -60,6 +60,7 @@
     (local.set $y (f32.load (i32.add (local.get $ptr) (i32.const 8))))
     (local.set $vx (f32.load (i32.add (local.get $ptr) (i32.const 12))))
     (local.set $vy (f32.load (i32.add (local.get $ptr) (i32.const 16))))
+    (local.set $species (f32.load (i32.add (local.get $ptr) (i32.const 20))))
 
     ;; load random values
     (local.set $r (f32.load (i32.add (global.get $randomValuesPtr) (i32.shl (i32.trunc_f32_u (local.get $_agent_id)) (i32.const 2)))))
@@ -130,11 +131,11 @@
     (local.set $vy (f32.mul (local.get $vy) (global.get $inputs_damping)))
     (if (f32.ge (local.get $y) (global.get $inputs_height)) (then
     (local.set $y (f32.sub (global.get $inputs_height) (f32.const 1)))
-    (local.set $vy (f32.sub (f32.mul (local.get $vy) ) (f32.const 0.8)))
-    (local.set $vx (f32.div (f32.div (f32.mul (local.get $vx) (local.get $0.9;)) ) (local.get $Friction)))
+    (local.set $vy (f32.mul (local.get $vy) (f32.neg (f32.const 0.8))))
+    (local.set $vx (f32.mul (local.get $vx) (f32.const 0.9)))
     ))
     (if (i32.or (f32.le (local.get $x) (f32.const 0)) (f32.ge (local.get $x) (global.get $inputs_width))) (then
-    (local.set $vx (f32.sub (f32.mul (local.get $vx) ) (f32.const 0.8)))
+    (local.set $vx (f32.mul (local.get $vx) (f32.neg (f32.const 0.8))))
     ))
     (local.set $x (f32.add (local.get $x) (f32.mul (local.get $vx) (f32.const 1.0))))
     (local.set $y (f32.add (local.get $y) (f32.mul (local.get $vy) (f32.const 1.0))))
@@ -144,11 +145,12 @@
     (f32.store (i32.add (local.get $ptr) (i32.const 8)) (local.get $y))
     (f32.store (i32.add (local.get $ptr) (i32.const 12)) (local.get $vx))
     (f32.store (i32.add (local.get $ptr) (i32.const 16)) (local.get $vy))
+    (f32.store (i32.add (local.get $ptr) (i32.const 20)) (local.get $species))
   
     )
 
-    (func (export "step_all") (param $base i32) (param $count i32)
-      (local $_outer_i i32) (local $ptr i32) (local $x f32) (local $y f32) (local $vx f32) (local $vy f32)
+    (func (export "step_all") (param $base i32) (param $_total_count i32)
+      (local $_outer_i i32) (local $ptr i32) (local $x f32) (local $y f32) (local $vx f32) (local $vy f32) (local $species f32)
       (local $nearby f32)
       (local $nearby_count f32)
       (local $nearby_sum_x f32)
@@ -181,7 +183,7 @@
       (local.set $ptr (local.get $base))
       (block $exit
         (loop $loop
-          (br_if $exit (i32.ge_u (local.get $_outer_i) (local.get $count)))
+          (br_if $exit (i32.ge_u (local.get $_outer_i) (local.get $_total_count)))
           
     ;; load agent fields
     (local.set $_agent_id (f32.load (i32.add (local.get $ptr) (i32.const 0))))
@@ -189,6 +191,7 @@
     (local.set $y (f32.load (i32.add (local.get $ptr) (i32.const 8))))
     (local.set $vx (f32.load (i32.add (local.get $ptr) (i32.const 12))))
     (local.set $vy (f32.load (i32.add (local.get $ptr) (i32.const 16))))
+    (local.set $species (f32.load (i32.add (local.get $ptr) (i32.const 20))))
 
     ;; load random values
     (local.set $r (f32.load (i32.add (global.get $randomValuesPtr) (i32.shl (i32.trunc_f32_u (local.get $_agent_id)) (i32.const 2)))))
@@ -259,11 +262,11 @@
     (local.set $vy (f32.mul (local.get $vy) (global.get $inputs_damping)))
     (if (f32.ge (local.get $y) (global.get $inputs_height)) (then
     (local.set $y (f32.sub (global.get $inputs_height) (f32.const 1)))
-    (local.set $vy (f32.sub (f32.mul (local.get $vy) ) (f32.const 0.8)))
-    (local.set $vx (f32.div (f32.div (f32.mul (local.get $vx) (local.get $0.9;)) ) (local.get $Friction)))
+    (local.set $vy (f32.mul (local.get $vy) (f32.neg (f32.const 0.8))))
+    (local.set $vx (f32.mul (local.get $vx) (f32.const 0.9)))
     ))
     (if (i32.or (f32.le (local.get $x) (f32.const 0)) (f32.ge (local.get $x) (global.get $inputs_width))) (then
-    (local.set $vx (f32.sub (f32.mul (local.get $vx) ) (f32.const 0.8)))
+    (local.set $vx (f32.mul (local.get $vx) (f32.neg (f32.const 0.8))))
     ))
     (local.set $x (f32.add (local.get $x) (f32.mul (local.get $vx) (f32.const 1.0))))
     (local.set $y (f32.add (local.get $y) (f32.mul (local.get $vy) (f32.const 1.0))))
@@ -273,6 +276,7 @@
     (f32.store (i32.add (local.get $ptr) (i32.const 8)) (local.get $y))
     (f32.store (i32.add (local.get $ptr) (i32.const 12)) (local.get $vx))
     (f32.store (i32.add (local.get $ptr) (i32.const 16)) (local.get $vy))
+    (f32.store (i32.add (local.get $ptr) (i32.const 20)) (local.get $species))
   
           (local.set $_outer_i (i32.add (local.get $_outer_i) (i32.const 1)))
           (local.set $ptr (i32.add (local.get $ptr) (i32.const 24)))

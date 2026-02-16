@@ -132,14 +132,19 @@
         if ((species == f(0))) {
     
         let avgVx = f(0); 
+        let avgVy = f(0); 
         let avgX = f(0); 
+        let avgY = f(0); 
         let count = f(0); 
-        for (const nearby of nearby) {
+        for (const _nearby of nearby) {
+                    const nearby = _nearby;
             
         if ((f(nearby.species) == f(0))) {
     
         avgVx = f(avgVx + f(nearby.vx)); 
+        avgVy = f(avgVy + f(nearby.vy)); 
         avgX = f(avgX + f(nearby.x)); 
+        avgY = f(avgY + f(nearby.y)); 
         let dx = f(x - f(nearby.x)); 
         let dy = f(y - f(nearby.y)); 
         let dist2 = f(f(dx * dx) + f(dy * dy)); 
@@ -149,17 +154,19 @@
         vy = f(vy + f(dy * f(inputs.preySeparation))); 
         }
         count = f(count + f(1)); 
-        else {
+        } else {
         let dx = f(x - f(nearby.x)); 
         let dy = f(y - f(nearby.y)); 
-        vx = f(vx + f(f(f(dx * f(0.2)) / ) / Strong)); 
+        vx = f(vx + f(dx * f(0.2))); 
         vy = f(vy + f(dy * f(0.2))); 
         }
         }
         if ((count > f(0))) {
     
         avgVx = f(avgVx / count); 
+        avgVy = f(avgVy / count); 
         avgX = f(avgX / count); 
+        avgY = f(avgY / count); 
         vx = f(vx + f(f(avgX - x) * f(inputs.preyCohesion))); 
         vy = f(vy + f(f(avgY - y) * f(inputs.preyCohesion))); 
         vx = f(vx + f(f(avgVx - vx) * f(inputs.preyAlignment))); 
@@ -170,8 +177,10 @@
         else {
         let nearestDist = f(999999); 
         let targetX = f(0); 
+        let targetY = f(0); 
         let foundPrey = f(0); 
-        for (const nearby of nearby) {
+        for (const _nearby of nearby) {
+                    const nearby = _nearby;
             
         if ((f(nearby.species) == f(0))) {
     
@@ -191,9 +200,9 @@
     
         vx = f(vx + f(f(targetX - x) * f(inputs.predatorChasing))); 
         vy = f(vy + f(f(targetY - y) * f(inputs.predatorChasing))); 
-        else {
+        } else {
         let r = _random(); 
-        const __c = f(Math.cos(f(r - f(0.5)))); const __s = f(Math.sin(f(r - f(0.5)))); const __vx = f(f(vx * __c) - f(vy * __s)); vy = f(f(vx * __s) + f(vy * __c)); vx = __vx;
+        const __c = f(Math.cos(f(f(r - f(0.5)) * f(0.5)))); const __s = f(Math.sin(f(f(r - f(0.5)) * f(0.5)))); const __vx = f(f(vx * __c) - f(vy * __s)); vy = f(f(vx * __s) + f(vy * __c)); vx = __vx;
         }
         const __speed2 = f(f(vx*vx) + f(vy*vy)); if (__speed2 > f(f(inputs.predatorSpeed)*f(inputs.predatorSpeed))) { const __scale = f(Math.sqrt(f(f(f(inputs.predatorSpeed)*f(inputs.predatorSpeed)) / __speed2))); vx = f(vx * __scale); vy = f(vy * __scale); };
         }

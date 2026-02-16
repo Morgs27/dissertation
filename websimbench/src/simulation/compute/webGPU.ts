@@ -80,7 +80,22 @@ export default class WebGPU {
         const AGENT_BUFFER_SIZE = agentCount * COMPONENTS_PER_AGENT * FLOAT_SIZE;
 
         console.log("Initializing WebGPU with device:", device);
+
+        // Push error scope to capture initialization errors
+        device.pushErrorScope('validation');
+
         const module = device.createShaderModule({ code: this.wgslCode });
+
+        // Check for compilation errors
+        console.log("GENERATED WGSL:\n", this.wgslCode);
+        module.getCompilationInfo().then(info => {
+            for (const message of info.messages) {
+                const type = message.type === 'error' ? 'error' : 'warning';
+                this.Logger[type === 'error' ? 'error' : 'warn'](
+                    `WGSL ${message.type}: ${message.message} at line ${message.lineNum}, col ${message.linePos}`
+                );
+            }
+        });
 
         this.hasTrailMap = this.inputsExpected.includes('trailMap');
 
@@ -133,6 +148,14 @@ export default class WebGPU {
         this.computePipeline = device.createComputePipeline({
             layout: device.createPipelineLayout({ bindGroupLayouts: [this.bindGroupLayout] }),
             compute: { module, entryPoint: "main" },
+        });
+
+        // Pop validation error scope and log any errors
+        device.popErrorScope().then(error => {
+            if (error) {
+                this.Logger.error("WebGPU Validation Error during initialization:", error.message);
+                console.error("WGSL Code that failed:\n", this.wgslCode);
+            }
         });
 
         this.maxWorkgroupsPerDimension =

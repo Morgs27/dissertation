@@ -165,6 +165,13 @@ export class Simulation {
             ...inputValues
         };
 
+        // Fallback for defined inputs with default values if they are missing
+        this.compilationResult?.definedInputs.forEach(def => {
+            if (!(def.name in inputs)) {
+                inputs[def.name] = def.defaultValue;
+            }
+        });
+
         if (needsRandom && this.randomValues) {
             inputs.randomValues = this.randomValues;
         }

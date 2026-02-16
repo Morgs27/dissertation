@@ -27,7 +27,7 @@
     (global $agent_count (export "agent_count") (mut i32) (i32.const 0))
 
     (func (export "step") (param $ptr i32)
-      (local $x f32) (local $y f32) (local $vx f32) (local $vy f32)
+      (local $x f32) (local $y f32) (local $vx f32) (local $vy f32) (local $species f32)
       (local $nearby f32)
       (local $nearby_count f32)
       (local $nearby_sum_x f32)
@@ -42,7 +42,9 @@
       (local $_dy f32)
       (local $_dist f32)
       (local $avgVx f32)
+      (local $avgVy f32)
       (local $avgX f32)
+      (local $avgY f32)
       (local $count f32)
       (local $_foreach_idx i32)
       (local $_foreach_ptr i32)
@@ -50,6 +52,7 @@
       (local $nearby_y f32)
       (local $nearby_vx f32)
       (local $nearby_vy f32)
+      (local $nearby_species f32)
       (local $_foreach_dx f32)
       (local $_foreach_dy f32)
       (local $_foreach_dist f32)
@@ -60,6 +63,7 @@
       (local $__scale f32)
       (local $nearestDist f32)
       (local $targetX f32)
+      (local $targetY f32)
       (local $foundPrey f32)
       (local $d2 f32)
       (local $r f32)
@@ -74,6 +78,7 @@
     (local.set $y (f32.load (i32.add (local.get $ptr) (i32.const 8))))
     (local.set $vx (f32.load (i32.add (local.get $ptr) (i32.const 12))))
     (local.set $vy (f32.load (i32.add (local.get $ptr) (i32.const 16))))
+    (local.set $species (f32.load (i32.add (local.get $ptr) (i32.const 20))))
 
     ;; load random values
     
@@ -112,8 +117,10 @@
       )
     )
     (if (f32.eq (local.get $species) (f32.const 0)) (then
-    (local.set $avgVx (local.get $0;) (local.get $var) (local.get $avgVy) (local.get $=) (f32.const 0))
-    (local.set $avgX (local.get $0;) (local.get $var) (local.get $avgY) (local.get $=) (f32.const 0))
+    (local.set $avgVx (f32.const 0))
+    (local.set $avgVy (f32.const 0))
+    (local.set $avgX (f32.const 0))
+    (local.set $avgY (f32.const 0))
     (local.set $count (f32.const 0))
     
     ;; Foreach loop over agents (presumed neighbors/all)
@@ -127,13 +134,16 @@
           (local.set $nearby_y (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 8))))
           (local.set $nearby_vx (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 12))))
           (local.set $nearby_vy (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 16))))
+          (local.set $nearby_species (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 20))))
           (if (i32.const 1) (then
             ;; Loop body will be inserted here by subsequent lines
     (if (f32.eq (local.get $nearby_species) (f32.const 0)) (then
-    (local.set $avgVx (f32.add (f32.add (local.get $avgVx) (local.get $nearby_vx;) (local.get $avgVy)) (local.get $=) (local.get $nearby_vy)))
-    (local.set $avgX (f32.add (f32.add (local.get $avgX) (local.get $nearby_x;) (local.get $avgY)) (local.get $=) (local.get $nearby_y)))
-    (local.set $dx (f32.sub (local.get $x) (local.get $nearby_x)))
-    (local.set $dy (f32.sub (local.get $y) (local.get $nearby_y)))
+    (local.set $avgVx (f32.add (local.get $avgVx) (local.get $nearby_vx)))
+    (local.set $avgVy (f32.add (local.get $avgVy) (local.get $nearby_vy)))
+    (local.set $avgX (f32.add (local.get $avgX) (local.get $nearby_x)))
+    (local.set $avgY (f32.add (local.get $avgY) (local.get $nearby_y)))
+    (local.set $dx (local.get $nearby_x))
+    (local.set $dy (local.get $nearby_y))
     (local.set $dist2 (f32.add (f32.mul (local.get $dx) (local.get $dx)) (f32.mul (local.get $dy) (local.get $dy))))
     (if (f32.lt (local.get $dist2) (f32.const 100)) (then
     (local.set $vx (f32.add (local.get $vx) (f32.mul (local.get $dx) (global.get $inputs_preySeparation))))
@@ -146,16 +156,19 @@
       )
     )
     (local.set $count (f32.add (local.get $count) (f32.const 1)))
+    )
     (else
     (local.set $dx (f32.sub (local.get $x) (local.get $nearby_x)))
     (local.set $dy (f32.sub (local.get $y) (local.get $nearby_y)))
-    (local.set $vx (f32.add (local.get $vx) (f32.div (f32.div (f32.mul (local.get $dx) (local.get $0.2;)) ) (local.get $Strong) (local.get $flee) (local.get $force))))
+    (local.set $vx (f32.add (local.get $vx) (f32.mul (local.get $dx) (f32.const 0.2))))
     (local.set $vy (f32.add (local.get $vy) (f32.mul (local.get $dy) (f32.const 0.2))))
     ))
     ))
     (if (f32.gt (local.get $count) (f32.const 0)) (then
-    (local.set $avgVx (f32.div (f32.div (local.get $avgVx) (local.get $count;) (local.get $avgVy)) (local.get $=) (local.get $count)))
-    (local.set $avgX (f32.div (f32.div (local.get $avgX) (local.get $count;) (local.get $avgY)) (local.get $=) (local.get $count)))
+    (local.set $avgVx (f32.div (local.get $avgVx) (local.get $count)))
+    (local.set $avgVy (f32.div (local.get $avgVy) (local.get $count)))
+    (local.set $avgX (f32.div (local.get $avgX) (local.get $count)))
+    (local.set $avgY (f32.div (local.get $avgY) (local.get $count)))
     (local.set $vx (f32.add (local.get $vx) (f32.mul (f32.sub (local.get $avgX) (local.get $x)) (global.get $inputs_preyCohesion))))
     (local.set $vy (f32.add (local.get $vy) (f32.mul (f32.sub (local.get $avgY) (local.get $y)) (global.get $inputs_preyCohesion))))
     (local.set $vx (f32.add (local.get $vx) (f32.mul (f32.sub (local.get $avgVx) (local.get $vx)) (global.get $inputs_preyAlignment))))
@@ -170,7 +183,8 @@
     )
     (else
     (local.set $nearestDist (f32.const 999999))
-    (local.set $targetX (local.get $0;) (local.get $var) (local.get $targetY) (local.get $=) (f32.const 0))
+    (local.set $targetX (f32.const 0))
+    (local.set $targetY (f32.const 0))
     (local.set $foundPrey (f32.const 0))
     
     ;; Foreach loop over agents (presumed neighbors/all)
@@ -184,11 +198,12 @@
           (local.set $nearby_y (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 8))))
           (local.set $nearby_vx (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 12))))
           (local.set $nearby_vy (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 16))))
+          (local.set $nearby_species (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 20))))
           (if (i32.const 1) (then
             ;; Loop body will be inserted here by subsequent lines
     (if (f32.eq (local.get $nearby_species) (f32.const 0)) (then
-    (local.set $dx (f32.sub (local.get $nearby_x) (local.get $x)))
-    (local.set $dy (f32.sub (local.get $nearby_y) (local.get $y)))
+    (local.set $dx (local.get $nearby_x))
+    (local.set $dy (local.get $nearby_y))
     (local.set $d2 (f32.add (f32.mul (local.get $dx) (local.get $dx)) (f32.mul (local.get $dy) (local.get $dy))))
     (if (f32.lt (local.get $d2) (local.get $nearestDist)) (then
     (local.set $nearestDist (local.get $d2))
@@ -207,10 +222,11 @@
     (if (f32.ne (local.get $foundPrey) (f32.const 0)) (then
     (local.set $vx (f32.add (local.get $vx) (f32.mul (f32.sub (local.get $targetX) (local.get $x)) (global.get $inputs_predatorChasing))))
     (local.set $vy (f32.add (local.get $vy) (f32.mul (f32.sub (local.get $targetY) (local.get $y)) (global.get $inputs_predatorChasing))))
+    )
     (else
     (local.set $r (call $random (local.get $_agent_id) (local.get $x) (local.get $y)))
-    (local.set $__c (call $cos (local.get $(r - 0.5)))
-            (local.set $__s (call $sin (local.get $(r - 0.5)))
+    (local.set $__c (call $cos (f32.mul (f32.sub (local.get $r) (f32.const 0.5)) (f32.const 0.5))))
+            (local.set $__s (call $sin (f32.mul (f32.sub (local.get $r) (f32.const 0.5)) (f32.const 0.5))))
             (local.set $__vx (f32.sub (f32.mul (local.get $vx) (local.get $__c)) (f32.mul (local.get $vy) (local.get $__s))))
             (local.set $vy (f32.add (f32.mul (local.get $vx) (local.get $__s)) (f32.mul (local.get $vy) (local.get $__c))))
             (local.set $vx (local.get $__vx))
@@ -234,11 +250,12 @@
     (f32.store (i32.add (local.get $ptr) (i32.const 8)) (local.get $y))
     (f32.store (i32.add (local.get $ptr) (i32.const 12)) (local.get $vx))
     (f32.store (i32.add (local.get $ptr) (i32.const 16)) (local.get $vy))
+    (f32.store (i32.add (local.get $ptr) (i32.const 20)) (local.get $species))
   
     )
 
-    (func (export "step_all") (param $base i32) (param $count i32)
-      (local $_outer_i i32) (local $ptr i32) (local $x f32) (local $y f32) (local $vx f32) (local $vy f32)
+    (func (export "step_all") (param $base i32) (param $_total_count i32)
+      (local $_outer_i i32) (local $ptr i32) (local $x f32) (local $y f32) (local $vx f32) (local $vy f32) (local $species f32)
       (local $nearby f32)
       (local $nearby_count f32)
       (local $nearby_sum_x f32)
@@ -253,7 +270,9 @@
       (local $_dy f32)
       (local $_dist f32)
       (local $avgVx f32)
+      (local $avgVy f32)
       (local $avgX f32)
+      (local $avgY f32)
       (local $count f32)
       (local $_foreach_idx i32)
       (local $_foreach_ptr i32)
@@ -261,6 +280,7 @@
       (local $nearby_y f32)
       (local $nearby_vx f32)
       (local $nearby_vy f32)
+      (local $nearby_species f32)
       (local $_foreach_dx f32)
       (local $_foreach_dy f32)
       (local $_foreach_dist f32)
@@ -271,6 +291,7 @@
       (local $__scale f32)
       (local $nearestDist f32)
       (local $targetX f32)
+      (local $targetY f32)
       (local $foundPrey f32)
       (local $d2 f32)
       (local $r f32)
@@ -282,7 +303,7 @@
       (local.set $ptr (local.get $base))
       (block $exit
         (loop $loop
-          (br_if $exit (i32.ge_u (local.get $_outer_i) (local.get $count)))
+          (br_if $exit (i32.ge_u (local.get $_outer_i) (local.get $_total_count)))
           
     ;; load agent fields
     (local.set $_agent_id (f32.load (i32.add (local.get $ptr) (i32.const 0))))
@@ -290,6 +311,7 @@
     (local.set $y (f32.load (i32.add (local.get $ptr) (i32.const 8))))
     (local.set $vx (f32.load (i32.add (local.get $ptr) (i32.const 12))))
     (local.set $vy (f32.load (i32.add (local.get $ptr) (i32.const 16))))
+    (local.set $species (f32.load (i32.add (local.get $ptr) (i32.const 20))))
 
     ;; load random values
     
@@ -328,8 +350,10 @@
       )
     )
     (if (f32.eq (local.get $species) (f32.const 0)) (then
-    (local.set $avgVx (local.get $0;) (local.get $var) (local.get $avgVy) (local.get $=) (f32.const 0))
-    (local.set $avgX (local.get $0;) (local.get $var) (local.get $avgY) (local.get $=) (f32.const 0))
+    (local.set $avgVx (f32.const 0))
+    (local.set $avgVy (f32.const 0))
+    (local.set $avgX (f32.const 0))
+    (local.set $avgY (f32.const 0))
     (local.set $count (f32.const 0))
     
     ;; Foreach loop over agents (presumed neighbors/all)
@@ -343,13 +367,16 @@
           (local.set $nearby_y (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 8))))
           (local.set $nearby_vx (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 12))))
           (local.set $nearby_vy (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 16))))
+          (local.set $nearby_species (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 20))))
           (if (i32.const 1) (then
             ;; Loop body will be inserted here by subsequent lines
     (if (f32.eq (local.get $nearby_species) (f32.const 0)) (then
-    (local.set $avgVx (f32.add (f32.add (local.get $avgVx) (local.get $nearby_vx;) (local.get $avgVy)) (local.get $=) (local.get $nearby_vy)))
-    (local.set $avgX (f32.add (f32.add (local.get $avgX) (local.get $nearby_x;) (local.get $avgY)) (local.get $=) (local.get $nearby_y)))
-    (local.set $dx (f32.sub (local.get $x) (local.get $nearby_x)))
-    (local.set $dy (f32.sub (local.get $y) (local.get $nearby_y)))
+    (local.set $avgVx (f32.add (local.get $avgVx) (local.get $nearby_vx)))
+    (local.set $avgVy (f32.add (local.get $avgVy) (local.get $nearby_vy)))
+    (local.set $avgX (f32.add (local.get $avgX) (local.get $nearby_x)))
+    (local.set $avgY (f32.add (local.get $avgY) (local.get $nearby_y)))
+    (local.set $dx (local.get $nearby_x))
+    (local.set $dy (local.get $nearby_y))
     (local.set $dist2 (f32.add (f32.mul (local.get $dx) (local.get $dx)) (f32.mul (local.get $dy) (local.get $dy))))
     (if (f32.lt (local.get $dist2) (f32.const 100)) (then
     (local.set $vx (f32.add (local.get $vx) (f32.mul (local.get $dx) (global.get $inputs_preySeparation))))
@@ -362,16 +389,19 @@
       )
     )
     (local.set $count (f32.add (local.get $count) (f32.const 1)))
+    )
     (else
     (local.set $dx (f32.sub (local.get $x) (local.get $nearby_x)))
     (local.set $dy (f32.sub (local.get $y) (local.get $nearby_y)))
-    (local.set $vx (f32.add (local.get $vx) (f32.div (f32.div (f32.mul (local.get $dx) (local.get $0.2;)) ) (local.get $Strong) (local.get $flee) (local.get $force))))
+    (local.set $vx (f32.add (local.get $vx) (f32.mul (local.get $dx) (f32.const 0.2))))
     (local.set $vy (f32.add (local.get $vy) (f32.mul (local.get $dy) (f32.const 0.2))))
     ))
     ))
     (if (f32.gt (local.get $count) (f32.const 0)) (then
-    (local.set $avgVx (f32.div (f32.div (local.get $avgVx) (local.get $count;) (local.get $avgVy)) (local.get $=) (local.get $count)))
-    (local.set $avgX (f32.div (f32.div (local.get $avgX) (local.get $count;) (local.get $avgY)) (local.get $=) (local.get $count)))
+    (local.set $avgVx (f32.div (local.get $avgVx) (local.get $count)))
+    (local.set $avgVy (f32.div (local.get $avgVy) (local.get $count)))
+    (local.set $avgX (f32.div (local.get $avgX) (local.get $count)))
+    (local.set $avgY (f32.div (local.get $avgY) (local.get $count)))
     (local.set $vx (f32.add (local.get $vx) (f32.mul (f32.sub (local.get $avgX) (local.get $x)) (global.get $inputs_preyCohesion))))
     (local.set $vy (f32.add (local.get $vy) (f32.mul (f32.sub (local.get $avgY) (local.get $y)) (global.get $inputs_preyCohesion))))
     (local.set $vx (f32.add (local.get $vx) (f32.mul (f32.sub (local.get $avgVx) (local.get $vx)) (global.get $inputs_preyAlignment))))
@@ -386,7 +416,8 @@
     )
     (else
     (local.set $nearestDist (f32.const 999999))
-    (local.set $targetX (local.get $0;) (local.get $var) (local.get $targetY) (local.get $=) (f32.const 0))
+    (local.set $targetX (f32.const 0))
+    (local.set $targetY (f32.const 0))
     (local.set $foundPrey (f32.const 0))
     
     ;; Foreach loop over agents (presumed neighbors/all)
@@ -400,11 +431,12 @@
           (local.set $nearby_y (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 8))))
           (local.set $nearby_vx (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 12))))
           (local.set $nearby_vy (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 16))))
+          (local.set $nearby_species (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 20))))
           (if (i32.const 1) (then
             ;; Loop body will be inserted here by subsequent lines
     (if (f32.eq (local.get $nearby_species) (f32.const 0)) (then
-    (local.set $dx (f32.sub (local.get $nearby_x) (local.get $x)))
-    (local.set $dy (f32.sub (local.get $nearby_y) (local.get $y)))
+    (local.set $dx (local.get $nearby_x))
+    (local.set $dy (local.get $nearby_y))
     (local.set $d2 (f32.add (f32.mul (local.get $dx) (local.get $dx)) (f32.mul (local.get $dy) (local.get $dy))))
     (if (f32.lt (local.get $d2) (local.get $nearestDist)) (then
     (local.set $nearestDist (local.get $d2))
@@ -423,10 +455,11 @@
     (if (f32.ne (local.get $foundPrey) (f32.const 0)) (then
     (local.set $vx (f32.add (local.get $vx) (f32.mul (f32.sub (local.get $targetX) (local.get $x)) (global.get $inputs_predatorChasing))))
     (local.set $vy (f32.add (local.get $vy) (f32.mul (f32.sub (local.get $targetY) (local.get $y)) (global.get $inputs_predatorChasing))))
+    )
     (else
     (local.set $r (call $random (local.get $_agent_id) (local.get $x) (local.get $y)))
-    (local.set $__c (call $cos (local.get $(r - 0.5)))
-            (local.set $__s (call $sin (local.get $(r - 0.5)))
+    (local.set $__c (call $cos (f32.mul (f32.sub (local.get $r) (f32.const 0.5)) (f32.const 0.5))))
+            (local.set $__s (call $sin (f32.mul (f32.sub (local.get $r) (f32.const 0.5)) (f32.const 0.5))))
             (local.set $__vx (f32.sub (f32.mul (local.get $vx) (local.get $__c)) (f32.mul (local.get $vy) (local.get $__s))))
             (local.set $vy (f32.add (f32.mul (local.get $vx) (local.get $__s)) (f32.mul (local.get $vy) (local.get $__c))))
             (local.set $vx (local.get $__vx))
@@ -450,6 +483,7 @@
     (f32.store (i32.add (local.get $ptr) (i32.const 8)) (local.get $y))
     (f32.store (i32.add (local.get $ptr) (i32.const 12)) (local.get $vx))
     (f32.store (i32.add (local.get $ptr) (i32.const 16)) (local.get $vy))
+    (f32.store (i32.add (local.get $ptr) (i32.const 20)) (local.get $species))
   
           (local.set $_outer_i (i32.add (local.get $_outer_i) (i32.const 1)))
           (local.set $ptr (i32.add (local.get $ptr) (i32.const 24)))

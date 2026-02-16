@@ -50,7 +50,7 @@ function tokenizeExpression(expr: string): string[] {
       current += char;
     } else if (inParen > 0) {
       current += char;
-    } else if (/[\s]/.test(char)) {
+    } else if (/[\s;]/.test(char)) {
       if (current) {
         tokens.push(current);
         current = "";
@@ -107,7 +107,7 @@ function infixToSExpression(expr: string): string {
     return `(global.get $inputs_${expr.substring(7)})`;
   }
 
-  if (/^[a-zA-Z_]\w*$/.test(expr)) {
+  if (/^[a-zA-Z_]\w*$/.test(expr) && expr !== "__RANDOM__") {
     return `(local.get $${expr})`;
   }
 
@@ -117,6 +117,9 @@ function infixToSExpression(expr: string): string {
   if (tokens.length === 1) {
     const token = tokens[0];
 
+    if (token === "__RANDOM__") {
+      return `(call $random (local.get $_agent_id) (local.get $x) (local.get $y))`;
+    }
     if (/^GLOBAL_\w+$/.test(token)) {
       return `(global.get $inputs_${token.substring(7)})`;
     }
@@ -132,18 +135,28 @@ function infixToSExpression(expr: string): string {
   // Find operators with lowest precedence (addition/subtraction)
   for (let i = tokens.length - 1; i >= 0; i--) {
     if (tokens[i] === "+" || tokens[i] === "-") {
+      // Handle unary minus
+      // If previous token is an operator or start of expression, this '-' is unary
+      const isUnary = i === 0 || /^[+\-*/^]$/.test(tokens[i - 1]) || tokens[i - 1] === "(";
+
+      if (tokens[i] === "-") {
+        if (isUnary) {
+          continue; // Skip, don't split here
+        }
+      }
+
       const left = tokens.slice(0, i).join(" ");
       const right = tokens.slice(i + 1).join(" ");
-
-      // Handle unary minus
-      if (tokens[i] === "-" && (!left || left.trim() === "")) {
-        return `(f32.neg ${infixToSExpression(right)})`;
-      }
 
       // Binary operation
       const op = tokens[i] === "+" ? "f32.add" : "f32.sub";
       return `(${op} ${infixToSExpression(left)} ${infixToSExpression(right)})`;
     }
+  }
+
+  // Handle unary minus (if no binary ops found)
+  if (tokens[0] === "-") {
+    return `(f32.neg ${infixToSExpression(tokens.slice(1).join(" "))})`;
   }
 
   // Find multiplication/division (skip ** which is exponentiation)
@@ -256,9 +269,13 @@ function normalizeWASMExpression(expr: string, randomInputs: Set<string>): strin
   }
 
   // Handle random()
-  if (r.includes("random(")) {
-    return `(call $random (local.get $_agent_id) (local.get $x) (local.get $y))`;
-  }
+  r = r.replace(/random\(([^)]*)\)/g, (_match, args) => {
+    const parts = args.split(',').filter((s: string) => s.trim().length > 0).map((s: string) => s.trim());
+    const randCall = "__RANDOM__";
+    if (parts.length === 0) return randCall;
+    if (parts.length === 1) return `(${randCall} * ${parts[0]})`;
+    return `(${parts[0]} + ${randCall} * (${parts[1]} - ${parts[0]}))`;
+  });
 
   // Handle inputs.random
   if (r.includes("inputs.random")) {
@@ -322,10 +339,12 @@ function parseCondition(condition: string, randomInputs: Set<string>): string {
   return normalizeWASMCondition(condition, randomInputs);
 }
 
-/**
- * Transpiles a single line of DSL to WASM using shared parser
- */
-function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<string>): string | null {
+interface WATContext {
+  loopDepth: number;
+  currentLoopVar?: string;
+}
+
+function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<string>, context: WATContext): string | null {
   const parsed = DSLParser.parseDSLLine(line);
 
   switch (parsed.type) {
@@ -343,11 +362,17 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
     case "var": {
       localVars.add(parsed.name);
       let expr = parsed.expression;
-      const arrayMatch = expr.match(/nearbyAgents\[\w+\]\.(\w+)/);
-      if (arrayMatch) {
-        const offsets: Record<string, number> = { x: 4, y: 8, vx: 12, vy: 16 };
-        const offset = offsets[arrayMatch[1]] || 0;
+      const arrayMatchInVar = expr.match(/(\w+)\[\w+\]\.(\w+)/);
+      if (arrayMatchInVar) {
+        const offsets: Record<string, number> = { x: 4, y: 8, vx: 12, vy: 16, species: 20 };
+        const offset = offsets[arrayMatchInVar[2]] || 0;
         return `(local.set $${parsed.name} (f32.load (i32.add (local.get $_for_ptr) (i32.const ${offset}))))`;
+      }
+
+      const propMatchInVar = expr.match(/(\w+)\.(\w+)/);
+      if (propMatchInVar && propMatchInVar[1] === context.currentLoopVar) {
+        const targetPropVar = `${propMatchInVar[1]}_${propMatchInVar[2]}`;
+        return `(local.set $${parsed.name} (local.get $${targetPropVar}))`;
       }
       const wasmExpr = normalizeWASMExpression(expr, randomInputs);
       if (wasmExpr.startsWith("__NEIGHBORS__")) {
@@ -419,6 +444,8 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
       const condMatch = parsed.condition.match(/(\w+)\s*<\s*(\w+)\.length/);
       if (initMatch && condMatch && condMatch[2] === "nearbyAgents") {
         const loopVar = initMatch[1];
+        context.currentLoopVar = loopVar;
+        context.loopDepth++;
         localVars.add(loopVar); if (loopVar !== "i") localVars.add(loopVar);
         localVars.add("_for_idx"); localVars.add("_for_ptr"); localVars.add("_for_dx"); localVars.add("_for_dy"); localVars.add("_for_dist");
         return `
@@ -455,8 +482,11 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
       const loopVar = parsed.varName || parsed.itemAlias;
 
       if (loopVar) {
+        context.currentLoopVar = loopVar;
+        context.loopDepth++;
         localVars.add("_foreach_idx"); localVars.add("_foreach_ptr"); localVars.add(`${loopVar}_x`);
         localVars.add(`${loopVar}_y`); localVars.add(`${loopVar}_vx`); localVars.add(`${loopVar}_vy`);
+        localVars.add(`${loopVar}_species`);
         localVars.add("_foreach_dx"); localVars.add("_foreach_dy"); localVars.add("_foreach_dist");
         return `
     ;; Foreach loop over agents (presumed neighbors/all)
@@ -470,6 +500,7 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
           (local.set $${loopVar}_y (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 8))))
           (local.set $${loopVar}_vx (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 12))))
           (local.set $${loopVar}_vy (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 16))))
+          (local.set $${loopVar}_species (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 20))))
           (if (i32.const 1) (then
             ;; Loop body will be inserted here by subsequent lines`;
       }
@@ -477,13 +508,23 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
     }
 
     case "assignment": {
-      const arrayMatch = parsed.expression.match(/nearbyAgents\[\w+\]\.(\w+)/);
+      // Handle array indexing like nearbyAgents[i].species
+      const arrayMatch = parsed.expression.match(/(\w+)\[\w+\]\.(\w+)/);
       if (arrayMatch) {
-        const offsets: Record<string, number> = { x: 4, y: 8, vx: 12, vy: 16 };
-        const offset = offsets[arrayMatch[1]] || 0;
+        const offsets: Record<string, number> = { x: 4, y: 8, vx: 12, vy: 16, species: 20 };
+        const offset = offsets[arrayMatch[2]] || 0;
         const loadExpr = `(f32.load (i32.add (local.get $_for_ptr) (i32.const ${offset})))`;
-        const exprWithLoad = parsed.expression.replace(/nearbyAgents\[\w+\]\.(\w+)/, loadExpr);
+        const exprWithLoad = parsed.expression.replace(/(\w+)\[\w+\]\.(\w+)/, loadExpr);
         return `(local.set $${parsed.target} ${normalizeWASMExpression(exprWithLoad, randomInputs)})`;
+      }
+
+      // Handle property access like nearby.species when nearby is the loop variable
+      const propMatch = parsed.expression.match(/(\w+)\.(\w+)/);
+      if (propMatch && propMatch[1] === context.currentLoopVar) {
+        // Map to the local variable we just loaded in the foreach loop
+        const targetPropVar = `${propMatch[1]}_${propMatch[2]}`;
+        const exprWithVar = parsed.expression.replace(/(\w+)\.(\w+)/, targetPropVar);
+        return `(local.set $${parsed.target} ${normalizeWASMExpression(exprWithVar, randomInputs)})`;
       }
       return `(local.set $${parsed.target} ${normalizeWASMExpression(parsed.expression, randomInputs)})`;
     }
@@ -530,6 +571,7 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
         return `(local.set $${target} (${opInstr} (local.get $${target}) ${argExpr}))`;
       }
     }
+
     case "unknown":
     default: return null;
   }
@@ -557,12 +599,26 @@ export const compileDSLtoWAT = (
   // openStructuresAtEntry tracks the openStructures count when loop was entered
   const loopStack: { type: 'nearby' | 'standard' | 'foreach', var?: string, internalIfs: number, openStructuresAtEntry: number }[] = [];
 
+  const context: WATContext = {
+    loopDepth: 0
+  };
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const trimmed = line.content.trim();
     if (!trimmed) continue;
 
-    let transpiled = transpileLine(trimmed, localVars, randomInputsSet);
+    // Handle single-line closure like "} else {"
+    if (trimmed.startsWith("}") && trimmed !== "}") {
+      statements.push(")");
+    }
+
+    if (trimmed === "}") {
+      context.loopDepth--;
+      if (context.loopDepth <= 0) context.currentLoopVar = undefined;
+    }
+
+    let transpiled = transpileLine(trimmed, localVars, randomInputsSet, context);
 
     if (transpiled === null && trimmed !== "}") {
       const parsed = DSLParser.parseDSLLine(trimmed);
@@ -680,7 +736,7 @@ export const compileDSLtoWAT = (
   const agentCountGlobal = `(global $agent_count (export "agent_count") (mut i32) (i32.const 0))`;
 
   const i32Vars = new Set(["_loop_idx", "_loop_ptr", "_for_idx", "_for_ptr", "_foreach_idx", "_foreach_ptr"]);
-  const reservedLocals = new Set(["x", "y", "vx", "vy"]);
+  const reservedLocals = new Set(["x", "y", "vx", "vy", "species"]);
   const localVarDecls = Array.from(localVars)
     .filter(v => !reservedLocals.has(v))
     .map(v => `(local $${v} ${i32Vars.has(v) ? "i32" : "f32"})`).join("\n      ");
@@ -692,6 +748,7 @@ export const compileDSLtoWAT = (
     (local.set $y (f32.load (i32.add (local.get $ptr) (i32.const 8))))
     (local.set $vx (f32.load (i32.add (local.get $ptr) (i32.const 12))))
     (local.set $vy (f32.load (i32.add (local.get $ptr) (i32.const 16))))
+    (local.set $species (f32.load (i32.add (local.get $ptr) (i32.const 20))))
 
     ;; load random values
     ${randomInputs.map(r => `(local.set $${r} (f32.load (i32.add (global.get $randomValuesPtr) (i32.shl (i32.trunc_f32_u (local.get $_agent_id)) (i32.const 2)))))`).join('\n    ')}
@@ -704,6 +761,7 @@ export const compileDSLtoWAT = (
     (f32.store (i32.add (local.get $ptr) (i32.const 8)) (local.get $y))
     (f32.store (i32.add (local.get $ptr) (i32.const 12)) (local.get $vx))
     (f32.store (i32.add (local.get $ptr) (i32.const 16)) (local.get $vy))
+    (f32.store (i32.add (local.get $ptr) (i32.const 20)) (local.get $species))
   `;
 
   const stepFuncLocals = localVars.size > 0 ? `\n      ${localVarDecls}` : "";
@@ -766,17 +824,17 @@ export const compileDSLtoWAT = (
     ${agentCountGlobal}
 
     (func (export "step") (param $ptr i32)
-      (local $x f32) (local $y f32) (local $vx f32) (local $vy f32)${stepFuncLocals}
+      (local $x f32) (local $y f32) (local $vx f32) (local $vy f32) (local $species f32)${stepFuncLocals}
       ${agentKernel}
     )
 
-    (func (export "step_all") (param $base i32) (param $count i32)
-      (local $_outer_i i32) (local $ptr i32) (local $x f32) (local $y f32) (local $vx f32) (local $vy f32)${stepFuncLocals}
+    (func (export "step_all") (param $base i32) (param $_total_count i32)
+      (local $_outer_i i32) (local $ptr i32) (local $x f32) (local $y f32) (local $vx f32) (local $vy f32) (local $species f32)${stepFuncLocals}
       (local.set $_outer_i (i32.const 0))
       (local.set $ptr (local.get $base))
       (block $exit
         (loop $loop
-          (br_if $exit (i32.ge_u (local.get $_outer_i) (local.get $count)))
+          (br_if $exit (i32.ge_u (local.get $_outer_i) (local.get $_total_count)))
           ${agentKernel}
           (local.set $_outer_i (i32.add (local.get $_outer_i) (i32.const 1)))
           (local.set $ptr (i32.add (local.get $ptr) (i32.const 24)))

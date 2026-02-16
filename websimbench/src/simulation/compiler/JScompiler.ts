@@ -56,16 +56,25 @@ function transpileLine(line: string, randomInputs: Set<string> = new Set()): str
             return `if (${transformExpression(parsed.condition, randomInputs)}) {
     `;
 
-        case 'elseif':
-            return `else if (${transformExpression(parsed.condition, randomInputs)}) {
+        case 'elseif': {
+            const prefix = line.trim().startsWith('}') ? '} ' : '';
+            return `${prefix}else if (${transformExpression(parsed.condition, randomInputs)}) {
         `;
+        }
 
-        case 'else':
-            return 'else {';
+        case 'else': {
+            const prefix = line.trim().startsWith('}') ? '} ' : '';
+            return `${prefix}else {`;
+        }
 
         case 'foreach': {
             const loopVar = parsed.varName || parsed.itemAlias;
             if (loopVar) {
+                if (loopVar === parsed.collection) {
+                    return `for (const _${loopVar} of ${parsed.collection}) {
+                    const ${loopVar} = _${loopVar};
+            `;
+                }
                 return `for (const ${loopVar} of ${parsed.collection}) {
             `;
             }
