@@ -5,7 +5,7 @@
  * to participate in the shared transpilation pipeline.
  */
 
-import type { AVAILABLE_COMMANDS, CommandMap } from './parser';
+// No imports needed — types defined here are self-contained
 
 // ─── Compilation Context ─────────────────────────────────────────────
 
@@ -52,7 +52,6 @@ export function createContext(randomInputs: string[]): CompilationContext {
  */
 export interface CompilerTarget {
     readonly name: 'js' | 'wgsl' | 'wat';
-    readonly commands: CommandMap;
 
     /** Transpile a raw expression string into target-language code */
     emitExpression(expr: string, ctx: CompilationContext): string;
@@ -77,9 +76,6 @@ export interface CompilerTarget {
 
     /** Emit an assignment statement */
     emitAssignment(target: string, expression: string, ctx: CompilationContext): string[];
-
-    /** Emit a command invocation */
-    emitCommand(command: AVAILABLE_COMMANDS, argument: string, ctx: CompilationContext): string[];
 
     /** Emit a closing brace */
     emitCloseBrace(ctx: CompilationContext): string[];

@@ -11,6 +11,7 @@ import type { LineInfo } from './parser';
 import { DSLParser } from './parser';
 import type { CompilerTarget, CompilationContext } from './compilerTarget';
 import { tryEmitFunctionVar } from './functionRegistry';
+import { emitCommand as registryEmitCommand } from './commandRegistry';
 
 /**
  * Transpile parsed DSL lines using the given compiler target.
@@ -80,7 +81,7 @@ export function transpileDSL(
                 break;
 
             case 'command':
-                emitted = target.emitCommand(parsed.command, parsed.argument, ctx);
+                emitted = registryEmitCommand(parsed.command, parsed.argument, target, ctx) ?? [];
                 break;
 
             case 'unknown':

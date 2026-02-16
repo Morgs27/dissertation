@@ -71,7 +71,7 @@
   vx = f(vx + f(f(avgVx - vx) * f(inputs.preyAlignment))); 
   vy = f(vy + f(f(avgVy - vy) * f(inputs.preyAlignment))); 
   }
-  const __speed2 = f(f(vx*vx) + f(vy*vy)); if (__speed2 > f(f(inputs.preyeSpeed)*f(inputs.preyeSpeed))) { const __scale = f(Math.sqrt(f(f(f(inputs.preyeSpeed)*f(inputs.preyeSpeed)) / __speed2))); vx = f(vx * __scale); vy = f(vy * __scale); };
+  const __speed2 = f(f(vx*vx) + f(vy*vy)); if (__speed2 > f(f(inputs.preyeSpeed)*f(inputs.preyeSpeed))) { const __scale = f(Math.sqrt(f(f(f(inputs.preyeSpeed)*f(inputs.preyeSpeed)) / __speed2))); vx = f(vx * __scale); vy = f(vy * __scale); }
   }
   else {
   let nearestDist = f(999999); 
@@ -99,7 +99,7 @@
   let r = _random(); 
   const __c = f(Math.cos(f(f(r - f(0.5)) * f(0.5)))); const __s = f(Math.sin(f(f(r - f(0.5)) * f(0.5)))); const __vx = f(f(vx * __c) - f(vy * __s)); vy = f(f(vx * __s) + f(vy * __c)); vx = __vx;
   }
-  const __speed2 = f(f(vx*vx) + f(vy*vy)); if (__speed2 > f(f(inputs.predatorSpeed)*f(inputs.predatorSpeed))) { const __scale = f(Math.sqrt(f(f(f(inputs.predatorSpeed)*f(inputs.predatorSpeed)) / __speed2))); vx = f(vx * __scale); vy = f(vy * __scale); };
+  const __speed2 = f(f(vx*vx) + f(vy*vy)); if (__speed2 > f(f(inputs.predatorSpeed)*f(inputs.predatorSpeed))) { const __scale = f(Math.sqrt(f(f(f(inputs.predatorSpeed)*f(inputs.predatorSpeed)) / __speed2))); vx = f(vx * __scale); vy = f(vy * __scale); }
   }
   if (x < 0) x = f(x + f(inputs.width)); if (x > f(inputs.width)) x = f(x - f(inputs.width)); if (y < 0) y = f(y + f(inputs.height)); if (y > f(inputs.height)) y = f(y - f(inputs.height));
   x = f(x + f(vx * f(1.0))); y = f(y + f(vy * f(1.0)));

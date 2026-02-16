@@ -10,63 +10,10 @@
  */
 
 import Logger from "../helpers/logger";
-import { DSLParser, type AVAILABLE_COMMANDS, type LineInfo, type CommandMap } from "./parser";
+import { DSLParser, type LineInfo } from "./parser";
 import type { CompilerTarget, CompilationContext } from './compilerTarget';
-
-// ─── WAT Command Definitions ────────────────────────────────────────
-
-const WAT_COMMANDS: Record<
-  AVAILABLE_COMMANDS,
-  {
-    target: "x" | "y" | "vx" | "vy";
-    op: "add" | "sub" | "set" | "update" | "complex";
-  }
-> = {
-  moveUp: { target: "y", op: "sub" },
-  moveDown: { target: "y", op: "add" },
-  moveLeft: { target: "x", op: "sub" },
-  moveRight: { target: "x", op: "add" },
-  addVelocityX: { target: "vx", op: "add" },
-  addVelocityY: { target: "vy", op: "add" },
-  setVelocityX: { target: "vx", op: "set" },
-  setVelocityY: { target: "vy", op: "set" },
-  updatePosition: { target: "x", op: "update" },
-  borderWrapping: { target: "x", op: "complex" },
-  borderBounce: { target: "x", op: "complex" },
-  limitSpeed: { target: "vx", op: "complex" },
-  turn: { target: "vx", op: "complex" },
-  moveForward: { target: "x", op: "complex" },
-  deposit: { target: "x", op: "complex" },
-  sense: { target: "x", op: "complex" },
-  enableTrails: { target: "x", op: "complex" },
-  print: { target: "x", op: "complex" },
-  species: { target: "x", op: "complex" },
-  avoidObstacles: { target: "x", op: "complex" },
-};
-
-// A CommandMap-compatible version for the interface (template-based)
-const COMMANDS_MAP: CommandMap = {
-  moveUp: '(local.set $y (f32.sub (local.get $y) {arg}))',
-  moveDown: '(local.set $y (f32.add (local.get $y) {arg}))',
-  moveLeft: '(local.set $x (f32.sub (local.get $x) {arg}))',
-  moveRight: '(local.set $x (f32.add (local.get $x) {arg}))',
-  addVelocityX: '(local.set $vx (f32.add (local.get $vx) {arg}))',
-  addVelocityY: '(local.set $vy (f32.add (local.get $vy) {arg}))',
-  setVelocityX: '(local.set $vx {arg})',
-  setVelocityY: '(local.set $vy {arg})',
-  updatePosition: '',
-  borderWrapping: '',
-  borderBounce: '',
-  limitSpeed: '',
-  turn: '',
-  moveForward: '',
-  deposit: '',
-  sense: '',
-  enableTrails: '',
-  print: '',
-  species: '',
-  avoidObstacles: '',
-};
+import { createContext } from './compilerTarget';
+import { emitCommand as registryEmitCommand } from './commandRegistry';
 
 // ─── Expression Helpers (WAT-specific) ───────────────────────────────
 
@@ -503,46 +450,16 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
     }
 
     case "command": {
-      const { target, op } = WAT_COMMANDS[parsed.command];
-      if (op === "update") {
-        const argExpr = normalizeWASMExpression(parsed.argument, randomInputs);
-        return `(local.set $x (f32.add (local.get $x) (f32.mul (local.get $vx) ${argExpr})))\n    (local.set $y (f32.add (local.get $y) (f32.mul (local.get $vy) ${argExpr})))`;
-      } else if (op === "complex") {
-        if (parsed.command === "limitSpeed") {
-          const maxSpeed = normalizeWASMExpression(parsed.argument, randomInputs);
-          localVars.add("__speed2"); localVars.add("__scale");
-          return `(local.set $__speed2 (f32.add (f32.mul (local.get $vx) (local.get $vx)) (f32.mul (local.get $vy) (local.get $vy))))\n    (if (f32.gt (local.get $__speed2) (f32.mul ${maxSpeed} ${maxSpeed})) (then\n      (local.set $__scale (f32.sqrt (f32.div (f32.mul ${maxSpeed} ${maxSpeed}) (local.get $__speed2))))\n      (local.set $vx (f32.mul (local.get $vx) (local.get $__scale)))\n      (local.set $vy (f32.mul (local.get $vy) (local.get $__scale)))\n    ))`;
-        } else if (parsed.command === "borderWrapping") {
-          return `(if (f32.lt (local.get $x) (f32.const 0)) (then (local.set $x (f32.add (local.get $x) (global.get $inputs_width)))))\n    (if (f32.gt (local.get $x) (global.get $inputs_width)) (then (local.set $x (f32.sub (local.get $x) (global.get $inputs_width)))))\n    (if (f32.lt (local.get $y) (f32.const 0)) (then (local.set $y (f32.add (local.get $y) (global.get $inputs_height)))))\n    (if (f32.gt (local.get $y) (global.get $inputs_height)) (then (local.set $y (f32.sub (local.get $y) (global.get $inputs_height)))))`;
-        } else if (parsed.command === "borderBounce") {
-          return `(if (i32.or (f32.lt (local.get $x) (f32.const 0)) (f32.gt (local.get $x) (global.get $inputs_width))) (then (local.set $vx (f32.neg (local.get $vx)))))\n    (if (i32.or (f32.lt (local.get $y) (f32.const 0)) (f32.gt (local.get $y) (global.get $inputs_height))) (then (local.set $vy (f32.neg (local.get $vy)))))\n    (local.set $x (f32.max (f32.const 0) (f32.min (global.get $inputs_width) (local.get $x))))\n    (local.set $y (f32.max (f32.const 0) (f32.min (global.get $inputs_height) (local.get $y))))`;
-        } else if (parsed.command === "turn") {
-          const angle = normalizeWASMExpression(parsed.argument, randomInputs);
-          localVars.add("__c"); localVars.add("__s"); localVars.add("__vx");
-          return `(local.set $__c (call $cos ${angle}))\n            (local.set $__s (call $sin ${angle}))\n            (local.set $__vx (f32.sub (f32.mul (local.get $vx) (local.get $__c)) (f32.mul (local.get $vy) (local.get $__s))))\n            (local.set $vy (f32.add (f32.mul (local.get $vx) (local.get $__s)) (f32.mul (local.get $vy) (local.get $__c))))\n            (local.set $vx (local.get $__vx))`;
-        } else if (parsed.command === "moveForward") {
-          const speed = normalizeWASMExpression(parsed.argument, randomInputs);
-          return `(local.set $x (f32.add (local.get $x) (f32.mul (local.get $vx) ${speed})))\n    (local.set $y (f32.add (local.get $y) (f32.mul (local.get $vy) ${speed})))`;
-        } else if (parsed.command === "deposit") {
-          return `(call $deposit (local.get $x) (local.get $y) ${normalizeWASMExpression(parsed.argument, randomInputs)})`;
-        } else if (parsed.command === "sense") {
-          const args = parsed.argument.split(',').map(s => s.trim());
-          return `(call $sense ${normalizeWASMExpression(args[0], randomInputs)} ${normalizeWASMExpression(args[1], randomInputs)})`;
-        } else if (parsed.command === "enableTrails") {
-          return `nop`;
-        } else if (parsed.command === "print") {
-          const argExpr = normalizeWASMExpression(parsed.argument, randomInputs);
-          return `(call $print (local.get $_agent_id) ${argExpr})`;
-        } else if (parsed.command === "species" || parsed.command === "avoidObstacles") {
-          return `nop`;
-        }
-        return `;; TODO: ${parsed.command} not yet implemented in WASM`;
-      } else {
-        const argExpr = normalizeWASMExpression(parsed.argument, randomInputs);
-        const opInstr = op === "add" ? "f32.add" : "f32.sub";
-        if (op === "set") return `(local.set $${target} ${argExpr})`;
-        return `(local.set $${target} (${opInstr} (local.get $${target}) ${argExpr}))`;
+      // Delegate to centralized command registry
+      const ctx: CompilationContext = createContext(Array.from(randomInputs));
+      ctx.localVars = localVars;
+      if (context.currentLoopVar) ctx.currentLoopVar = context.currentLoopVar;
+      ctx.loopDepth = context.loopDepth;
+      const result = registryEmitCommand(parsed.command, parsed.argument, WATTarget, ctx);
+      if (result && result.length > 0) {
+        return result.join('\n    ');
       }
+      return `;; TODO: ${parsed.command} not yet implemented in WASM`;
     }
 
     case "unknown":
@@ -556,7 +473,6 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
 
 export const WATTarget: CompilerTarget = {
   name: 'wat',
-  commands: COMMANDS_MAP,
 
   emitExpression(expr: string, ctx: CompilationContext): string {
     return normalizeWASMExpression(expr, ctx.randomInputs);
@@ -589,15 +505,6 @@ export const WATTarget: CompilerTarget = {
 
   emitAssignment(target: string, expression: string, ctx: CompilationContext): string[] {
     return [`(local.set $${target} ${normalizeWASMExpression(expression, ctx.randomInputs)})`];
-  },
-
-  emitCommand(command: AVAILABLE_COMMANDS, argument: string, ctx: CompilationContext): string[] {
-    const { target, op } = WAT_COMMANDS[command];
-    const argExpr = normalizeWASMExpression(argument, ctx.randomInputs);
-    if (op === "set") return [`(local.set $${target} ${argExpr})`];
-    if (op === "add") return [`(local.set $${target} (f32.add (local.get $${target}) ${argExpr}))`];
-    if (op === "sub") return [`(local.set $${target} (f32.sub (local.get $${target}) ${argExpr}))`];
-    return [`;; ${command} handled in compileDSLtoWAT`];
   },
 
   emitCloseBrace(_ctx: CompilationContext): string[] {
