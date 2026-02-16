@@ -6,6 +6,7 @@ export const compileWATtoWASM = async (watCode: string, logger: Logger): Promise
   try {
 
     const wabtModule = await wabt();
+    // console.log("GENERATED WAT:\n", watCode); // Log for debugging
     const parsed = wabtModule.parseWat("dsl_module.wat", watCode);
     const { buffer } = parsed.toBinary({ write_debug_names: true });
     return WebAssembly.compile(new Uint8Array(buffer));

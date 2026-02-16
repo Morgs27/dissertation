@@ -25,22 +25,26 @@ export class Compiler {
         const rawLines = dsl.split('\n');
 
         rawLines.forEach((line, index) => {
-            const trimmed = line.trim();
-            if (trimmed.length === 0 || COMMENT_CHARACTERS.some(c => trimmed.startsWith(c))) {
+            // Remove inline comments first
+            const cleanLine = line.split('//')[0].split('#')[0].trim();
+            if (cleanLine.length === 0) {
                 return;
             }
 
-            // Parse input definition: input name = value; // [min, max]
-            // Modified to also support: input name = random();
+            // Use the clean line for further processing
+            const trimmed = cleanLine;
+
+            // ... (keep the input parsing logic as is) ...
             const inputMatch = trimmed.match(/^\s*input\s+([a-zA-Z_]\w*)\s*=\s*(.+?)\s*;(.*)$/);
             if (inputMatch) {
+                // ... same as before ...
                 const name = inputMatch[1];
                 const valuePart = inputMatch[2].trim();
                 const comment = inputMatch[3];
 
                 if (valuePart === 'random()') {
                     randomInputs.push(name);
-                    return; // Don't include in definedInputs or lines
+                    return;
                 }
 
                 const defaultValue = parseFloat(valuePart);
@@ -48,7 +52,6 @@ export class Compiler {
                     let min = 0;
                     let max = 100;
 
-                    // Try to parse range from comment
                     if (comment) {
                         const rangeMatch = comment.match(/\[\s*([0-9.]+)\s*,\s*([0-9.]+)\s*\]/);
                         if (rangeMatch) {
@@ -58,16 +61,15 @@ export class Compiler {
                     }
 
                     definedInputs.push({ name, defaultValue, min, max });
-                    return; // Don't include input definition in executable lines (it's a declaration)
+                    return;
                 }
-
-                // If it wasn't a number or random(), treat as normal line? 
-                // No, 'input' keyword implies declaration. If parsing fails, maybe log error?
-                // For now fall through to lines.push if it doesn't match clean input pattern, 
-                // but the regex forced input kw. 
             }
 
-            lines.push({ content: line, lineIndex: index });
+            // Split by semicolon for normal logic lines
+            const statements = trimmed.split(';').map(s => s.trim()).filter(s => s.length > 0);
+            statements.forEach(stmt => {
+                lines.push({ content: stmt, lineIndex: index });
+            });
         });
 
         // Extract inputs from explicit inputs.* references
@@ -85,7 +87,7 @@ export class Compiler {
             borderWrapping: ['width', 'height'],
             borderBounce: ['width', 'height'],
             sense: ['width', 'height'], // Removed trailMap implicit
-            deposit: ['width', 'height'], // Removed trailMap implicit
+            deposit: ['width', 'height', 'trailMap'],
             avoidObstacles: [],
         };
 

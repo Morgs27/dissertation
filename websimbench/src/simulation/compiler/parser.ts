@@ -77,6 +77,21 @@ export type ParsedLineType =
 
 export class DSLParser {
     /**
+     * Helper to extract content between balanced parentheses
+     */
+    static extractBalanced(str: string, startIdx: number): string | null {
+        let balance = 0;
+        for (let i = startIdx; i < str.length; i++) {
+            if (str[i] === '(') balance++;
+            else if (str[i] === ')') {
+                balance--;
+                if (balance === 0) return str.substring(startIdx + 1, i);
+            }
+        }
+        return null;
+    }
+
+    /**
      * Parses a single line of DSL code to identify its type and extract relevant information
      */
     static parseDSLLine(line: string): ParsedLineType {
@@ -99,18 +114,24 @@ export class DSLParser {
         }
 
         // Handle conditionals: if (condition) {
-        if (trimmed.startsWith('if ')) {
-            const match = trimmed.match(/if\s*\(([^)]+)\)\s*\{?/);
-            if (match) {
-                return { type: 'if', condition: match[1] };
+        if (trimmed.startsWith('if')) {
+            const openParen = trimmed.indexOf('(');
+            if (openParen > -1) {
+                const condition = DSLParser.extractBalanced(trimmed, openParen);
+                if (condition !== null) {
+                    return { type: 'if', condition: condition.trim() };
+                }
             }
         }
 
         // Handle else if
-        if (trimmed.startsWith('} else if') || trimmed.startsWith('else if')) {
-            const match = trimmed.match(/(?:} )?else if\s*\(([^)]+)\)\s*\{?/);
-            if (match) {
-                return { type: 'elseif', condition: match[1] };
+        if (trimmed.startsWith('} else if') || trimmed.startsWith('else if') || trimmed.startsWith('elseif')) {
+            const openParen = trimmed.indexOf('(');
+            if (openParen > -1) {
+                const condition = DSLParser.extractBalanced(trimmed, openParen);
+                if (condition !== null) {
+                    return { type: 'elseif', condition: condition.trim() };
+                }
             }
         }
 
@@ -121,38 +142,47 @@ export class DSLParser {
 
         // Handle for loops: for (var i = 0; i < n; i++) {
         if (trimmed.startsWith('for ')) {
-            const match = trimmed.match(/for\s*\(([^;]+);([^;]+);([^)]+)\)\s*\{?/);
-            if (match) {
-                return {
-                    type: 'for',
-                    init: match[1].trim(),
-                    condition: match[2].trim(),
-                    increment: match[3].trim()
-                };
+            const openParen = trimmed.indexOf('(');
+            if (openParen > -1) {
+                const content = DSLParser.extractBalanced(trimmed, openParen);
+                if (content !== null) {
+                    // Naive split by semicolon for now, assuming no semicolons in expressions
+                    // A robust parser would also respect parens/strings when splitting by semicolon
+                    const parts = content.split(';');
+                    if (parts.length === 3) {
+                        return {
+                            type: 'for',
+                            init: parts[0].trim(),
+                            condition: parts[1].trim(),
+                            increment: parts[2].trim()
+                        };
+                    }
+                }
             }
         }
 
-        // Handle foreach loops: foreach (collection as item) { or foreach (collection) {
+        // Handle foreach loops
         if (trimmed.startsWith('foreach')) {
-            // Try matching "foreach (collection as item)"
-            let match = trimmed.match(/foreach\s*\(([^)]+)\s+as\s+(\w+)\)\s*\{?/);
-            if (match) {
-                return { type: 'foreach', collection: match[1].trim(), varName: match[2] };
-            }
-
-            // Try matching "foreach (collection)" - implicit variable name same as collection singleton? 
-            // Actually, usually this implies we iterate and access properties directly or via a standard name like 'it'?
-            // Looking at the presets: `foreach(nearby) { ... nearby.vx ... }` 
-            // attempting to access properties on the collection name itself inside the loop is not standard JS/TS behavior for arrays.
-            // However, the user's DSL might want `foreach(nearby)` to mean "iterate nearby, and inside the loop, 'nearby' refers to the current item".
-            // OR the presets meant `foreach(nearby as other)` and the preset code is just wrong?
-            // "foreach(nearby) { if (nearby.species == 0) ... }" 
-            // This looks like it treats 'nearby' as the current item inside the loop.
-
-            match = trimmed.match(/foreach\s*\(([^)]+)\)\s*\{?/);
-            if (match) {
-                const collection = match[1].trim();
-                return { type: 'foreach', collection: collection, itemAlias: collection };
+            const openParen = trimmed.indexOf('(');
+            if (openParen > -1) {
+                const content = DSLParser.extractBalanced(trimmed, openParen);
+                if (content !== null) {
+                    const asIndex = content.indexOf(' as ');
+                    if (asIndex > -1) {
+                        return {
+                            type: 'foreach',
+                            collection: content.substring(0, asIndex).trim(),
+                            varName: content.substring(asIndex + 4).trim()
+                        };
+                    } else {
+                        const trimmedColl = content.trim();
+                        return {
+                            type: 'foreach',
+                            collection: trimmedColl,
+                            itemAlias: trimmedColl
+                        };
+                    }
+                }
             }
         }
 
@@ -197,23 +227,20 @@ export class DSLParser {
      * Returns null if the line is not a valid command
      */
     static parseCommandLine(line: string): ParsedCommand | null {
-        // Check if line contains a function call pattern
-        if (!line.includes('(') || !line.includes(')')) {
-            return null;
-        }
+        const openParen = line.indexOf('(');
+        if (openParen === -1) return null;
 
         // Find matching command
-        const command = AVAILABLE_COMMANDS_LIST.find(cmd => line.startsWith(cmd + '('));
-        if (!command) {
+        const commandStr = line.substring(0, openParen).trim() as AVAILABLE_COMMANDS;
+        if (!AVAILABLE_COMMANDS_LIST.includes(commandStr)) {
             return null;
         }
 
         // Extract argument between parentheses
-        const argStart = line.indexOf('(') + 1;
-        const argEnd = line.indexOf(')');
-        const argument = line.substring(argStart, argEnd).trim();
+        const argument = DSLParser.extractBalanced(line, openParen);
+        if (argument === null) return null;
 
-        return { command, argument };
+        return { command: commandStr, argument: argument.trim() };
     }
 
     /**

@@ -1,0 +1,7 @@
+[Error] [WebGPUCompute] WGSL error: unresolved value 'nearby' at line 107, col 47
+[Error] [WebGPUCompute] WebGPU Validation Error during initialization: Error while parsing WGSL: :107:47 error: unresolved value 'nearby'
+                            var dx: f32 = x - nearby.x;
+                                              ^^^^^^
+
+
+ - While calling [Device].CreateShaderModule([ShaderModuleDescriptor]).

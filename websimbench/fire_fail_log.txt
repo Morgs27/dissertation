@@ -1,0 +1,768 @@
+
+[1m[46m RUN [49m[22m [36mv4.0.15 [39m[90m/Users/morgandaniel/Documents/dissertation/websimbench[39m
+
+Port 63315 is in use, trying another one...
+[90mstdout[2m | tests/compiler/compile.test.ts[2m > [22m[2mCompiler Tests[2m > [22m[2mshould compile fire simulation
+[22m[39m[Compiler] INFO: Compiling agent code
+[90mstdout[2m | tests/compiler/compile.test.ts[2m > [22m[2mCompiler Tests[2m > [22m[2mshould compile fire simulation
+[22m[39m[Compiler] INFO: Generated boids-style JavaScript function
+[90mstdout[2m | tests/compiler/compile.test.ts[2m > [22m[2mCompiler Tests[2m > [22m[2mshould compile fire simulation
+[22m[39m%c[Compiler] Generated WGSL Code:
+%cstruct Agent {
+  id : f32,
+  x  : f32,
+  y  : f32,
+  vx : f32,
+  vy : f32,
+  species : f32,
+};
+
+@group(0) @binding(0) var<storage, read_write> agents : array<Agent>;
+@group(0) @binding(5) var<storage, read> agentsRead : array<Agent>;
+@group(0) @binding(6) var<storage, read_write> agentLogs : array<vec2<f32>>;
+
+struct Inputs {
+  riseSpeed: f32,
+  turbulence: f32,
+  coolingRate: f32,
+  height: f32,
+  width: f32,
+  debrisChance: f32,
+};
+
+@group(0) @binding(1) var<uniform> inputs: Inputs;
+
+@group(0) @binding(2) var<storage, read> trailMapRead : array<f32>;
+
+@group(0) @binding(4) var<storage, read_write> trailMapWrite : array<atomic<i32>>;
+
+
+
+
+
+
+fn _sense(x: f32, y: f32, vx: f32, vy: f32, angle_offset: f32, dist: f32) -> f32 {
+  let angle_cur = atan2(vy, vx);
+  let angle_new = angle_cur + angle_offset;
+  let sx = x + cos(angle_new) * dist;
+  let sy = y + sin(angle_new) * dist;
+  
+  let w = inputs.width;
+  let h = inputs.height;
+  
+  // Wrap coordinates
+  var ix = i32(trunc(sx));
+  var iy = i32(trunc(sy));
+  
+  if (ix < 0) { ix += i32(w); }
+  if (ix >= i32(w)) { ix -= i32(w); }
+  if (iy < 0) { iy += i32(h); }
+  if (iy >= i32(h)) { iy -= i32(h); }
+  
+  let idx = u32(iy * i32(w) + ix);
+  // Read from trailMapRead (previous frame state)
+  return trailMapRead[idx];
+}
+
+fn _deposit(x: f32, y: f32, amount: f32) {
+  let w = inputs.width;
+  let h = inputs.height;
+  
+  var ix = i32(trunc(x));
+  var iy = i32(trunc(y));
+  
+  if (ix < 0) { ix += i32(w); }
+  if (ix >= i32(w)) { ix -= i32(w); }
+  if (iy < 0) { iy += i32(h); }
+  if (iy >= i32(h)) { iy -= i32(h); }
+  
+  let idx = u32(iy * i32(w) + ix);
+  // Write to trailMapWrite (deposits for this frame)
+  // Use atomic add with fixed-point conversion (x10000) because f32 atomics aren't supported
+  // and standard += is racy/divergent on GPU.
+  let fixed_amount = i32(amount * 10000.0);
+  atomicAdd(&trailMapWrite[idx], fixed_amount);
+}
+
+
+@compute @workgroup_size(64, 1, 1)
+fn main(
+  @builtin(global_invocation_id) global_id : vec3<u32>,
+  @builtin(workgroup_id) workgroup_id : vec3<u32>,
+  @builtin(local_invocation_id) local_id : vec3<u32>,
+  @builtin(num_workgroups) num_workgroups : vec3<u32>
+  ) {
+    let group_index = workgroup_id.x
+    + workgroup_id.y * num_workgroups.x
+    + workgroup_id.z * num_workgroups.x * num_workgroups.y;
+    let i = group_index * 64u + local_id.x;
+    if (i < arrayLength(&agents)) {
+      var agent = agents[i];
+      var x = agent.x;
+      var y = agent.y;
+      var vx = agent.vx;
+      var vy = agent.vy;
+      
+      // Load random values based on agent.id for parity with JS
+      
+      
+      
+      if (species == 0) {
+        y = y - 0.5;
+        if (randomValues[u32(agent.id)] < 0.1) {
+          species = 1;
+        }
+      }
+      else {
+        if (species == 1) {
+          y = y - inputs.riseSpeed;
+          var r: f32 = randomValues[u32(agent.id)];
+          var dx: f32 = (r - 0.5) * inputs.turbulence;
+          x = x + dx;
+          _deposit(x, y, 1.0);
+          if (randomValues[u32(agent.id)] < inputs.coolingRate) {
+            species = 2;
+          }
+        }
+        else {
+          y = y - inputs.riseSpeed * 0.5;
+          var r: f32 = randomValues[u32(agent.id)];
+          var dx: f32 = (r - 0.5) * inputs.turbulence * 0.5;
+          x = x + dx;
+          if (y < 0) {
+            species = 0;
+            y = inputs.height;
+            x = randomValues[u32(agent.id)] * inputs.width;
+          }
+        }
+      }
+      if (x < 0.0) { x = x + inputs.width; } if (x >= inputs.width) { x = x - inputs.width; } if (y < 0.0) { y = y + inputs.height; } if (y >= inputs.height) { y = y - inputs.height; }
+      
+      agent.x = x;
+      agent.y = y;
+      agent.vx = vx;
+      agent.vy = vy;
+      // species is preserved (not modified by DSL code)
+      agents[i] = agent;
+    }
+  }
+ color: orange; font-weight: bold; color: gray; font-family: monospace;
+[90mstdout[2m | tests/compiler/compile.test.ts[2m > [22m[2mCompiler Tests[2m > [22m[2mshould compile fire simulation
+[22m[39m%c[Compiler] Generated WAT Code:
+%c
+(module
+(import "env" "memory" (memory 1))
+(import "env" "sin" (func $sin (param f32) (result f32)))
+(import "env" "cos" (func $cos (param f32) (result f32)))
+(import "env" "atan2" (func $atan2 (param f32 f32) (result f32)))
+(import "env" "random" (func $random_js (result f32)))
+(import "env" "print" (func $print (param f32 f32)))
+
+(global $inputs_riseSpeed (export "inputs_riseSpeed") (mut f32) (f32.const 0))
+(global $inputs_turbulence (export "inputs_turbulence") (mut f32) (f32.const 0))
+(global $inputs_coolingRate (export "inputs_coolingRate") (mut f32) (f32.const 0))
+(global $inputs_height (export "inputs_height") (mut f32) (f32.const 0))
+(global $inputs_width (export "inputs_width") (mut f32) (f32.const 0))
+(global $inputs_debrisChance (export "inputs_debrisChance") (mut f32) (f32.const 0))
+(global $trailMapReadPtr (export "trailMapReadPtr") (mut i32) (i32.const 0))
+(global $trailMapWritePtr (export "trailMapWritePtr") (mut i32) (i32.const 0))
+
+(global $agentsReadPtr (export "agentsReadPtr") (mut i32) (i32.const 0))
+
+(func $random (param $id f32) (param $x f32) (param $y f32) (result f32) (call $random_js))
+
+
+(func $sense (param $x f32) (param $y f32) (param $vx f32) (param $vy f32) (param $angleOffset f32) (param $dist f32) (result f32)
+(local $angle f32) (local $sx f32) (local $sy f32) (local $ix i32) (local $iy i32) (local $w i32) (local $h i32) (local $idx i32)
+(local.set $w (i32.trunc_f32_s (global.get $inputs_width)))
+(local.set $h (i32.trunc_f32_s (global.get $inputs_height)))
+(local.set $angle (f32.add (call $atan2 (local.get $vy) (local.get $vx)) (local.get $angleOffset)))
+(local.set $sx (f32.add (local.get $x) (f32.mul (call $cos (local.get $angle)) (local.get $dist))))
+(local.set $sy (f32.add (local.get $y) (f32.mul (call $sin (local.get $angle)) (local.get $dist))))
+(local.set $ix (i32.trunc_f32_s (local.get $sx)))
+(local.set $iy (i32.trunc_f32_s (local.get $sy)))
+(if (i32.lt_s (local.get $ix) (i32.const 0)) (then (local.set $ix (i32.add (local.get $ix) (local.get $w)))))
+(if (i32.ge_s (local.get $ix) (local.get $w)) (then (local.set $ix (i32.sub (local.get $ix) (local.get $w)))))
+(if (i32.lt_s (local.get $iy) (i32.const 0)) (then (local.set $iy (i32.add (local.get $iy) (local.get $h)))))
+(if (i32.ge_s (local.get $iy) (local.get $h)) (then (local.set $iy (i32.sub (local.get $iy) (local.get $h)))))
+(if (i32.eqz (global.get $trailMapReadPtr)) (then (return (f32.const 0))))
+(local.set $idx (i32.add (i32.mul (local.get $iy) (local.get $w)) (local.get $ix)))
+;; Read from trailMapReadPtr (previous frame state)
+(f32.load (i32.add (global.get $trailMapReadPtr) (i32.shl (local.get $idx) (i32.const 2))))
+)
+(func $deposit (param $x f32) (param $y f32) (param $amount f32)
+(local $ix i32) (local $iy i32) (local $w i32) (local $h i32) (local $idx i32) (local $ptr i32) (local $val f32)
+(local.set $w (i32.trunc_f32_s (global.get $inputs_width)))
+(local.set $h (i32.trunc_f32_s (global.get $inputs_height)))
+(local.set $ix (i32.trunc_f32_s (local.get $x)))
+(local.set $iy (i32.trunc_f32_s (local.get $y)))
+(if (i32.lt_s (local.get $ix) (i32.const 0)) (then (local.set $ix (i32.add (local.get $ix) (local.get $w)))))
+(if (i32.ge_s (local.get $ix) (local.get $w)) (then (local.set $ix (i32.sub (local.get $ix) (local.get $w)))))
+(if (i32.lt_s (local.get $iy) (i32.const 0)) (then (local.set $iy (i32.add (local.get $iy) (local.get $h)))))
+(if (i32.ge_s (local.get $iy) (local.get $h)) (then (local.set $iy (i32.sub (local.get $iy) (local.get $h)))))
+;; Write to trailMapWritePtr (deposits for this frame)
+(if (global.get $trailMapWritePtr) (then
+(local.set $idx (i32.add (i32.mul (local.get $iy) (local.get $w)) (local.get $ix)))
+(local.set $ptr (i32.add (global.get $trailMapWritePtr) (i32.shl (local.get $idx) (i32.const 2))))
+(local.set $val (f32.load (local.get $ptr)))
+(f32.store (local.get $ptr) (f32.add (local.get $val) (local.get $amount)))
+))
+)
+
+(global $agent_count (export "agent_count") (mut i32) (i32.const 0))
+
+(func (export "step") (param $ptr i32)
+(local $x f32) (local $y f32) (local $vx f32) (local $vy f32) (local $species f32)
+(local $r f32)
+(local $dx f32)
+(local $_agent_id f32)
+
+;; load agent fields
+(local.set $_agent_id (f32.load (i32.add (local.get $ptr) (i32.const 0))))
+(local.set $x (f32.load (i32.add (local.get $ptr) (i32.const 4))))
+(local.set $y (f32.load (i32.add (local.get $ptr) (i32.const 8))))
+(local.set $vx (f32.load (i32.add (local.get $ptr) (i32.const 12))))
+(local.set $vy (f32.load (i32.add (local.get $ptr) (i32.const 16))))
+(local.set $species (f32.load (i32.add (local.get $ptr) (i32.const 20))))
+
+;; load random values
+
+
+;; execute DSL
+nop
+(if (f32.eq (local.get $species) (f32.const 0)) (then
+(local.set $y (f32.sub (local.get $y) (f32.const 0.5)))
+(if (f32.lt (call $random (local.get $_agent_id) (local.get $x) (local.get $y)) (f32.const 0.1)) (then
+(local.set $species (f32.const 1))
+))
+)
+(else
+(if (f32.eq (local.get $species) (f32.const 1)) (then
+(local.set $y (f32.sub (local.get $y) (global.get $inputs_riseSpeed)))
+(local.set $r (call $random (local.get $_agent_id) (local.get $x) (local.get $y)))
+(local.set $dx (f32.mul (f32.sub (local.get $r) (f32.const 0.5)) (global.get $inputs_turbulence)))
+(local.set $x (f32.add (local.get $x) (local.get $dx)))
+(call $deposit (local.get $x) (local.get $y) (f32.const 1.0))
+(if (f32.lt (call $random (local.get $_agent_id) (local.get $x) (local.get $y)) (global.get $inputs_coolingRate)) (then
+(local.set $species (f32.const 2))
+))
+)
+(else
+(local.set $y (f32.sub (local.get $y) (f32.mul (global.get $inputs_riseSpeed) (f32.const 0.5))))
+(local.set $r (call $random (local.get $_agent_id) (local.get $x) (local.get $y)))
+(local.set $dx (f32.mul (f32.mul (f32.sub (local.get $r) (f32.const 0.5)) (global.get $inputs_turbulence)) (f32.const 0.5)))
+(local.set $x (f32.add (local.get $x) (local.get $dx)))
+(if (f32.lt (local.get $y) (f32.const 0)) (then
+(local.set $species (f32.const 0))
+(local.set $y (global.get $inputs_height))
+(local.set $x (call $random (local.get $_agent_id) (local.get $x) (local.get $y)))
+))
+))
+))
+(if (f32.lt (local.get $x) (f32.const 0)) (then (local.set $x (f32.add (local.get $x) (global.get $inputs_width)))))
+(if (f32.gt (local.get $x) (global.get $inputs_width)) (then (local.set $x (f32.sub (local.get $x) (global.get $inputs_width)))))
+(if (f32.lt (local.get $y) (f32.const 0)) (then (local.set $y (f32.add (local.get $y) (global.get $inputs_height)))))
+(if (f32.gt (local.get $y) (global.get $inputs_height)) (then (local.set $y (f32.sub (local.get $y) (global.get $inputs_height)))))
+
+;; store back (species at offset 20 is preserved, not modified)
+(f32.store (i32.add (local.get $ptr) (i32.const 4)) (local.get $x))
+(f32.store (i32.add (local.get $ptr) (i32.const 8)) (local.get $y))
+(f32.store (i32.add (local.get $ptr) (i32.const 12)) (local.get $vx))
+(f32.store (i32.add (local.get $ptr) (i32.const 16)) (local.get $vy))
+(f32.store (i32.add (local.get $ptr) (i32.const 20)) (local.get $species))
+
+)
+
+(func (export "step_all") (param $base i32) (param $count i32)
+(local $_outer_i i32) (local $ptr i32) (local $x f32) (local $y f32) (local $vx f32) (local $vy f32) (local $species f32)
+(local $r f32)
+(local $dx f32)
+(local $_agent_id f32)
+(local.set $_outer_i (i32.const 0))
+(local.set $ptr (local.get $base))
+(block $exit
+(loop $loop
+(br_if $exit (i32.ge_u (local.get $_outer_i) (local.get $count)))
+
+;; load agent fields
+(local.set $_agent_id (f32.load (i32.add (local.get $ptr) (i32.const 0))))
+(local.set $x (f32.load (i32.add (local.get $ptr) (i32.const 4))))
+(local.set $y (f32.load (i32.add (local.get $ptr) (i32.const 8))))
+(local.set $vx (f32.load (i32.add (local.get $ptr) (i32.const 12))))
+(local.set $vy (f32.load (i32.add (local.get $ptr) (i32.const 16))))
+(local.set $species (f32.load (i32.add (local.get $ptr) (i32.const 20))))
+
+;; load random values
+
+
+;; execute DSL
+nop
+(if (f32.eq (local.get $species) (f32.const 0)) (then
+(local.set $y (f32.sub (local.get $y) (f32.const 0.5)))
+(if (f32.lt (call $random (local.get $_agent_id) (local.get $x) (local.get $y)) (f32.const 0.1)) (then
+(local.set $species (f32.const 1))
+))
+)
+(else
+(if (f32.eq (local.get $species) (f32.const 1)) (then
+(local.set $y (f32.sub (local.get $y) (global.get $inputs_riseSpeed)))
+(local.set $r (call $random (local.get $_agent_id) (local.get $x) (local.get $y)))
+(local.set $dx (f32.mul (f32.sub (local.get $r) (f32.const 0.5)) (global.get $inputs_turbulence)))
+(local.set $x (f32.add (local.get $x) (local.get $dx)))
+(call $deposit (local.get $x) (local.get $y) (f32.const 1.0))
+(if (f32.lt (call $random (local.get $_agent_id) (local.get $x) (local.get $y)) (global.get $inputs_coolingRate)) (then
+(local.set $species (f32.const 2))
+))
+)
+(else
+(local.set $y (f32.sub (local.get $y) (f32.mul (global.get $inputs_riseSpeed) (f32.const 0.5))))
+(local.set $r (call $random (local.get $_agent_id) (local.get $x) (local.get $y)))
+(local.set $dx (f32.mul (f32.mul (f32.sub (local.get $r) (f32.const 0.5)) (global.get $inputs_turbulence)) (f32.const 0.5)))
+(local.set $x (f32.add (local.get $x) (local.get $dx)))
+(if (f32.lt (local.get $y) (f32.const 0)) (then
+(local.set $species (f32.const 0))
+(local.set $y (global.get $inputs_height))
+(local.set $x (call $random (local.get $_agent_id) (local.get $x) (local.get $y)))
+))
+))
+))
+(if (f32.lt (local.get $x) (f32.const 0)) (then (local.set $x (f32.add (local.get $x) (global.get $inputs_width)))))
+(if (f32.gt (local.get $x) (global.get $inputs_width)) (then (local.set $x (f32.sub (local.get $x) (global.get $inputs_width)))))
+(if (f32.lt (local.get $y) (f32.const 0)) (then (local.set $y (f32.add (local.get $y) (global.get $inputs_height)))))
+(if (f32.gt (local.get $y) (global.get $inputs_height)) (then (local.set $y (f32.sub (local.get $y) (global.get $inputs_height)))))
+
+;; store back (species at offset 20 is preserved, not modified)
+(f32.store (i32.add (local.get $ptr) (i32.const 4)) (local.get $x))
+(f32.store (i32.add (local.get $ptr) (i32.const 8)) (local.get $y))
+(f32.store (i32.add (local.get $ptr) (i32.const 12)) (local.get $vx))
+(f32.store (i32.add (local.get $ptr) (i32.const 16)) (local.get $vy))
+(f32.store (i32.add (local.get $ptr) (i32.const 20)) (local.get $species))
+
+(local.set $_outer_i (i32.add (local.get $_outer_i) (i32.const 1)))
+(local.set $ptr (i32.add (local.get $ptr) (i32.const 24)))
+(br $loop)
+)
+)
+)
+)
+ color: orange; font-weight: bold; color: gray; font-family: monospace;
+[90mstdout[2m | tests/compiler/compile.test.ts[2m > [22m[2mCompiler Tests[2m > [22m[2mshould compile fire simulation
+[22m[39m%c[Compiler] : Expected Inputs color: orange [
+  "riseSpeed",
+  "turbulence",
+  "coolingRate",
+  "height",
+  "width",
+  "debrisChance",
+  "trailMap",
+]
+[90mstdout[2m | tests/compiler/compile.test.ts[2m > [22m[2mCompiler Tests[2m > [22m[2mshould compile fire simulation
+[22m[39m%c[Compiler] : Defined Inputs color: orange [
+  {
+    "defaultValue": 3.5,
+    "max": 100,
+    "min": 0,
+    "name": "riseSpeed",
+  },
+  {
+    "defaultValue": 0.8,
+    "max": 100,
+    "min": 0,
+    "name": "turbulence",
+  },
+  {
+    "defaultValue": 0.05,
+    "max": 100,
+    "min": 0,
+    "name": "coolingRate",
+  },
+  {
+    "defaultValue": 0.02,
+    "max": 100,
+    "min": 0,
+    "name": "debrisChance",
+  },
+]
+[90mstdout[2m | tests/compute/compute.test.ts[2m > [22m[2mCompute Cross-Method Comparison[2m > [22m[2mfire simulation[2m > [22m[2mshould produce matching results across all compute methods
+[22m[39mComputeEngine initialized
+[90mstdout[2m | tests/compiler/compile.test.ts[2m > [22m[2mCompiler Tests[2m > [22m[2mshould compile fire simulation
+[22m[39m%c[Compiler] Generated JS Code:
+%c(agent, inputs) => {
+  // Float32 wrapper for precision parity with WASM/WebGPU
+  const f = Math.fround;
+
+  // Destructure agent properties with Float32 conversion
+  let { id } = agent;
+  let x = f(agent.x);
+  let y = f(agent.y);
+  let vx = f(agent.vx);
+  let vy = f(agent.vy);
+  let species = agent.species || 0;
+
+  // Get agents array
+  const agents = inputs.agents || [];
+
+  // Helper function for random values (returns Float32)
+  const _random = (min, max) => {
+    if (max === undefined) {
+      if (min === undefined) return f(Math.random());
+      return f(f(Math.random()) * f(min));
+    }
+    return f(f(min) + f(f(Math.random()) * f(f(max) - f(min))));
+  };
+
+  // Initialize random input variables (Float32)
+
+  // Helper function: calculate mean of an array or array property (returns Float32)
+  const _mean = (arr, prop) => {
+    if (!Array.isArray(arr)) return f(0);
+    if (arr.length === 0) return f(0);
+    if (prop) {
+      // Extract property from each element
+      const values = arr.map((item) => f(item[prop] || 0));
+      return f(
+        values.reduce((sum, val) => f(sum + val), f(0)) / f(values.length),
+      );
+    }
+    return f(arr.reduce((sum, val) => f(sum + f(val)), f(0)) / f(arr.length));
+  };
+
+  // Helper function: find nearby neighbors (uses Float32 for distance calc)
+  const _neighbors = (radius) => {
+    const r = f(radius);
+    return agents.filter((a) => {
+      if (a.id === id) return false;
+      const dx = f(x - f(a.x));
+      const dy = f(y - f(a.y));
+      const dist = f(Math.sqrt(f(f(dx * dx) + f(dy * dy))));
+      return dist < r;
+    });
+  };
+
+  const _sense = (angleOffset, distance) => {
+    // Read from trailMapRead (previous frame state) for order-independent sensing
+    const readMap = inputs.trailMapRead || inputs.trailMap;
+    const ao = f(angleOffset);
+    const dist = f(distance);
+
+    // angle based on current velocity (Float32 precision)
+    const currentAngle = f(Math.atan2(vy, vx));
+    const angle = f(currentAngle + ao);
+    const sx = f(x + f(f(Math.cos(angle)) * dist));
+    const sy = f(y + f(f(Math.sin(angle)) * dist));
+    // Wrap coordinates - use Math.trunc to match WASM's i32.trunc_f32_s
+    let ix = Math.trunc(sx);
+    let iy = Math.trunc(sy);
+    const w = Math.trunc(f(inputs.width));
+    const h = Math.trunc(f(inputs.height));
+    if (ix < 0) ix += w;
+    if (ix >= w) ix -= w;
+    if (iy < 0) iy += h;
+    if (iy >= h) iy -= h;
+
+    if (readMap) {
+      return f(readMap[iy * w + ix]);
+    }
+    return f(0);
+  };
+
+  const _deposit = (amount) => {
+    // Write to trailMapWrite (new deposits for this frame)
+    const writeMap = inputs.trailMapWrite || inputs.trailMap;
+    if (!writeMap) return;
+    const amt = f(amount);
+
+    // Use Math.trunc to match WASM's i32.trunc_f32_s
+    let ix = Math.trunc(x);
+    let iy = Math.trunc(y);
+    const w = Math.trunc(f(inputs.width));
+    const h = Math.trunc(f(inputs.height));
+    if (ix < 0) ix += w;
+    if (ix >= w) ix -= w;
+    if (iy < 0) iy += h;
+    if (iy >= h) iy -= h;
+
+    // Atomic add to write buffer (Float32)
+    writeMap[iy * w + ix] = f(writeMap[iy * w + ix] + amt);
+  };
+
+  const _avoidObstacles = (strength) => {
+    const obstacles = inputs.obstacles || [];
+    const str = f(strength || 1);
+    for (let oi = 0; oi < obstacles.length; oi++) {
+      const ob = obstacles[oi];
+      const margin = f(5);
+      const ox1 = f(ob.x - margin);
+      const oy1 = f(ob.y - margin);
+      const ox2 = f(ob.x + ob.w + margin);
+      const oy2 = f(ob.y + ob.h + margin);
+      if (x > ox1 && x < ox2 && y > oy1 && y < oy2) {
+        // Inside obstacle region — push away from center
+        const cx = f(ob.x + f(ob.w * f(0.5)));
+        const cy = f(ob.y + f(ob.h * f(0.5)));
+        let dx = f(x - cx);
+        let dy = f(y - cy);
+        const dist = f(Math.sqrt(f(f(dx * dx) + f(dy * dy))));
+        if (dist > f(0.001)) {
+          dx = f(dx / dist);
+          dy = f(dy / dist);
+        }
+        vx = f(vx + f(dx * str));
+        vy = f(vy + f(dy * str));
+      }
+    }
+  };
+
+  // Execute DSL code
+
+  if (species == f(0)) {
+    y = f(y - f(0.5));
+    if (_random() < f(0.1)) {
+      species = f(1);
+    }
+  } else {
+    if (species == f(1)) {
+      y = f(y - f(inputs.riseSpeed));
+      let r = _random();
+      let dx = f(f(r - f(0.5)) * f(inputs.turbulence));
+      x = f(x + dx);
+      _deposit(f(1.0));
+      if (_random() < f(inputs.coolingRate)) {
+        species = f(2);
+      }
+    } else {
+      y = f(y - f(f(inputs.riseSpeed) * f(0.5)));
+      let r = _random();
+      let dx = f(f(f(r - f(0.5)) * f(inputs.turbulence)) * f(0.5));
+      x = f(x + dx);
+      if (y < f(0)) {
+        species = f(0);
+        y = f(inputs.height);
+        x = f(_random() * f(inputs.width));
+      }
+    }
+  }
+  if (x < 0) x = f(x + f(inputs.width));
+  if (x > f(inputs.width)) x = f(x - f(inputs.width));
+  if (y < 0) y = f(y + f(inputs.height));
+  if (y > f(inputs.height)) y = f(y - f(inputs.height));
+
+  // Return updated agent (ensure Float32 values)
+  return { id, x: f(x), y: f(y), vx: f(vx), vy: f(vy), species };
+};
+ color: orange; font-weight: bold; color: gray; font-family: monospace;
+ [32m✓[39m [30m[43m chromium [49m[39m tests/compiler/compile.test.ts [2m([22m[2m6 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m[32m 27[2mms[22m[39m
+[90mstdout[2m | tests/compute/compute.test.ts[2m > [22m[2mCompute Cross-Method Comparison[2m > [22m[2mfire simulation[2m > [22m[2mshould produce matching results across all compute methods
+[22m[39mComputeEngine initialized
+[90mstdout[2m | tests/compute/compute.test.ts[2m > [22m[2mCompute Cross-Method Comparison[2m > [22m[2mfire simulation[2m > [22m[2mshould produce matching results across all compute methods
+[22m[39mComputeEngine initialized
+[90mstdout[2m | tests/compute/compute.test.ts[2m > [22m[2mCompute Cross-Method Comparison[2m > [22m[2mfire simulation[2m > [22m[2mshould produce matching results across all compute methods
+[22m[39mComputeEngine initialized
+[90mstdout[2m | tests/compute/compute.test.ts[2m > [22m[2mCompute Cross-Method Comparison[2m > [22m[2mfire simulation[2m > [22m[2mshould produce matching results across all compute methods
+[22m[39mInitializing ComputeEngine with GPU device: GPUDevice {} and agent count: 500
+[90mstdout[2m | tests/compute/compute.test.ts[2m > [22m[2mCompute Cross-Method Comparison[2m > [22m[2mfire simulation[2m > [22m[2mshould produce matching results across all compute methods
+[22m[39mInitializing WebGPU with device: GPUDevice {}
+[90mstderr[2m | tests/compute/compute.test.ts[2m > [22m[2mCompute Cross-Method Comparison[2m > [22m[2mfire simulation[2m > [22m[2mshould produce matching results across all compute methods
+[22m[39m[WebGPUCompute] ERROR: WGSL error: unresolved value 'species' at line 100, col 13
+[90mstderr[2m | tests/compute/compute.test.ts[2m > [22m[2mCompute Cross-Method Comparison[2m > [22m[2mfire simulation[2m > [22m[2mshould produce matching results across all compute methods
+[22m[39m[WebGPUCompute] ERROR: WebGPU Validation Error during initialization: Error while parsing WGSL: :100:13 error: unresolved value 'species'
+        if (species == 0) {
+            ^^^^^^^
+
+
+ - While calling [Device].CreateShaderModule([ShaderModuleDescriptor]).
+
+[90mstderr[2m | tests/compute/compute.test.ts[2m > [22m[2mCompute Cross-Method Comparison[2m > [22m[2mfire simulation[2m > [22m[2mshould produce matching results across all compute methods
+[22m[39mWGSL Code that failed:
+ struct Agent {
+    id : f32,
+    x  : f32,
+    y  : f32,
+    vx : f32,
+    vy : f32,
+    species : f32,
+};
+
+@group(0) @binding(0) var<storage, read_write> agents : array<Agent>;
+@group(0) @binding(5) var<storage, read> agentsRead : array<Agent>;
+@group(0) @binding(6) var<storage, read_write> agentLogs : array<vec2<f32>>;
+
+struct Inputs {
+    riseSpeed: f32,
+    turbulence: f32,
+    coolingRate: f32,
+    height: f32,
+    width: f32,
+    debrisChance: f32,
+};
+
+@group(0) @binding(1) var<uniform> inputs: Inputs;
+
+@group(0) @binding(2) var<storage, read> trailMapRead : array<f32>;
+
+@group(0) @binding(4) var<storage, read_write> trailMapWrite : array<atomic<i32>>;
+
+
+
+
+
+
+fn _sense(x: f32, y: f32, vx: f32, vy: f32, angle_offset: f32, dist: f32) -> f32 {
+    let angle_cur = atan2(vy, vx);
+    let angle_new = angle_cur + angle_offset;
+    let sx = x + cos(angle_new) * dist;
+    let sy = y + sin(angle_new) * dist;
+
+    let w = inputs.width;
+    let h = inputs.height;
+    
+    // Wrap coordinates
+    var ix = i32(trunc(sx));
+    var iy = i32(trunc(sy));
+    
+    if (ix < 0) { ix += i32(w); }
+    if (ix >= i32(w)) { ix -= i32(w); }
+    if (iy < 0) { iy += i32(h); }
+    if (iy >= i32(h)) { iy -= i32(h); }
+    
+    let idx = u32(iy * i32(w) + ix);
+    // Read from trailMapRead (previous frame state)
+    return trailMapRead[idx];
+}
+
+fn _deposit(x: f32, y: f32, amount: f32) {
+    let w = inputs.width;
+    let h = inputs.height;
+    
+    var ix = i32(trunc(x));
+    var iy = i32(trunc(y));
+    
+    if (ix < 0) { ix += i32(w); }
+    if (ix >= i32(w)) { ix -= i32(w); }
+    if (iy < 0) { iy += i32(h); }
+    if (iy >= i32(h)) { iy -= i32(h); }
+    
+    let idx = u32(iy * i32(w) + ix);
+    // Write to trailMapWrite (deposits for this frame)
+    // Use atomic add with fixed-point conversion (x10000) because f32 atomics aren't supported
+    // and standard += is racy/divergent on GPU.
+    let fixed_amount = i32(amount * 10000.0);
+    atomicAdd(&trailMapWrite[idx], fixed_amount);
+}
+
+
+@compute @workgroup_size(64, 1, 1)
+fn main(
+    @builtin(global_invocation_id) global_id : vec3<u32>,
+    @builtin(workgroup_id) workgroup_id : vec3<u32>,
+    @builtin(local_invocation_id) local_id : vec3<u32>,
+    @builtin(num_workgroups) num_workgroups : vec3<u32>
+) {
+    let group_index = workgroup_id.x
+        + workgroup_id.y * num_workgroups.x
+        + workgroup_id.z * num_workgroups.x * num_workgroups.y;
+    let i = group_index * 64u + local_id.x;
+    if (i < arrayLength(&agents)) {
+        var agent = agents[i];
+        var x = agent.x;
+        var y = agent.y;
+        var vx = agent.vx;
+        var vy = agent.vy;
+        
+        // Load random values based on agent.id for parity with JS
+        
+        
+        
+        if (species == 0) {
+            y = y - 0.5;
+            if (randomValues[u32(agent.id)] < 0.1) {
+                species = 1;
+            }
+        }
+        else {
+            if (species == 1) {
+                y = y - inputs.riseSpeed;
+                var r: f32 = randomValues[u32(agent.id)];
+                var dx: f32 = (r - 0.5) * inputs.turbulence;
+                x = x + dx;
+                _deposit(x, y, 1.0);
+                if (randomValues[u32(agent.id)] < inputs.coolingRate) {
+                    species = 2;
+                }
+            }
+            else {
+                y = y - inputs.riseSpeed * 0.5;
+                var r: f32 = randomValues[u32(agent.id)];
+                var dx: f32 = (r - 0.5) * inputs.turbulence * 0.5;
+                x = x + dx;
+                if (y < 0) {
+                    species = 0;
+                    y = inputs.height;
+                    x = randomValues[u32(agent.id)] * inputs.width;
+                }
+            }
+        }
+        if (x < 0.0) { x = x + inputs.width; } if (x >= inputs.width) { x = x - inputs.width; } if (y < 0.0) { y = y + inputs.height; } if (y >= inputs.height) { y = y - inputs.height; }
+        
+        agent.x = x;
+        agent.y = y;
+        agent.vx = vx;
+        agent.vy = vy;
+        // species is preserved (not modified by DSL code)
+        agents[i] = agent;
+    }
+}
+[90mstdout[2m | tests/compute/compute.test.ts[2m > [22m[2mCompute Cross-Method Comparison[2m > [22m[2mfire simulation[2m > [22m[2mshould produce matching results across all compute methods
+[22m[39m
+================================================================================
+[90mstdout[2m | tests/compute/compute.test.ts[2m > [22m[2mCompute Cross-Method Comparison[2m > [22m[2mfire simulation[2m > [22m[2mshould produce matching results across all compute methods
+[22m[39mPARITY REPORT: FIRE
+[90mstdout[2m | tests/compute/compute.test.ts[2m > [22m[2mCompute Cross-Method Comparison[2m > [22m[2mfire simulation[2m > [22m[2mshould produce matching results across all compute methods
+[22m[39mAgents: 500 | Frames: 100
+[90mstdout[2m | tests/compute/compute.test.ts[2m > [22m[2mCompute Cross-Method Comparison[2m > [22m[2mfire simulation[2m > [22m[2mshould produce matching results across all compute methods
+[22m[39m================================================================================
+[90mstdout[2m | tests/compute/compute.test.ts[2m > [22m[2mCompute Cross-Method Comparison[2m > [22m[2mfire simulation[2m > [22m[2mshould produce matching results across all compute methods
+[22m[39m
+WebAssembly vs JavaScript (tolerance: 0)
+[90mstdout[2m | tests/compute/compute.test.ts[2m > [22m[2mCompute Cross-Method Comparison[2m > [22m[2mfire simulation[2m > [22m[2mshould produce matching results across all compute methods
+[22m[39m------------------------------------------------------------
+[90mstdout[2m | tests/compute/compute.test.ts[2m > [22m[2mCompute Cross-Method Comparison[2m > [22m[2mfire simulation[2m > [22m[2mshould produce matching results across all compute methods
+[22m[39mFrame | Avg Error  | Max Error  | Min Error  | Status
+[90mstdout[2m | tests/compute/compute.test.ts[2m > [22m[2mCompute Cross-Method Comparison[2m > [22m[2mfire simulation[2m > [22m[2mshould produce matching results across all compute methods
+[22m[39m------------------------------------------------------------
+[90mstdout[2m | tests/compute/compute.test.ts[2m > [22m[2mCompute Cross-Method Comparison[2m > [22m[2mfire simulation[2m > [22m[2mshould produce matching results across all compute methods
+[22m[39m    0 |   0.000000 |   0.000000 |   0.000000 | ✓ PASS
+[90mstdout[2m | tests/compute/compute.test.ts[2m > [22m[2mCompute Cross-Method Comparison[2m > [22m[2mfire simulation[2m > [22m[2mshould produce matching results across all compute methods
+[22m[39m    1 |   0.473745 |   3.026190 |   0.053223 | ✗ FAIL
+ [31m❯[39m [30m[43m chromium [49m[39m tests/compute/compute.test.ts [2m([22m[2m6 tests[22m[2m | [22m[31m1 failed[39m[2m | [22m[33m5 skipped[39m[2m)[22m[33m 5082[2mms[22m[39m
+       [2m[90m↓[39m[22m should produce matching results across all compute methods
+       [2m[90m↓[39m[22m should produce matching results across all compute methods
+       [2m[90m↓[39m[22m should produce matching results across all compute methods
+[31m       [31m×[31m should produce matching results across all compute methods[39m[33m 5076[2mms[22m[39m
+       [2m[90m↓[39m[22m should produce matching results across all compute methods
+       [2m[90m↓[39m[22m should produce matching results across all compute methods
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[43m chromium [49m[39m tests/compute/compute.test.ts[2m > [22mCompute Cross-Method Comparison[2m > [22mfire simulation[2m > [22mshould produce matching results across all compute methods
+[31m[1mAssertionError[22m: WebAssembly frame 1 position difference exceeds tolerance: expected 3.0261896196211864 to be less than or equal to 0[39m
+
+Failure screenshot:
+  - [2mtests/compute/__screenshots__/compute.test.ts/Compute-Cross-Method-Comparison-fire-simulation-should-produce-matching-results-across-all-compute-methods-1.png[22m
+
+[36m [2m❯[22m tests/compute/compute.test.ts:[2m379:26[22m[39m
+    [90m377| [39m                            comparison[33m.[39mmaxPosDiff[33m,[39m
+    [90m378| [39m                            `${method} frame ${frame} position differe…
+    [90m379| [39m                        )[33m.[39m[34mtoBeLessThanOrEqual[39m(tolerance)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m380| [39m                    }
+    [90m381| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m1 passed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m1 passed[39m[22m[2m | [22m[33m10 skipped[39m[90m (12)[39m
+[2m   Start at [22m 13:51:05
+[2m   Duration [22m 5.75s[2m (transform 0ms, setup 0ms, import 213ms, tests 5.11s, environment 0ms)[22m
+

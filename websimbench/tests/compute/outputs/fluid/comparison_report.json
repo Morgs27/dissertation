@@ -1,6 +1,6 @@
 {
-  "simulation": "gravity",
-  "generatedAt": "2026-02-11T13:56:19.408Z",
+  "simulation": "fluid",
+  "generatedAt": "2026-02-11T13:56:29.047Z",
   "numFrames": 100,
   "numAgents": 500,
   "comparisons": [

@@ -212,8 +212,10 @@ if (species == 0) {
     // --- PREY BEHAVIOR ---
     
     // Flocking (Alignment, Cohesion, Separation)
-    var avgVx = 0; var avgVy = 0;
-    var avgX = 0; var avgY = 0;
+    var avgVx = 0;
+    var avgVy = 0;
+    var avgX = 0;
+    var avgY = 0;
     var count = 0;
     
     foreach(nearby) {
@@ -260,7 +262,8 @@ else {
     
     // Chase nearest prey
     var nearestDist = 999999;
-    var targetX = 0; var targetY = 0;
+    var targetX = 0;
+    var targetY = 0;
     var foundPrey = 0;
     
     foreach(nearby) {

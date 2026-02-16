@@ -98,6 +98,15 @@ interface VariableInfo {
 function transpileExpression(expr: string, context: WGSLContext): string {
     let result = expr.trim();
 
+    // Handle numeric literals - ensure they are floats for WGSL
+    if (/^-?\d+(\.\d+)?$/.test(result)) {
+        return result.includes('.') ? result : `${result}.0`;
+    }
+
+    // Handle species
+    if (result === 'species') return 'species';
+    if (result.includes('_species')) return result; // handle loop vars like _loop_other.species
+
     // Replace ^ with * for exponentiation (WGSL uses pow() but for x^2 we can use x*x)
     // Handle property access like inputs.something^2 first
     result = result.replace(/([\w.]+)\^2/g, '($1)*($1)');
@@ -157,6 +166,35 @@ function transpileExpression(expr: string, context: WGSLContext): string {
     result = result.replace(/inputs\.random\b/g, 'randomValues[u32(agent.id)]');
 
     result = result.replace(/inputs\.randomValues/g, 'randomValues'); // simplified if just array passed? no, array access needed.
+
+    // Handle random() calls
+    // random() -> randomValues[u32(agent.id)]
+    // random(max) -> randomValues[u32(agent.id)] * max
+    // random(min, max) -> min + randomValues[u32(agent.id)] * (max - min)
+    result = result.replace(/random\(([^)]*)\)/g, (_match, args) => {
+        const parts = args.split(',').filter((s: string) => s.trim().length > 0).map((s: string) => s.trim());
+        const randVal = 'randomValues[u32(agent.id)]';
+
+        if (parts.length === 0) {
+            return randVal;
+        } else if (parts.length === 1) {
+            const max = transpileExpression(parts[0], context);
+            return `(${randVal} * ${max})`;
+        } else {
+            const min = transpileExpression(parts[0], context);
+            const max = transpileExpression(parts[1], context);
+            const r = `(${min} + ${randVal} * (${max} - ${min}))`;
+            return r;
+        }
+    });
+
+    // Final check for any remaining bare integers being used as f32
+    // This is a safety net for things like "count = 0"
+    // Only apply to bare integers that are the ENTIRE result, to avoid 
+    // messing up variable names like agent.id or workgroup_id
+    if (/^\d+$/.test(result)) {
+        return result + ".0";
+    }
 
     // Replace inputs.r with r if r is a random input
     if (context.randomInputs.size > 0) {
@@ -428,36 +466,49 @@ function parseBoidsDSL(lines: LineInfo[], logger: Logger, rawScript: string, ran
         const trimmed = line.content.trim();
         if (!trimmed) continue;
 
-        // Handle closing braces
-        if (trimmed === '}') {
-            currentIndent = currentIndent.slice(4); // Remove 4 spaces
-            statements.push(currentIndent + '}');
+        // Check if line starts with a closing brace
+        const startsWithClose = trimmed.startsWith('}');
+        if (startsWithClose) {
+            if (currentIndent.length >= 4) {
+                currentIndent = currentIndent.slice(4);
+            }
+            if (context.loopDepth > 0 && !trimmed.includes('else')) {
+                // Only decrement loop depth if it's not and 'else'/'elseif' block
+                // which will be handled by their respective transpilation if needed
+                // or if it's a standalone }
+            }
+        }
+
+        const transpiled = transpileLine(trimmed, context);
+
+        // Handle loop depth management based on parsed type
+        const parsed = DSLParser.parseDSLLine(trimmed);
+        if (parsed.type === 'brace' && trimmed === '}') {
             if (context.loopDepth > 0) {
                 context.loopDepth--;
                 if (context.loopDepth === 0) {
                     context.currentLoopVar = undefined;
                 }
             }
-            continue;
         }
 
-        const transpiled = transpileLine(trimmed, context);
-        if (transpiled.length === 0 && trimmed !== '{') {
-            // If we got no statements back and it wasn't just braces/empty, check if it was unknown
-            const parsed = DSLParser.parseDSLLine(trimmed);
+        if (transpiled.length === 0 && trimmed !== '{' && trimmed !== '}') {
             if (parsed.type === 'unknown') {
                 logger.codeError("Unknown syntax or command", rawScript, line.lineIndex);
             }
         }
 
         for (const stmt of transpiled) {
-            // Check if this statement closes a brace before adding it
-            const closesBrace = stmt.trim() === '}';
-            if (closesBrace && currentIndent.length >= 4) {
-                currentIndent = currentIndent.slice(4);
+            let outStmt = stmt;
+
+            // If the original line had a closing brace and the transpiled stmt doesn't,
+            // we should probably prepend it or handle it.
+            // But transpileLine for 'else' and 'elseif' doesn't include the '}'
+            if (startsWithClose && !outStmt.startsWith('}')) {
+                outStmt = '} ' + outStmt;
             }
 
-            statements.push(currentIndent + stmt);
+            statements.push(currentIndent + outStmt);
 
             // Increase indent after opening braces (but not if the brace also closes on same line)
             const opensBrace = stmt.includes('{') && !stmt.includes('}');
@@ -556,6 +607,7 @@ fn main(
         var y = agent.y;
         var vx = agent.vx;
         var vy = agent.vy;
+        var species = agent.species;
         
         // Load random values based on agent.id for parity with JS
         ${randomInputs.map(r => `var ${r} = randomValues[u32(agent.id)];`).join('\n        ')}
@@ -566,6 +618,7 @@ fn main(
         agent.y = y;
         agent.vx = vx;
         agent.vy = vy;
+        agent.species = species;
         // species is preserved (not modified by DSL code)
         agents[i] = agent;
     }
@@ -573,5 +626,5 @@ fn main(
 
     const helpers = hasTrailMap ? WGSL_HELPERS : '';
 
-    return [agentStruct, inputStruct, trailMapReadBinding, trailMapWriteBinding, randomValuesBinding, helpers, computeFn].join('\n\n');
+    return [agentStruct, inputStruct, trailMapReadBinding, randomValuesBinding, trailMapWriteBinding, helpers, computeFn].join('\n\n');
 };

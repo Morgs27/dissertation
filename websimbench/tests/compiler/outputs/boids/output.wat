@@ -27,7 +27,7 @@
     (global $agent_count (export "agent_count") (mut i32) (i32.const 0))
 
     (func (export "step") (param $ptr i32)
-      (local $x f32) (local $y f32) (local $vx f32) (local $vy f32)
+      (local $x f32) (local $y f32) (local $vx f32) (local $vy f32) (local $species f32)
       (local $nearbyAgents f32)
       (local $nearbyAgents_count f32)
       (local $nearbyAgents_sum_x f32)
@@ -69,6 +69,7 @@
     (local.set $y (f32.load (i32.add (local.get $ptr) (i32.const 8))))
     (local.set $vx (f32.load (i32.add (local.get $ptr) (i32.const 12))))
     (local.set $vy (f32.load (i32.add (local.get $ptr) (i32.const 16))))
+    (local.set $species (f32.load (i32.add (local.get $ptr) (i32.const 20))))
 
     ;; load random values
     
@@ -169,11 +170,12 @@
     (f32.store (i32.add (local.get $ptr) (i32.const 8)) (local.get $y))
     (f32.store (i32.add (local.get $ptr) (i32.const 12)) (local.get $vx))
     (f32.store (i32.add (local.get $ptr) (i32.const 16)) (local.get $vy))
+    (f32.store (i32.add (local.get $ptr) (i32.const 20)) (local.get $species))
   
     )
 
     (func (export "step_all") (param $base i32) (param $count i32)
-      (local $_outer_i i32) (local $ptr i32) (local $x f32) (local $y f32) (local $vx f32) (local $vy f32)
+      (local $_outer_i i32) (local $ptr i32) (local $x f32) (local $y f32) (local $vx f32) (local $vy f32) (local $species f32)
       (local $nearbyAgents f32)
       (local $nearbyAgents_count f32)
       (local $nearbyAgents_sum_x f32)
@@ -220,6 +222,7 @@
     (local.set $y (f32.load (i32.add (local.get $ptr) (i32.const 8))))
     (local.set $vx (f32.load (i32.add (local.get $ptr) (i32.const 12))))
     (local.set $vy (f32.load (i32.add (local.get $ptr) (i32.const 16))))
+    (local.set $species (f32.load (i32.add (local.get $ptr) (i32.const 20))))
 
     ;; load random values
     
@@ -320,6 +323,7 @@
     (f32.store (i32.add (local.get $ptr) (i32.const 8)) (local.get $y))
     (f32.store (i32.add (local.get $ptr) (i32.const 12)) (local.get $vx))
     (f32.store (i32.add (local.get $ptr) (i32.const 16)) (local.get $vy))
+    (f32.store (i32.add (local.get $ptr) (i32.const 20)) (local.get $species))
   
           (local.set $_outer_i (i32.add (local.get $_outer_i) (i32.const 1)))
           (local.set $ptr (i32.add (local.get $ptr) (i32.const 24)))

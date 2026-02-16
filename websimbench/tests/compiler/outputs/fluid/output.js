@@ -129,7 +129,8 @@
         // Execute DSL code
         vy = f(vy + f(inputs.gravity)); 
         let nearby = _neighbors(f(inputs.repulsionRadius)); 
-        for (const nearby of nearby) {
+        for (const _nearby of nearby) {
+                    const nearby = _nearby;
             
         let dx = f(x - f(nearby.x)); 
         let dy = f(y - f(nearby.y)); 
@@ -147,7 +148,7 @@
     
         y = f(f(inputs.height) - f(1)); 
         vy = f(vy * f(-f(0.8))); 
-        vx = f(f(f(vx * f(0.9)) / ) / Friction); 
+        vx = f(vx * f(0.9)); 
         }
         if (((x <= f(0)) || (x >= f(inputs.width)))) {
     

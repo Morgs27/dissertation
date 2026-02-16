@@ -131,21 +131,22 @@
         if ((species == f(0))) {
     
         y = f(y - f(0.5));
-        if (_random()) {
+        if ((_random() < f(0.1))) {
     
         species = f(1); 
         }
         }
-        else if ((species == f(1))) {
-        
+        else {
+        if ((species == f(1))) {
+    
         y = f(y - f(inputs.riseSpeed));
         let r = _random(); 
         let dx = f(f(r - f(0.5)) * f(inputs.turbulence)); 
         x = f(x + dx);
         _deposit(f(1.0));
-        if (_random()) {
+        if ((_random() < f(inputs.coolingRate))) {
     
-        species = f(f(f(2) / ) / Become); 
+        species = f(2); 
         }
         }
         else {
@@ -155,9 +156,10 @@
         x = f(x + dx);
         if ((y < f(0))) {
     
-        species = f(f(f(0) / ) / Recycle); 
+        species = f(0); 
         y = f(inputs.height); 
         x = f(_random() * f(inputs.width)); 
+        }
         }
         }
         if (x < 0) x = f(x + f(inputs.width)); if (x > f(inputs.width)) x = f(x - f(inputs.width)); if (y < 0) y = f(y + f(inputs.height)); if (y > f(inputs.height)) y = f(y - f(inputs.height));

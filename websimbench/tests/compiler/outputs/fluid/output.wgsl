@@ -47,6 +47,7 @@ fn main(
         var y = agent.y;
         var vx = agent.vx;
         var vy = agent.vy;
+        var species = agent.species;
         
         // Load random values based on agent.id for parity with JS
         var r = randomValues[u32(agent.id)];
@@ -70,41 +71,42 @@ fn main(
                 nearby_sum_y += other.y;
                 nearby_sum_vx += other.vx;
                 nearby_sum_vy += other.vy;
-            }
-        }
-        // Foreach over nearby
-        for (var _ni: u32 = 0u; _ni < arrayLength(&agentsRead); _ni++) {
-            if (_ni == i) { continue; }
-            let _loop_other = agentsRead[_ni];
-            let _loop_dx = x - _loop_other.x;
-            let _loop_dy = y - _loop_other.y;
-            let _loop_dist = sqrt(_loop_dx*_loop_dx + _loop_dy*_loop_dy);
-            if (_loop_dist >= inputs.repulsionRadius) { continue; }
-            var dx: f32 = x - _loop_other.x;
-            var dy: f32 = y - _loop_other.y;
-            var dist2: f32 = dx*dx + dy*dy;
-            if (dist2 > 0 && dist2 < (inputs.repulsionRadius)*(inputs.repulsionRadius)) {
-                var force: f32 = inputs.repulsionForce / (dist2 + 0.1);
-                vx = vx + dx * force;
-                vy = vy + dy * force;
-            }
-        }
-        vx = vx * inputs.damping;
-        vy = vy * inputs.damping;
-        if (y >= inputs.height) {
-            y = inputs.height - 1;
-            vy = vy * -0.8;
-            vx = vx * 0.9; // Friction;
-        }
-        if (x <= 0 || x >= inputs.width) {
-            vx = vx * -0.8;
-        }
-        let _dt_up = 1.0; let _dx_mf_t1 = vx * _dt_up; let _dy_mf_t1 = vy * _dt_up; x = x + _dx_mf_t1; y = y + _dy_mf_t1;
+                }
+                }
+                // Foreach over nearby
+                for (var _ni: u32 = 0u; _ni < arrayLength(&agentsRead); _ni++) {
+                    if (_ni == i) { continue; }
+                    let _loop_other = agentsRead[_ni];
+                    let _loop_dx = x - _loop_other.x;
+                    let _loop_dy = y - _loop_other.y;
+                    let _loop_dist = sqrt(_loop_dx*_loop_dx + _loop_dy*_loop_dy);
+                    if (_loop_dist >= inputs.repulsionRadius) { continue; }
+                    var dx: f32 = x - _loop_other.x;
+                    var dy: f32 = y - _loop_other.y;
+                    var dist2: f32 = dx*dx + dy*dy;
+                    if (dist2 > 0 && dist2 < (inputs.repulsionRadius)*(inputs.repulsionRadius)) {
+                        var force: f32 = inputs.repulsionForce / (dist2 + 0.1);
+                        vx = vx + dx * force;
+                        vy = vy + dy * force;
+                    }
+                }
+                vx = vx * inputs.damping;
+                vy = vy * inputs.damping;
+                if (y >= inputs.height) {
+                    y = inputs.height - 1;
+                    vy = vy * -0.8;
+                    vx = vx * 0.9;
+                }
+                if (x <= 0 || x >= inputs.width) {
+                    vx = vx * -0.8;
+                }
+                let _dt_up = 1.0; let _dx_mf_t1 = vx * _dt_up; let _dy_mf_t1 = vy * _dt_up; x = x + _dx_mf_t1; y = y + _dy_mf_t1;
         
         agent.x = x;
         agent.y = y;
         agent.vx = vx;
         agent.vy = vy;
+        agent.species = species;
         // species is preserved (not modified by DSL code)
         agents[i] = agent;
     }
