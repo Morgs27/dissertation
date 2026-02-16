@@ -26,9 +26,9 @@ struct Inputs {
 
 @group(0) @binding(2) var<storage, read> trailMapRead : array<f32>;
 
-@group(0) @binding(4) var<storage, read_write> trailMapWrite : array<atomic<i32>>;
-
 @group(0) @binding(3) var<storage, read> randomValues : array<f32>;
+
+@group(0) @binding(4) var<storage, read_write> trailMapWrite : array<atomic<i32>>;
 
 
 
@@ -94,27 +94,27 @@ fn main(
         var y = agent.y;
         var vx = agent.vx;
         var vy = agent.vy;
+        var species = agent.species;
         
         // Load random values based on agent.id for parity with JS
         var r = randomValues[u32(agent.id)];
         
-        
-        var sL: f32 = _sense(agent.x, agent.y, agent.vx, agent.vy, inputs.sensorAngle, inputs.sensorDist);
-        var sF: f32 = _sense(agent.x, agent.y, agent.vx, agent.vy, 0, inputs.sensorDist);
-        var sR: f32 = _sense(agent.x, agent.y, agent.vx, agent.vy, -inputs.sensorAngle, inputs.sensorDist);
+        var sL: f32 = _sense(x, y, vx, vy, inputs.sensorAngle, inputs.sensorDist);
+        var sF: f32 = _sense(x, y, vx, vy, 0.0, inputs.sensorDist);
+        var sR: f32 = _sense(x, y, vx, vy, -inputs.sensorAngle, inputs.sensorDist);
         if (sF < sL && sF < sR) {
-            if (r < 0.5) {
-                let _ang_t = inputs.turnAngle; let _c_t = cos(_ang_t); let _s_t = sin(_ang_t); let _term1_t = vx * _c_t; let _term2_t = vy * _s_t; let _term3_t = vx * _s_t; let _term4_t = vy * _c_t; let _vx_new_t = _term1_t - _term2_t; let _vy_new_t = _term3_t + _term4_t; vx = _vx_new_t; vy = _vy_new_t;
-            }
-            else if (r >= 0.5) {
-                let _ang_t = -inputs.turnAngle; let _c_t = cos(_ang_t); let _s_t = sin(_ang_t); let _term1_t = vx * _c_t; let _term2_t = vy * _s_t; let _term3_t = vx * _s_t; let _term4_t = vy * _c_t; let _vx_new_t = _term1_t - _term2_t; let _vy_new_t = _term3_t + _term4_t; vx = _vx_new_t; vy = _vy_new_t;
-            }
+        if (r < 0.5) {
+        let _ang_t = inputs.turnAngle; let _c_t = cos(_ang_t); let _s_t = sin(_ang_t); let _term1_t = vx * _c_t; let _term2_t = vy * _s_t; let _term3_t = vx * _s_t; let _term4_t = vy * _c_t; let _vx_new_t = _term1_t - _term2_t; let _vy_new_t = _term3_t + _term4_t; vx = _vx_new_t; vy = _vy_new_t;
+        }
+        else if (r >= 0.5) {
+        let _ang_t = -inputs.turnAngle; let _c_t = cos(_ang_t); let _s_t = sin(_ang_t); let _term1_t = vx * _c_t; let _term2_t = vy * _s_t; let _term3_t = vx * _s_t; let _term4_t = vy * _c_t; let _vx_new_t = _term1_t - _term2_t; let _vy_new_t = _term3_t + _term4_t; vx = _vx_new_t; vy = _vy_new_t;
+        }
         }
         if (sL > sR) {
-            let _ang_t = inputs.turnAngle; let _c_t = cos(_ang_t); let _s_t = sin(_ang_t); let _term1_t = vx * _c_t; let _term2_t = vy * _s_t; let _term3_t = vx * _s_t; let _term4_t = vy * _c_t; let _vx_new_t = _term1_t - _term2_t; let _vy_new_t = _term3_t + _term4_t; vx = _vx_new_t; vy = _vy_new_t;
+        let _ang_t = inputs.turnAngle; let _c_t = cos(_ang_t); let _s_t = sin(_ang_t); let _term1_t = vx * _c_t; let _term2_t = vy * _s_t; let _term3_t = vx * _s_t; let _term4_t = vy * _c_t; let _vx_new_t = _term1_t - _term2_t; let _vy_new_t = _term3_t + _term4_t; vx = _vx_new_t; vy = _vy_new_t;
         }
         if (sR > sL) {
-            let _ang_t = -inputs.turnAngle; let _c_t = cos(_ang_t); let _s_t = sin(_ang_t); let _term1_t = vx * _c_t; let _term2_t = vy * _s_t; let _term3_t = vx * _s_t; let _term4_t = vy * _c_t; let _vx_new_t = _term1_t - _term2_t; let _vy_new_t = _term3_t + _term4_t; vx = _vx_new_t; vy = _vy_new_t;
+        let _ang_t = -inputs.turnAngle; let _c_t = cos(_ang_t); let _s_t = sin(_ang_t); let _term1_t = vx * _c_t; let _term2_t = vy * _s_t; let _term3_t = vx * _s_t; let _term4_t = vy * _c_t; let _vx_new_t = _term1_t - _term2_t; let _vy_new_t = _term3_t + _term4_t; vx = _vx_new_t; vy = _vy_new_t;
         }
         let _dist_mf = inputs.speed; let _dx_mf_t2 = vx * _dist_mf; let _dy_mf_t2 = vy * _dist_mf;  x = x + _dx_mf_t2; y = y + _dy_mf_t2;
         if (x < 0.0) { x = x + inputs.width; } if (x >= inputs.width) { x = x - inputs.width; } if (y < 0.0) { y = y + inputs.height; } if (y >= inputs.height) { y = y - inputs.height; }
@@ -124,7 +124,7 @@ fn main(
         agent.y = y;
         agent.vx = vx;
         agent.vy = vy;
-        // species is preserved (not modified by DSL code)
+        agent.species = species;
         agents[i] = agent;
     }
 }

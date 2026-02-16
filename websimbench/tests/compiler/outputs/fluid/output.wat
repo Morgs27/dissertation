@@ -44,6 +44,7 @@
       (local $nearby_y f32)
       (local $nearby_vx f32)
       (local $nearby_vy f32)
+      (local $nearby_species f32)
       (local $_foreach_dx f32)
       (local $_foreach_dy f32)
       (local $_foreach_dist f32)
@@ -110,10 +111,11 @@
           (local.set $nearby_y (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 8))))
           (local.set $nearby_vx (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 12))))
           (local.set $nearby_vy (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 16))))
+          (local.set $nearby_species (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 20))))
           (if (i32.const 1) (then
             ;; Loop body will be inserted here by subsequent lines
-    (local.set $dx (f32.sub (local.get $x) (local.get $nearby_x)))
-    (local.set $dy (f32.sub (local.get $y) (local.get $nearby_y)))
+    (local.set $dx (local.get $nearby_x))
+    (local.set $dy (local.get $nearby_y))
     (local.set $dist2 (f32.add (f32.mul (local.get $dx) (local.get $dx)) (f32.mul (local.get $dy) (local.get $dy))))
     (if (i32.and (f32.gt (local.get $dist2) (f32.const 0)) (f32.lt (local.get $dist2) (f32.mul (global.get $inputs_repulsionRadius) (global.get $inputs_repulsionRadius)))) (then
     (local.set $force (f32.div (global.get $inputs_repulsionForce) (f32.add (local.get $dist2) (f32.const 0.1))))
@@ -170,6 +172,7 @@
       (local $nearby_y f32)
       (local $nearby_vx f32)
       (local $nearby_vy f32)
+      (local $nearby_species f32)
       (local $_foreach_dx f32)
       (local $_foreach_dy f32)
       (local $_foreach_dist f32)
@@ -241,10 +244,11 @@
           (local.set $nearby_y (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 8))))
           (local.set $nearby_vx (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 12))))
           (local.set $nearby_vy (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 16))))
+          (local.set $nearby_species (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 20))))
           (if (i32.const 1) (then
             ;; Loop body will be inserted here by subsequent lines
-    (local.set $dx (f32.sub (local.get $x) (local.get $nearby_x)))
-    (local.set $dy (f32.sub (local.get $y) (local.get $nearby_y)))
+    (local.set $dx (local.get $nearby_x))
+    (local.set $dy (local.get $nearby_y))
     (local.set $dist2 (f32.add (f32.mul (local.get $dx) (local.get $dx)) (f32.mul (local.get $dy) (local.get $dy))))
     (if (i32.and (f32.gt (local.get $dist2) (f32.const 0)) (f32.lt (local.get $dist2) (f32.mul (global.get $inputs_repulsionRadius) (global.get $inputs_repulsionRadius)))) (then
     (local.set $force (f32.div (global.get $inputs_repulsionForce) (f32.add (local.get $dist2) (f32.const 0.1))))

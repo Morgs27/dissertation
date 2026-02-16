@@ -97,35 +97,34 @@ fn main(
         // Load random values based on agent.id for parity with JS
         
         
-        
         if (species == 0) {
-            y = y - 0.5;
-            if (randomValues[u32(agent.id)] < 0.1) {
-                species = 1.0;
-            }
+        y = y - 0.5;
+        if (randomValues[u32(agent.id)] < 0.1) {
+        species = 1.0;
+        }
         }
         else {
-            if (species == 1) {
-                y = y - inputs.riseSpeed;
-                var r: f32 = randomValues[u32(agent.id)];
-                var dx: f32 = (r - 0.5) * inputs.turbulence;
-                x = x + dx;
-                _deposit(x, y, 1.0);
-                if (randomValues[u32(agent.id)] < inputs.coolingRate) {
-                    species = 2.0;
-                }
-            }
-            else {
-                y = y - inputs.riseSpeed * 0.5;
-                var r: f32 = randomValues[u32(agent.id)];
-                var dx: f32 = (r - 0.5) * inputs.turbulence * 0.5;
-                x = x + dx;
-                if (y < 0) {
-                    species = 0.0;
-                    y = inputs.height;
-                    x = randomValues[u32(agent.id)] * inputs.width;
-                }
-            }
+        if (species == 1) {
+        y = y - inputs.riseSpeed;
+        var r: f32 = randomValues[u32(agent.id)];
+        var dx: f32 = (r - 0.5) * inputs.turbulence;
+        x = x + dx;
+        _deposit(x, y, 1.0);
+        if (randomValues[u32(agent.id)] < inputs.coolingRate) {
+        species = 2.0;
+        }
+        }
+        else {
+        y = y - inputs.riseSpeed * 0.5;
+        var r: f32 = randomValues[u32(agent.id)];
+        var dx: f32 = (r - 0.5) * inputs.turbulence * 0.5;
+        x = x + dx;
+        if (y < 0) {
+        species = 0.0;
+        y = inputs.height;
+        x = randomValues[u32(agent.id)] * inputs.width;
+        }
+        }
         }
         if (x < 0.0) { x = x + inputs.width; } if (x >= inputs.width) { x = x - inputs.width; } if (y < 0.0) { y = y + inputs.height; } if (y >= inputs.height) { y = y - inputs.height; }
         
@@ -134,7 +133,6 @@ fn main(
         agent.vx = vx;
         agent.vy = vy;
         agent.species = species;
-        // species is preserved (not modified by DSL code)
         agents[i] = agent;
     }
 }

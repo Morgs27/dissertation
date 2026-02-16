@@ -1,8 +1,21 @@
+/**
+ * WAT (WebAssembly Text) Compiler
+ * 
+ * Generates WAT S-expression output from DSL.
+ * Unlike JS/WGSL, WAT requires its own iteration/brace management because
+ * S-expression nesting uses `(if ... (then ... ))` closers, loop block/br patterns,
+ * and elseif→nested else+if conversion that don't map to the shared transpiler.
+ * 
+ * Expression handling uses infix→S-expression conversion internally.
+ */
 
 import Logger from "../helpers/logger";
-import { DSLParser, type AVAILABLE_COMMANDS, type LineInfo } from "./parser";
+import { DSLParser, type AVAILABLE_COMMANDS, type LineInfo, type CommandMap } from "./parser";
+import type { CompilerTarget, CompilationContext } from './compilerTarget';
 
-const COMMANDS: Record<
+// ─── WAT Command Definitions ────────────────────────────────────────
+
+const WAT_COMMANDS: Record<
   AVAILABLE_COMMANDS,
   {
     target: "x" | "y" | "vx" | "vy";
@@ -31,9 +44,32 @@ const COMMANDS: Record<
   avoidObstacles: { target: "x", op: "complex" },
 };
 
-/**
- * Simple tokenizer for expressions
- */
+// A CommandMap-compatible version for the interface (template-based)
+const COMMANDS_MAP: CommandMap = {
+  moveUp: '(local.set $y (f32.sub (local.get $y) {arg}))',
+  moveDown: '(local.set $y (f32.add (local.get $y) {arg}))',
+  moveLeft: '(local.set $x (f32.sub (local.get $x) {arg}))',
+  moveRight: '(local.set $x (f32.add (local.get $x) {arg}))',
+  addVelocityX: '(local.set $vx (f32.add (local.get $vx) {arg}))',
+  addVelocityY: '(local.set $vy (f32.add (local.get $vy) {arg}))',
+  setVelocityX: '(local.set $vx {arg})',
+  setVelocityY: '(local.set $vy {arg})',
+  updatePosition: '',
+  borderWrapping: '',
+  borderBounce: '',
+  limitSpeed: '',
+  turn: '',
+  moveForward: '',
+  deposit: '',
+  sense: '',
+  enableTrails: '',
+  print: '',
+  species: '',
+  avoidObstacles: '',
+};
+
+// ─── Expression Helpers (WAT-specific) ───────────────────────────────
+
 function tokenizeExpression(expr: string): string[] {
   const tokens: string[] = [];
   let current = "";
@@ -60,7 +96,6 @@ function tokenizeExpression(expr: string): string[] {
         tokens.push(current);
         current = "";
       }
-      // Check for ** or compound operators
       if (char === "*" && expr[i + 1] === "*") {
         tokens.push("**");
         i++;
@@ -79,30 +114,20 @@ function tokenizeExpression(expr: string): string[] {
   return tokens;
 }
 
-/**
- * Converts infix expression to WASM S-expression
- */
 function infixToSExpression(expr: string): string {
   expr = expr.trim();
 
-  // Handle property access like neighbor.x or nearbyAgents.length
   if (expr.includes(".")) {
-    // Only replace identifier.property where identifier starts with letter/underscore
     expr = expr.replace(/([a-zA-Z_]\w*)\.(\w+)/g, "$1_$2");
   }
 
-  // Replace inputs.* references with GLOBAL markers
   expr = expr.replace(/inputs_(\w+)/g, "GLOBAL_$1");
-
-  // Handle exponentiation operator
   expr = expr.replace(/\^/g, "**");
 
-  // Handle simple cases
   if (/^-?\d+(\.\d+)?$/.test(expr)) {
     return `(f32.const ${expr})`;
   }
 
-  // Check for GLOBAL before checking for simple identifier
   if (/^GLOBAL_\w+$/.test(expr)) {
     return `(global.get $inputs_${expr.substring(7)})`;
   }
@@ -111,7 +136,6 @@ function infixToSExpression(expr: string): string {
     return `(local.get $${expr})`;
   }
 
-  // Tokenize the expression
   const tokens = tokenizeExpression(expr);
 
   if (tokens.length === 1) {
@@ -135,31 +159,27 @@ function infixToSExpression(expr: string): string {
   // Find operators with lowest precedence (addition/subtraction)
   for (let i = tokens.length - 1; i >= 0; i--) {
     if (tokens[i] === "+" || tokens[i] === "-") {
-      // Handle unary minus
-      // If previous token is an operator or start of expression, this '-' is unary
       const isUnary = i === 0 || /^[+\-*/^]$/.test(tokens[i - 1]) || tokens[i - 1] === "(";
 
       if (tokens[i] === "-") {
         if (isUnary) {
-          continue; // Skip, don't split here
+          continue;
         }
       }
 
       const left = tokens.slice(0, i).join(" ");
       const right = tokens.slice(i + 1).join(" ");
-
-      // Binary operation
       const op = tokens[i] === "+" ? "f32.add" : "f32.sub";
       return `(${op} ${infixToSExpression(left)} ${infixToSExpression(right)})`;
     }
   }
 
-  // Handle unary minus (if no binary ops found)
+  // Handle unary minus
   if (tokens[0] === "-") {
     return `(f32.neg ${infixToSExpression(tokens.slice(1).join(" "))})`;
   }
 
-  // Find multiplication/division (skip ** which is exponentiation)
+  // Multiplication/division
   for (let i = tokens.length - 1; i >= 0; i--) {
     if (tokens[i] === "*" && tokens[i - 1] !== "*") {
       const left = tokens.slice(0, i).join(" ");
@@ -172,38 +192,25 @@ function infixToSExpression(expr: string): string {
     }
   }
 
-  // Find exponentiation - handle ^2 and **2 as multiplication
+  // Exponentiation
   for (let i = tokens.length - 1; i >= 0; i--) {
     if (tokens[i] === "**" || tokens[i] === "^") {
       const left = tokens.slice(0, i).join(" ");
       const right = tokens.slice(i + 1).join(" ");
-
-      // Special case: squaring (^2 or **2)
       if (right.trim() === "2") {
         const base = infixToSExpression(left);
         return `(f32.mul ${base} ${base})`;
       }
-
-      // For other exponents, we can't easily support in WASM
       return ";; UNSUPPORTED: exponentiation (only ^2 is supported)";
     }
   }
 
-  // If we get here, just join tokens and try to convert each one
   const converted = tokens
     .map((token) => {
-      if (token === "__RANDOM__") {
-        return `(call $random (local.get $_agent_id) (local.get $x) (local.get $y))`;
-      }
-      if (/^GLOBAL_\w+$/.test(token)) {
-        return `(global.get $inputs_${token.substring(7)})`;
-      }
-      if (/^-?\d+(\.\d+)?$/.test(token)) {
-        return `(f32.const ${token})`;
-      }
-      if (/^[+\-*/]$/.test(token)) {
-        return token;
-      }
+      if (token === "__RANDOM__") return `(call $random (local.get $_agent_id) (local.get $x) (local.get $y))`;
+      if (/^GLOBAL_\w+$/.test(token)) return `(global.get $inputs_${token.substring(7)})`;
+      if (/^-?\d+(\.\d+)?$/.test(token)) return `(f32.const ${token})`;
+      if (/^[+\-*/]$/.test(token)) return token;
       return `(local.get $${token})`;
     })
     .join(" ");
@@ -211,53 +218,39 @@ function infixToSExpression(expr: string): string {
   return converted;
 }
 
-/**
- * Normalizes expressions for WASM (converts to S-expressions)
- */
 function normalizeWASMExpression(expr: string, randomInputs: Set<string>): string {
   let r = expr.trim();
 
-  // Handle sqrt function
   r = r.replace(/sqrt\(([^)]+)\)/g, (_match, arg) => {
     return `(f32.sqrt ${infixToSExpression(arg)})`;
   });
 
-  // Handle exponentiation ^2 and **2
   r = r.replace(/(\w+(?:\.\w+)?)\s*\^2/g, "$1 * $1");
   r = r.replace(/(\w+(?:\.\w+)?)\s*\*\*2/g, "$1 * $1");
 
-  // Handle object properties (e.g. neighbor.x -> neighbor_x)
   r = r.replace(/([a-zA-Z_]\w*)\.(?!length|count)(\w+)/g, (match, obj, prop) => {
-    if (obj === 'inputs') return match; // Handled later
-    if (obj === 'nearbyAgents') return match; // Handled by array match
+    if (obj === 'inputs') return match;
+    if (obj === 'nearbyAgents') return match;
     return `${obj}_${prop}`;
   });
 
-  // Handle .length or .count property for neighbors (generic)
   r = r.replace(/(\w+)\.length/g, "$1_count");
   r = r.replace(/(\w+)\.count/g, "$1_count");
 
-  // Handle neighbors()
   if (r.includes("neighbors(")) {
     const match = r.match(/neighbors\(([^)]+)\)/);
-    if (match) {
-      return `__NEIGHBORS__${match[1]}__`;
-    }
+    if (match) return `__NEIGHBORS__${match[1]}__`;
   }
 
-  // Handle mean()
   if (r.includes("mean(")) {
     const match = r.match(/mean\(([^)]+)\)/);
     if (match) {
       const arg = match[1].trim();
       const propMatch = arg.match(/\w+\.(\w+)/);
-      if (propMatch) {
-        return `__MEAN__${propMatch[1]}__`;
-      }
+      if (propMatch) return `__MEAN__${propMatch[1]}__`;
     }
   }
 
-  // Handle sense(a, b)
   if (r.includes("sense(")) {
     const match = r.match(/sense\(([^)]+)\)/);
     if (match) {
@@ -268,7 +261,6 @@ function normalizeWASMExpression(expr: string, randomInputs: Set<string>): strin
     }
   }
 
-  // Handle random()
   r = r.replace(/random\(([^)]*)\)/g, (_match, args) => {
     const parts = args.split(',').filter((s: string) => s.trim().length > 0).map((s: string) => s.trim());
     const randCall = "__RANDOM__";
@@ -277,17 +269,13 @@ function normalizeWASMExpression(expr: string, randomInputs: Set<string>): strin
     return `(${parts[0]} + ${randCall} * (${parts[1]} - ${parts[0]}))`;
   });
 
-  // Handle inputs.random
   if (r.includes("inputs.random")) {
     return normalizeWASMExpression(r.replace(/inputs\.random/g, "__RANDOM__"), randomInputs);
   }
 
-  // Handle inputs.NAME replacement for random inputs
   if (randomInputs.size > 0) {
     r = r.replace(/inputs\.(\w+)/g, (match, name) => {
-      if (randomInputs.has(name)) {
-        return name; // Will be picked up as local.get $name
-      }
+      if (randomInputs.has(name)) return name;
       return match;
     });
   }
@@ -298,8 +286,6 @@ function normalizeWASMExpression(expr: string, randomInputs: Set<string>): strin
 function normalizeWASMCondition(cond: string, randomInputs: Set<string>): string {
   cond = cond.trim();
 
-  // Try to find comparison operator
-  // Order matters: checks >= and <= before > and <
   const operators = [
     { op: ">=", asm: "f32.ge" },
     { op: "<=", asm: "f32.le" },
@@ -312,37 +298,31 @@ function normalizeWASMCondition(cond: string, randomInputs: Set<string>): string
   for (const { op, asm } of operators) {
     if (cond.includes(op)) {
       const parts = cond.split(op);
-      // Only handle simple binary comparison, rejoin if multiple splits (failure case?)
-      // Assuming DSL condition is simple: expr op expr
       const left = parts[0].trim();
       const right = parts.slice(1).join(op).trim();
       return `(${asm} ${normalizeWASMExpression(left, randomInputs)} ${normalizeWASMExpression(right, randomInputs)})`;
     }
   }
 
-  // If no operator, treat as boolean (f32 != 0)
   return `(f32.ne ${normalizeWASMExpression(cond, randomInputs)} (f32.const 0))`;
 }
 
-/**
- * Parses a single condition into WASM comparison
- * NOTE: normalizeWASMCondition does the heavy lifting now.
- */
 function parseCondition(condition: string, randomInputs: Set<string>): string {
   condition = condition.trim();
   condition = condition.replace(/(\w+)\.length/g, "$1_count");
-
-  // Delegate to normalizeWASMCondition which now returns f32 comparison result (0 or 1) as i32?
-  // Wait, WASM comparison instructions (f32.lt etc) return i32 (0 or 1).
-  // parser callers (if/elseif) expect i32 result for (if ...).
-
   return normalizeWASMCondition(condition, randomInputs);
 }
+
+// ─── WAT Context ─────────────────────────────────────────────────────
 
 interface WATContext {
   loopDepth: number;
   currentLoopVar?: string;
 }
+
+// ─── WAT transpileLine ───────────────────────────────────────────────
+// WAT keeps its own transpileLine because S-expression output requires
+// very different handling from curly-brace languages.
 
 function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<string>, context: WATContext): string | null {
   const parsed = DSLParser.parseDSLLine(line);
@@ -423,7 +403,6 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
     }
 
     case "if": {
-      // Handle logical operators && and ||
       const combinedCondition = (parts: string[], op: "and" | "or") => {
         const conditions = parts.map(p => parseCondition(p, randomInputs));
         if (conditions.some(c => c.includes("TODO"))) return conditions.find(c => c.includes("TODO")) ?? null;
@@ -463,9 +442,8 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
             ;; This is a nearby agent - execute loop body`;
       } else {
         const loopVar = initMatch ? initMatch[1] : "i";
-        /* if (loopVar !== "i") */ localVars.add(loopVar);
+        localVars.add(loopVar);
         const initExpr = initMatch ? normalizeWASMExpression(initMatch[2], randomInputs) : "(f32.const 0)";
-        // Need to pass randomInputs to normalizeWASMCondition
         return `
     ;; Standard for loop
     (local.set $${loopVar} ${initExpr})
@@ -477,8 +455,6 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
     }
 
     case "foreach": {
-      // Relaxed check: accept any collection, assuming it's the agent list
-      // if (parsed.collection === "nearbyAgents") {
       const loopVar = parsed.varName || parsed.itemAlias;
 
       if (loopVar) {
@@ -508,7 +484,6 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
     }
 
     case "assignment": {
-      // Handle array indexing like nearbyAgents[i].species
       const arrayMatch = parsed.expression.match(/(\w+)\[\w+\]\.(\w+)/);
       if (arrayMatch) {
         const offsets: Record<string, number> = { x: 4, y: 8, vx: 12, vy: 16, species: 20 };
@@ -518,10 +493,8 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
         return `(local.set $${parsed.target} ${normalizeWASMExpression(exprWithLoad, randomInputs)})`;
       }
 
-      // Handle property access like nearby.species when nearby is the loop variable
       const propMatch = parsed.expression.match(/(\w+)\.(\w+)/);
       if (propMatch && propMatch[1] === context.currentLoopVar) {
-        // Map to the local variable we just loaded in the foreach loop
         const targetPropVar = `${propMatch[1]}_${propMatch[2]}`;
         const exprWithVar = parsed.expression.replace(/(\w+)\.(\w+)/, targetPropVar);
         return `(local.set $${parsed.target} ${normalizeWASMExpression(exprWithVar, randomInputs)})`;
@@ -530,7 +503,7 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
     }
 
     case "command": {
-      const { target, op } = COMMANDS[parsed.command];
+      const { target, op } = WAT_COMMANDS[parsed.command];
       if (op === "update") {
         const argExpr = normalizeWASMExpression(parsed.argument, randomInputs);
         return `(local.set $x (f32.add (local.get $x) (f32.mul (local.get $vx) ${argExpr})))\n    (local.set $y (f32.add (local.get $y) (f32.mul (local.get $vy) ${argExpr})))`;
@@ -577,6 +550,69 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
   }
 }
 
+// ─── WAT Target (interface conformance) ──────────────────────────────
+// The WAT target implements CompilerTarget for type compatibility, but
+// compileDSLtoWAT uses its own iteration logic due to S-expression nesting.
+
+export const WATTarget: CompilerTarget = {
+  name: 'wat',
+  commands: COMMANDS_MAP,
+
+  emitExpression(expr: string, ctx: CompilationContext): string {
+    return normalizeWASMExpression(expr, ctx.randomInputs);
+  },
+
+  emitVar(name: string, expression: string, ctx: CompilationContext): string[] {
+    ctx.localVars.add(name);
+    return [`(local.set $${name} ${normalizeWASMExpression(expression, ctx.randomInputs)})`];
+  },
+
+  emitIf(condition: string, ctx: CompilationContext): string[] {
+    return [`(if ${parseCondition(condition, ctx.randomInputs)} (then`];
+  },
+
+  emitElseIf(condition: string, ctx: CompilationContext): string[] {
+    return [`(elseif ${parseCondition(condition, ctx.randomInputs)}`];
+  },
+
+  emitElse(): string[] {
+    return ['(else'];
+  },
+
+  emitFor(_init: string, _condition: string, _increment: string, _ctx: CompilationContext): string[] {
+    return [';; for loop (not used through shared transpiler)'];
+  },
+
+  emitForeach(_collection: string, _varName: string | undefined, _itemAlias: string | undefined, _ctx: CompilationContext): string[] {
+    return [';; foreach loop (not used through shared transpiler)'];
+  },
+
+  emitAssignment(target: string, expression: string, ctx: CompilationContext): string[] {
+    return [`(local.set $${target} ${normalizeWASMExpression(expression, ctx.randomInputs)})`];
+  },
+
+  emitCommand(command: AVAILABLE_COMMANDS, argument: string, ctx: CompilationContext): string[] {
+    const { target, op } = WAT_COMMANDS[command];
+    const argExpr = normalizeWASMExpression(argument, ctx.randomInputs);
+    if (op === "set") return [`(local.set $${target} ${argExpr})`];
+    if (op === "add") return [`(local.set $${target} (f32.add (local.get $${target}) ${argExpr}))`];
+    if (op === "sub") return [`(local.set $${target} (f32.sub (local.get $${target}) ${argExpr}))`];
+    return [`;; ${command} handled in compileDSLtoWAT`];
+  },
+
+  emitCloseBrace(_ctx: CompilationContext): string[] {
+    return ['))'];
+  },
+
+  emitProgram(_statements: string[], _inputs: string[], _randomInputs: string[], _ctx: CompilationContext): string {
+    return ';; WAT program generation uses compileDSLtoWAT directly';
+  },
+};
+
+// ─── Entry Point ─────────────────────────────────────────────────────
+// WAT uses its own iteration logic due to S-expression nesting requirements.
+// The CompilerTarget interface is implemented above for type compatibility
+// and future shared-transpiler migration if WAT nesting is unified.
 
 export const compileDSLtoWAT = (
   lines: LineInfo[],
@@ -593,10 +629,6 @@ export const compileDSLtoWAT = (
   let forDepth = 0;
   let pendingClosures = 0;
 
-  // Track loop types to generate correct closer: 
-  // { type: 'nearby', internalIfs: 2 } or { type: 'standard', var: string }
-  // internalIfs tracks how many ifs the loop opens internally (skip-self, nearby-check)
-  // openStructuresAtEntry tracks the openStructures count when loop was entered
   const loopStack: { type: 'nearby' | 'standard' | 'foreach', var?: string, internalIfs: number, openStructuresAtEntry: number }[] = [];
 
   const context: WATContext = {
@@ -608,7 +640,6 @@ export const compileDSLtoWAT = (
     const trimmed = line.content.trim();
     if (!trimmed) continue;
 
-    // Handle single-line closure like "} else {"
     if (trimmed.startsWith("}") && trimmed !== "}") {
       statements.push(")");
     }
@@ -660,7 +691,6 @@ export const compileDSLtoWAT = (
         loopStack.push({ type: 'nearby', internalIfs: 2, openStructuresAtEntry: openStructures });
       } else if (transpiled.includes(";; Standard for loop")) {
         forDepth++;
-        // Extract loop variable from "(local.set $varName ..."
         const match = transpiled.match(/\(local\.set \$(\w+)/);
         const varName = match ? match[1] : "i";
         loopStack.push({ type: 'standard', var: varName, internalIfs: 0, openStructuresAtEntry: openStructures });
@@ -672,13 +702,10 @@ export const compileDSLtoWAT = (
         openStructures += 2;
       }
 
-      // Count net open ifs: (if ... (then) opens, )) closes
-      // Only increment openStructures by the NET count of unclosed ifs
       if (transpiled.includes("(if ") && transpiled.includes("(then") &&
         !transpiled.includes(";; For loop over") && !transpiled.includes(";; Foreach loop over") &&
         !transpiled.includes(";; Skip self") && !transpiled.includes(";; Only process") &&
         !transpiled.includes("(else (if")) {
-        // Count how many (if ... (then pairs vs )) closers
         const openCount = (transpiled.match(/\(if [^)]*\(then/g) || []).length;
         const closeCount = (transpiled.match(/\)\)/g) || []).length;
         const netOpen = openCount - closeCount;
@@ -691,20 +718,16 @@ export const compileDSLtoWAT = (
         let loopClosed = false;
         if (loopStack.length > 0) {
           const loopInfo = loopStack[loopStack.length - 1];
-          // Check if we are at the right nesting/structure level to close this loop
           if (openStructures === loopInfo.openStructuresAtEntry + loopInfo.internalIfs) {
             loopStack.pop();
             loopClosed = true;
 
             if (loopInfo.type === 'nearby') {
-              // Close 2 ifs, then loop update, then loop/block
               statements.push(`          ))\n        ))\n        (local.set $_for_idx (i32.add (local.get $_for_idx) (i32.const 1)))\n        (local.set $_for_ptr (i32.add (local.get $_for_ptr) (i32.const 24)))\n        (br $_for_loop)\n      )\n    )`);
             } else if (loopInfo.type === 'foreach') {
-              // Close 2 ifs, then loop update, then loop/block (using foreach vars)
               statements.push(`          ))\n        ))\n        (local.set $_foreach_idx (i32.add (local.get $_foreach_idx) (i32.const 1)))\n        (local.set $_foreach_ptr (i32.add (local.get $_foreach_ptr) (i32.const 24)))\n        (br $_foreach_loop)\n      )\n    )`);
             } else if (loopInfo.type === 'standard') {
               const varName = loopInfo.var;
-              // Standard loop update
               statements.push(`        (local.set $${varName} (f32.add (local.get $${varName}) (f32.const 1)))\n        (br $_for_loop)\n      )\n    )`);
             }
           }
@@ -724,6 +747,10 @@ export const compileDSLtoWAT = (
       }
     }
   }
+
+  // Suppress unused variable warnings
+  void forDepth;
+  void foreachDepth;
 
   if (statements.length === 0) {
     statements.push(";; no-op");

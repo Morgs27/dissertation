@@ -42,6 +42,7 @@ fn main(
         var y = agent.y;
         var vx = agent.vx;
         var vy = agent.vy;
+        var species = agent.species;
         
         // Load random values based on agent.id for parity with JS
         
@@ -52,7 +53,7 @@ fn main(
         agent.y = y;
         agent.vx = vx;
         agent.vy = vy;
-        // species is preserved (not modified by DSL code)
+        agent.species = species;
         agents[i] = agent;
     }
 }
