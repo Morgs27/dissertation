@@ -3,181 +3,248 @@ import type { CompilationResult } from "../types";
 import { compileDSLtoJS } from "./JScompiler";
 import { compileDSLtoWAT } from "./WATcompiler";
 import { compileDSLtoWGSL } from "./WGSLcompiler";
-import { DSLParser, LineInfo, COMMENT_CHARACTERS } from "./parser";
+import { DSLParser, LineInfo } from "./parser";
 
-// Removed types and constants moved to parser.ts
+interface DefinedInput {
+    name: string;
+    defaultValue: number;
+    min: number;
+    max: number;
+}
+
+interface TrailEnvironmentConfig {
+    depositAmountInput?: string;
+    decayFactorInput?: string;
+}
+
+interface PreprocessResult {
+    lines: LineInfo[];
+    inputs: string[];
+    definedInputs: DefinedInput[];
+    trailEnvironmentConfig?: TrailEnvironmentConfig;
+    randomInputs: string[];
+    speciesCount?: number;
+}
+
+const COMMAND_INPUT_DEPENDENCIES: Record<string, string[]> = {
+    borderWrapping: ['width', 'height'],
+    borderBounce: ['width', 'height'],
+    sense: ['width', 'height'],
+    deposit: ['width', 'height', 'trailMap'],
+    avoidObstacles: [],
+};
 
 export class Compiler {
-    Logger: Logger;
+    private logger: Logger;
 
     constructor() {
-        this.Logger = new Logger('Compiler', 'orange');
+        this.logger = new Logger('Compiler', 'orange');
     }
 
-    private cleanInlineComments(line: string): string {
-        return line.split('//')[0].split('#')[0].trim();
+    compileAgentCode(agentCode?: string): CompilationResult {
+        const script = agentCode?.trim() ?? '';
+        this.logger.info('Compiling agent code');
+
+        const preprocessed = this.preprocessDSL(script);
+        const compiled = this.compileToAllTargets(preprocessed, script);
+
+        this.logCompilationResults(compiled, preprocessed);
+
+        return this.buildCompilationResult(preprocessed, compiled);
     }
 
-    /**
-     * Preprocesses DSL code by removing comments and extracting input variables
-     */
-    private preprocessDSL(dsl: string): { lines: LineInfo[]; inputs: string[]; definedInputs: any[]; trailEnvironmentConfig?: any; randomInputs: string[]; speciesCount?: number } {
-        const lines: LineInfo[] = [];
-        const definedInputs: any[] = [];
-        const randomInputs: string[] = [];
-        let speciesCount: number | undefined;
-        const rawLines = dsl.split('\n');
+    private preprocessDSL(dsl: string): PreprocessResult {
+        const { lines, definedInputs, randomInputs } = this.parseLines(dsl);
+        const inputs = this.extractInputs(dsl, lines, definedInputs, randomInputs);
+        const trailEnvironmentConfig = this.extractTrailConfig(lines, inputs);
+        const speciesCount = this.extractSpeciesCount(lines);
 
-        rawLines.forEach((line, index) => {
-
-            // Use the clean line for further processing
-            const trimmed = this.cleanInlineComments(line);
-
-            // Parse input declarations: input name = value [min, max];
-            // Range annotation [min, max] is optional and appears before the semicolon
-            const inputMatch = trimmed.match(/^\s*input\s+([a-zA-Z_]\w*)\s*=\s*(.+?)\s*;?\s*$/);
-            if (inputMatch) {
-                const name = inputMatch[1];
-                let valuePart = inputMatch[2].trim();
-
-                if (valuePart === 'random()') {
-                    randomInputs.push(name);
-                    return;
-                }
-
-                // Extract optional range annotation [min, max] from the value part
-                let min = 0;
-                let max = 100;
-                const rangeMatch = valuePart.match(/^(.+?)\s*\[\s*([0-9.]+)\s*,\s*([0-9.]+)\s*\]\s*$/);
-                if (rangeMatch) {
-                    valuePart = rangeMatch[1].trim();
-                    min = parseFloat(rangeMatch[2]);
-                    max = parseFloat(rangeMatch[3]);
-                }
-
-                const defaultValue = parseFloat(valuePart);
-                if (!isNaN(defaultValue)) {
-                    definedInputs.push({ name, defaultValue, min, max });
-                    return;
-                }
-            }
-
-            // Split by semicolon for normal logic lines
-            const statements = trimmed.split(';').map(s => s.trim()).filter(s => s.length > 0);
-            statements.forEach(stmt => {
-                lines.push({ content: stmt, lineIndex: index });
-            });
-        });
-
-        // Extract inputs from explicit inputs.* references
-        const inputMatches = Array.from(dsl.matchAll(/inputs\.([a-zA-Z_]\w*)/g));
-        // Only include inputs that are NOT in randomInputs
-        const extractedInputs = new Set([
-            ...inputMatches.map(m => m[1]),
-            ...definedInputs.map(d => d.name)
-        ].filter(name => !randomInputs.includes(name)));
-
-        // Also extract inputs that are implicitly used by commands
-        // For example, borderWrapping() uses inputs.width and inputs.height
-        // sense and deposit require trailMap for reading/writing trail data
-        const commandInputMap: Record<string, string[]> = {
-            borderWrapping: ['width', 'height'],
-            borderBounce: ['width', 'height'],
-            sense: ['width', 'height'], // Removed trailMap implicit
-            deposit: ['width', 'height', 'trailMap'],
-            avoidObstacles: [],
-        };
-
-        for (const line of lines) {
-            const parsed = DSLParser.parseCommandLine(line.content.trim());
-            if (parsed && commandInputMap[parsed.command]) {
-                commandInputMap[parsed.command].forEach(input => extractedInputs.add(input));
-            }
-        }
-
-        const inputs = Array.from(extractedInputs);
-
-        // Check for enableTrails command to extract config
-        let trailEnvironmentConfig: { depositAmountInput?: string; decayFactorInput?: string } | undefined;
-
-        for (const line of lines) {
-            const parsed = DSLParser.parseCommandLine(line.content.trim());
-            if (parsed && parsed.command === 'enableTrails') {
-                // enableTrails(depositAmount, decayFactor)
-                const args = parsed.argument.split(',').map(s => s.trim());
-                trailEnvironmentConfig = {};
-
-                // Check if args match inputs.Name pattern
-                const depositMatch = args[0]?.match(/^inputs\.(\w+)$/);
-                if (depositMatch) {
-                    trailEnvironmentConfig.depositAmountInput = depositMatch[1];
-                }
-
-                const decayMatch = args[1]?.match(/^inputs\.(\w+)$/);
-                if (decayMatch) {
-                    trailEnvironmentConfig.decayFactorInput = decayMatch[1];
-                }
-
-                // Explicitly require trailMap input since trails are enabled
-                if (!inputs.includes('trailMap')) {
-                    inputs.push('trailMap');
-                }
-            }
-        }
-
-        // Check for species() command to extract species count
-        for (const line of lines) {
-            const parsed = DSLParser.parseCommandLine(line.content.trim());
-            if (parsed && parsed.command === 'species') {
-                const count = parseInt(parsed.argument, 10);
-                if (!isNaN(count) && count > 0) {
-                    speciesCount = count;
-                }
-            }
-        }
-
-        // Handle random syntax sugar dependency
-        // If we have random inputs, we definitely need randomValues
-        if ((inputs.includes('random') && !inputs.includes('randomValues')) || randomInputs.length > 0) {
-            if (!inputs.includes('randomValues')) {
-                inputs.push('randomValues');
-            }
-        }
+        this.ensureRandomValuesDependency(inputs, randomInputs);
 
         return { lines, inputs, definedInputs, trailEnvironmentConfig, randomInputs, speciesCount };
     }
 
-    /**
-     * Parses a single line of DSL code to identify its type and extract relevant information
-     */
-    // Removed static methods (parseDSLLine, parseCommandLine, applyCommandTemplate, parseLines)
-    // They are now in DSLParser
+    private parseLines(dsl: string): {
+        lines: LineInfo[];
+        definedInputs: DefinedInput[];
+        randomInputs: string[];
+    } {
+        const lines: LineInfo[] = [];
+        const definedInputs: DefinedInput[] = [];
+        const randomInputs: string[] = [];
 
-    compileAgentCode(agentCode?: string): CompilationResult {
-        const script = agentCode?.trim() ?? '';
-        this.Logger.info('Compiling agent code');
+        dsl.split('\n').forEach((line, index) => {
+            const trimmed = this.stripComments(line);
+            const inputResult = this.parseInputDeclaration(trimmed);
 
-        const { lines, inputs, definedInputs, trailEnvironmentConfig, randomInputs, speciesCount } = this.preprocessDSL(script);
+            if (inputResult) {
+                if (inputResult.isRandom) {
+                    randomInputs.push(inputResult.name);
+                } else if (inputResult.defined) {
+                    definedInputs.push(inputResult.defined);
+                }
+                return;
+            }
 
-        // Pass the original script to compilers for error context logging
-        const jsCode = compileDSLtoJS(lines, inputs, this.Logger, script, randomInputs);
-        const wgslCode = compileDSLtoWGSL(lines, inputs, this.Logger, script, randomInputs);
-        const watCode = compileDSLtoWAT(lines, inputs, this.Logger, script, randomInputs);
+            this.splitStatements(trimmed).forEach(stmt => {
+                lines.push({ content: stmt, lineIndex: index });
+            });
+        });
 
-        this.Logger.code('Generated JS Code', jsCode, 'js');
-        this.Logger.code('Generated WGSL Code', wgslCode, 'wgsl');
-        this.Logger.code('Generated WAT Code', watCode, 'wasm');
-        this.Logger.log('Expected Inputs', inputs);
-        this.Logger.log('Defined Inputs', definedInputs);
+        return { lines, definedInputs, randomInputs };
+    }
+
+    private stripComments(line: string): string {
+        return line.split('//')[0].split('#')[0].trim();
+    }
+
+    private parseInputDeclaration(line: string): {
+        name: string;
+        isRandom: boolean;
+        defined?: DefinedInput;
+    } | null {
+        const match = line.match(/^\s*input\s+([a-zA-Z_]\w*)\s*=\s*(.+?)\s*;?\s*$/);
+        if (!match) return null;
+
+        const name = match[1];
+        let valuePart = match[2].trim();
+
+        if (valuePart === 'random()') {
+            return { name, isRandom: true };
+        }
+
+        const { value, min, max } = this.parseValueWithRange(valuePart);
+        const defaultValue = parseFloat(value);
+
+        if (isNaN(defaultValue)) return null;
 
         return {
-            requiredInputs: inputs,
-            definedInputs,
-            wgslCode,
-            jsCode,
-            WASMCode: watCode,
-            trailEnvironmentConfig,
-            speciesCount,
+            name,
+            isRandom: false,
+            defined: { name, defaultValue, min, max }
+        };
+    }
+
+    private parseValueWithRange(valuePart: string): { value: string; min: number; max: number } {
+        const rangeMatch = valuePart.match(/^(.+?)\s*\[\s*([0-9.]+)\s*,\s*([0-9.]+)\s*\]\s*$/);
+        if (rangeMatch) {
+            return {
+                value: rangeMatch[1].trim(),
+                min: parseFloat(rangeMatch[2]),
+                max: parseFloat(rangeMatch[3])
+            };
+        }
+        return { value: valuePart, min: 0, max: 100 };
+    }
+
+    private splitStatements(line: string): string[] {
+        return line.split(';').map(s => s.trim()).filter(s => s.length > 0);
+    }
+
+    private extractInputs(
+        dsl: string,
+        lines: LineInfo[],
+        definedInputs: DefinedInput[],
+        randomInputs: string[]
+    ): string[] {
+        const explicitInputs = Array.from(dsl.matchAll(/inputs\.([a-zA-Z_]\w*)/g)).map(m => m[1]);
+        const definedNames = definedInputs.map(d => d.name);
+
+        const inputs = new Set(
+            [...explicitInputs, ...definedNames].filter(name => !randomInputs.includes(name))
+        );
+
+        this.addCommandDependencies(lines, inputs);
+
+        return Array.from(inputs);
+    }
+
+    private addCommandDependencies(lines: LineInfo[], inputs: Set<string>): void {
+        for (const line of lines) {
+            const parsed = DSLParser.parseCommandLine(line.content.trim());
+            if (parsed && COMMAND_INPUT_DEPENDENCIES[parsed.command]) {
+                COMMAND_INPUT_DEPENDENCIES[parsed.command].forEach(input => inputs.add(input));
+            }
+        }
+    }
+
+    private extractTrailConfig(lines: LineInfo[], inputs: string[]): TrailEnvironmentConfig | undefined {
+        for (const line of lines) {
+            const parsed = DSLParser.parseCommandLine(line.content.trim());
+            if (parsed?.command !== 'enableTrails') continue;
+
+            const args = parsed.argument.split(',').map(s => s.trim());
+            const config: TrailEnvironmentConfig = {};
+
+            const depositMatch = args[0]?.match(/^inputs\.(\w+)$/);
+            if (depositMatch) config.depositAmountInput = depositMatch[1];
+
+            const decayMatch = args[1]?.match(/^inputs\.(\w+)$/);
+            if (decayMatch) config.decayFactorInput = decayMatch[1];
+
+            if (!inputs.includes('trailMap')) {
+                inputs.push('trailMap');
+            }
+
+            return config;
+        }
+        return undefined;
+    }
+
+    private extractSpeciesCount(lines: LineInfo[]): number | undefined {
+        for (const line of lines) {
+            const parsed = DSLParser.parseCommandLine(line.content.trim());
+            if (parsed?.command === 'species') {
+                const count = parseInt(parsed.argument, 10);
+                if (!isNaN(count) && count > 0) return count;
+            }
+        }
+        return undefined;
+    }
+
+    private ensureRandomValuesDependency(inputs: string[], randomInputs: string[]): void {
+        const needsRandomValues = inputs.includes('random') || randomInputs.length > 0;
+        if (needsRandomValues && !inputs.includes('randomValues')) {
+            inputs.push('randomValues');
+        }
+    }
+
+    private compileToAllTargets(
+        preprocessed: PreprocessResult,
+        script: string
+    ): { jsCode: string; wgslCode: string; watCode: string } {
+        const { lines, inputs, randomInputs } = preprocessed;
+
+        return {
+            jsCode: compileDSLtoJS(lines, inputs, this.logger, script, randomInputs),
+            wgslCode: compileDSLtoWGSL(lines, inputs, this.logger, script, randomInputs),
+            watCode: compileDSLtoWAT(lines, inputs, this.logger, script, randomInputs),
+        };
+    }
+
+    private logCompilationResults(
+        compiled: { jsCode: string; wgslCode: string; watCode: string },
+        preprocessed: PreprocessResult
+    ): void {
+        this.logger.code('Generated JS Code', compiled.jsCode, 'js');
+        this.logger.code('Generated WGSL Code', compiled.wgslCode, 'wgsl');
+        this.logger.code('Generated WAT Code', compiled.watCode, 'wasm');
+        this.logger.log('Expected Inputs', preprocessed.inputs);
+        this.logger.log('Defined Inputs', preprocessed.definedInputs);
+    }
+
+    private buildCompilationResult(
+        preprocessed: PreprocessResult,
+        compiled: { jsCode: string; wgslCode: string; watCode: string }
+    ): CompilationResult {
+        return {
+            requiredInputs: preprocessed.inputs,
+            definedInputs: preprocessed.definedInputs,
+            wgslCode: compiled.wgslCode,
+            jsCode: compiled.jsCode,
+            WASMCode: compiled.watCode,
+            trailEnvironmentConfig: preprocessed.trailEnvironmentConfig,
+            speciesCount: preprocessed.speciesCount,
         };
     }
 }

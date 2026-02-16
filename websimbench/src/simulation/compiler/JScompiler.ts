@@ -6,43 +6,14 @@
  */
 
 import type Logger from '../helpers/logger';
-import type { CommandMap, LineInfo, AVAILABLE_COMMANDS } from './parser';
-import { DSLParser } from './parser';
+import type { LineInfo } from './parser';
 import { transformExpression } from './expressionAST';
 import type { CompilerTarget, CompilationContext } from './compilerTarget';
 import { createContext } from './compilerTarget';
 import { transpileDSL } from './transpiler';
 
-// ─── JS Command Templates ───────────────────────────────────────────
-
-const COMMANDS: CommandMap = {
-    moveUp: 'y = f(y - {arg});',
-    moveDown: 'y = f(y + {arg});',
-    moveLeft: 'x = f(x - {arg});',
-    moveRight: 'x = f(x + {arg});',
-    addVelocityX: 'vx = f(vx + {arg});',
-    addVelocityY: 'vy = f(vy + {arg});',
-    setVelocityX: 'vx = f({arg});',
-    setVelocityY: 'vy = f({arg});',
-    updatePosition: 'x = f(x + f(vx * {arg})); y = f(y + f(vy * {arg}));',
-    borderWrapping: 'if (x < 0) x = f(x + f(inputs.width)); if (x > f(inputs.width)) x = f(x - f(inputs.width)); if (y < 0) y = f(y + f(inputs.height)); if (y > f(inputs.height)) y = f(y - f(inputs.height));',
-    borderBounce: 'if (x < 0 || x > f(inputs.width)) vx = f(-vx); if (y < 0 || y > f(inputs.height)) vy = f(-vy); x = f(Math.max(0, Math.min(f(inputs.width), x))); y = f(Math.max(0, Math.min(f(inputs.height), y)));',
-    limitSpeed: 'const __speed2 = f(f(vx*vx) + f(vy*vy)); if (__speed2 > f({arg}*{arg})) { const __scale = f(Math.sqrt(f(f({arg}*{arg}) / __speed2))); vx = f(vx * __scale); vy = f(vy * __scale); }',
-    turn: 'const __c = f(Math.cos({arg})); const __s = f(Math.sin({arg})); const __vx = f(f(vx * __c) - f(vy * __s)); vy = f(f(vx * __s) + f(vy * __c)); vx = __vx;',
-    moveForward: 'x = f(x + f(vx * {arg})); y = f(y + f(vy * {arg}));',
-    deposit: '_deposit({arg});',
-    sense: '', // Handled as expression via FunctionRegistry
-    enableTrails: '',
-    print: 'if (inputs.print) inputs.print(id, {arg});',
-    species: '', // Configuration only
-    avoidObstacles: '_avoidObstacles({arg});',
-};
-
-// ─── JS Target Implementation ────────────────────────────────────────
-
 export const JSTarget: CompilerTarget = {
     name: 'js',
-    commands: COMMANDS,
 
     emitExpression(expr: string, ctx: CompilationContext): string {
         return transformExpression(expr, ctx.randomInputs);
@@ -91,14 +62,6 @@ export const JSTarget: CompilerTarget = {
     emitAssignment(target: string, expression: string, ctx: CompilationContext): string[] {
         const exprTranspiled = transformExpression(expression, ctx.randomInputs);
         return [`${target.trim()} = ${exprTranspiled}; `];
-    },
-
-    emitCommand(command: AVAILABLE_COMMANDS, argument: string, ctx: CompilationContext): string[] {
-        const template = COMMANDS[command];
-        if (!template) return []; // Configuration-only commands (enableTrails, species, sense)
-        const arg = transformExpression(argument, ctx.randomInputs);
-        const result = DSLParser.applyCommandTemplate(template, arg);
-        return [result.endsWith(';') ? result : result + ';'];
     },
 
     emitCloseBrace(ctx: CompilationContext): string[] {

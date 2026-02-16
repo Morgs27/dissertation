@@ -6,38 +6,12 @@
  */
 
 import Logger from "../helpers/logger";
-import type { CommandMap, LineInfo, AVAILABLE_COMMANDS } from "./parser";
-import { DSLParser } from "./parser";
+import type { LineInfo } from "./parser";
 import type { CompilerTarget, CompilationContext } from './compilerTarget';
 import { createContext } from './compilerTarget';
 import { transpileDSL } from './transpiler';
 
 export const WORKGROUP_SIZE = 64;
-
-// ─── WGSL Command Templates ─────────────────────────────────────────
-
-const COMMANDS: CommandMap = {
-    moveUp: 'y = y - {arg};',
-    moveDown: 'y = y + {arg};',
-    moveLeft: 'x = x - {arg};',
-    moveRight: 'x = x + {arg};',
-    addVelocityX: 'vx = vx + {arg};',
-    addVelocityY: 'vy = vy + {arg};',
-    setVelocityX: 'vx = {arg};',
-    setVelocityY: 'vy = {arg};',
-    updatePosition: 'let _dt_up = {arg}; let _dx_mf_t1 = vx * _dt_up; let _dy_mf_t1 = vy * _dt_up; x = x + _dx_mf_t1; y = y + _dy_mf_t1;',
-    borderWrapping: 'if (x < 0.0) { x = x + inputs.width; } if (x >= inputs.width) { x = x - inputs.width; } if (y < 0.0) { y = y + inputs.height; } if (y >= inputs.height) { y = y - inputs.height; }',
-    borderBounce: 'if (x < 0.0 || x >= inputs.width) { vx = -vx; } if (y < 0.0 || y >= inputs.height) { vy = -vy; } x = clamp(x, 0.0, inputs.width); y = clamp(y, 0.0, inputs.height);',
-    limitSpeed: 'let _spd_ls = {arg}; let _spd_ls2 = _spd_ls * _spd_ls; let _vx2_ls = vx * vx; let _vy2_ls = vy * vy; let _cur_ls2 = _vx2_ls + _vy2_ls; if (_cur_ls2 > _spd_ls2) { let _scale_ls = sqrt(_spd_ls2 / _cur_ls2); vx = vx * _scale_ls; vy = vy * _scale_ls; }',
-    turn: 'let _ang_t = {arg}; let _c_t = cos(_ang_t); let _s_t = sin(_ang_t); let _term1_t = vx * _c_t; let _term2_t = vy * _s_t; let _term3_t = vx * _s_t; let _term4_t = vy * _c_t; let _vx_new_t = _term1_t - _term2_t; let _vy_new_t = _term3_t + _term4_t; vx = _vx_new_t; vy = _vy_new_t;',
-    moveForward: 'let _dist_mf = {arg}; let _dx_mf_t2 = vx * _dist_mf; let _dy_mf_t2 = vy * _dist_mf;  x = x + _dx_mf_t2; y = y + _dy_mf_t2;',
-    deposit: '_deposit(x, y, {arg});',
-    sense: '_sense(x, y, vx, vy, {arg})', // Templated call
-    enableTrails: '', // Configuration only
-    print: 'agentLogs[i] = vec2<f32>(1.0, {arg});',
-    species: '', // Configuration only
-    avoidObstacles: '', // JS-only for now
-};
 
 // ─── WGSL Helper Functions ───────────────────────────────────────────
 
@@ -189,7 +163,6 @@ function transpileExpression(expr: string, ctx: CompilationContext): string {
 
 export const WGSLTarget: CompilerTarget = {
     name: 'wgsl',
-    commands: COMMANDS,
 
     emitExpression(expr: string, ctx: CompilationContext): string {
         return transpileExpression(expr, ctx);
@@ -302,24 +275,6 @@ export const WGSLTarget: CompilerTarget = {
         }
         const transpiled = transpileExpression(expr, ctx);
         return [`${target} = ${transpiled};`];
-    },
-
-    emitCommand(command: AVAILABLE_COMMANDS, argument: string, ctx: CompilationContext): string[] {
-        if (COMMANDS[command] === undefined) return [];
-
-        // Handle sense command specially for 2 args
-        if (command === 'sense') {
-            const args = argument.split(',').map(s => s.trim());
-            const angleArg = transpileExpression(args[0], ctx);
-            const distArg = transpileExpression(args[1], ctx);
-            return [`_sense(x, y, vx, vy, ${angleArg}, ${distArg})`];
-        }
-
-        const template = COMMANDS[command];
-        if (!template) return [];
-        const arg = transpileExpression(argument, ctx);
-        const result = DSLParser.applyCommandTemplate(template, arg);
-        return [result];
     },
 
     emitCloseBrace(ctx: CompilationContext): string[] {

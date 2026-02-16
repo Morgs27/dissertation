@@ -226,10 +226,10 @@
     (else
     (local.set $r (call $random (local.get $_agent_id) (local.get $x) (local.get $y)))
     (local.set $__c (call $cos (f32.mul (f32.sub (local.get $r) (f32.const 0.5)) (f32.const 0.5))))
-            (local.set $__s (call $sin (f32.mul (f32.sub (local.get $r) (f32.const 0.5)) (f32.const 0.5))))
-            (local.set $__vx (f32.sub (f32.mul (local.get $vx) (local.get $__c)) (f32.mul (local.get $vy) (local.get $__s))))
-            (local.set $vy (f32.add (f32.mul (local.get $vx) (local.get $__s)) (f32.mul (local.get $vy) (local.get $__c))))
-            (local.set $vx (local.get $__vx))
+    (local.set $__s (call $sin (f32.mul (f32.sub (local.get $r) (f32.const 0.5)) (f32.const 0.5))))
+    (local.set $__vx (f32.sub (f32.mul (local.get $vx) (local.get $__c)) (f32.mul (local.get $vy) (local.get $__s))))
+    (local.set $vy (f32.add (f32.mul (local.get $vx) (local.get $__s)) (f32.mul (local.get $vy) (local.get $__c))))
+    (local.set $vx (local.get $__vx))
     ))
     (local.set $__speed2 (f32.add (f32.mul (local.get $vx) (local.get $vx)) (f32.mul (local.get $vy) (local.get $vy))))
     (if (f32.gt (local.get $__speed2) (f32.mul (global.get $inputs_predatorSpeed) (global.get $inputs_predatorSpeed))) (then
@@ -459,10 +459,10 @@
     (else
     (local.set $r (call $random (local.get $_agent_id) (local.get $x) (local.get $y)))
     (local.set $__c (call $cos (f32.mul (f32.sub (local.get $r) (f32.const 0.5)) (f32.const 0.5))))
-            (local.set $__s (call $sin (f32.mul (f32.sub (local.get $r) (f32.const 0.5)) (f32.const 0.5))))
-            (local.set $__vx (f32.sub (f32.mul (local.get $vx) (local.get $__c)) (f32.mul (local.get $vy) (local.get $__s))))
-            (local.set $vy (f32.add (f32.mul (local.get $vx) (local.get $__s)) (f32.mul (local.get $vy) (local.get $__c))))
-            (local.set $vx (local.get $__vx))
+    (local.set $__s (call $sin (f32.mul (f32.sub (local.get $r) (f32.const 0.5)) (f32.const 0.5))))
+    (local.set $__vx (f32.sub (f32.mul (local.get $vx) (local.get $__c)) (f32.mul (local.get $vy) (local.get $__s))))
+    (local.set $vy (f32.add (f32.mul (local.get $vx) (local.get $__s)) (f32.mul (local.get $vy) (local.get $__c))))
+    (local.set $vx (local.get $__vx))
     ))
     (local.set $__speed2 (f32.add (f32.mul (local.get $vx) (local.get $vx)) (f32.mul (local.get $vy) (local.get $vy))))
     (if (f32.gt (local.get $__speed2) (f32.mul (global.get $inputs_predatorSpeed) (global.get $inputs_predatorSpeed))) (then
