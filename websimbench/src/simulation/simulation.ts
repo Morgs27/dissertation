@@ -144,14 +144,15 @@ export class Simulation {
 
         // Populate random values for this frame if needed
         const needsRandom = this.compilationResult?.requiredInputs.includes('randomValues');
+        const numRandomCalls = this.compilationResult?.numRandomCalls || 0;
 
-        if (needsRandom) {
-            // Lazy initialization
-            if (!this.randomValues || this.randomValues.length !== this.agents.length) {
-                this.randomValues = new Float32Array(this.agents.length);
+        if (needsRandom && numRandomCalls > 0) {
+            const totalRandomValues = this.agents.length * numRandomCalls;
+            if (!this.randomValues || this.randomValues.length !== totalRandomValues) {
+                this.randomValues = new Float32Array(totalRandomValues);
             }
 
-            for (let i = 0; i < this.agents.length; i++) {
+            for (let i = 0; i < totalRandomValues; i++) {
                 this.randomValues[i] = Math.random();
             }
         }
@@ -160,8 +161,6 @@ export class Simulation {
             width: this.Renderer.canvas.width,
             height: this.Renderer.canvas.height,
             agents: this.agents,
-            // randomValues: this.randomValues, // Added below if needed
-            // trailMap: this.trailMap!, // Pass trail map to inputs only if exists
             ...inputValues
         };
 
@@ -178,6 +177,15 @@ export class Simulation {
 
         if (this.trailMap) {
             inputs.trailMap = this.trailMap;
+        }
+
+        // Auto-manage obstacle data: derive obstacleCount from the obstacles array
+        const needsObstacles = this.compilationResult?.requiredInputs.includes('obstacles');
+        if (needsObstacles) {
+            if (!inputs.obstacles) {
+                inputs.obstacles = [];
+            }
+            inputs.obstacleCount = (inputs.obstacles as any[]).length;
         }
 
         if (

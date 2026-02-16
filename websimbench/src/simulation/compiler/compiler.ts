@@ -152,7 +152,28 @@ export class Compiler {
     }
 
     private splitStatements(line: string): string[] {
-        return line.split(';').map(s => s.trim()).filter(s => s.length > 0);
+        const parts = line.split(';').map(s => s.trim()).filter(s => s.length > 0);
+        const result: string[] = [];
+        for (const part of parts) {
+            // Detect braceless if: `if (condition) statement` (no opening brace)
+            if (part.startsWith('if ') || part.startsWith('if(')) {
+                const openParen = part.indexOf('(');
+                if (openParen > -1) {
+                    const condition = DSLParser.extractBalanced(part, openParen);
+                    if (condition !== null) {
+                        const afterCondition = part.substring(openParen + condition.length + 2).trim();
+                        if (afterCondition && afterCondition !== '{' && !afterCondition.startsWith('{')) {
+                            result.push(`if (${condition}) {`);
+                            result.push(afterCondition);
+                            result.push('}');
+                            continue;
+                        }
+                    }
+                }
+            }
+            result.push(part);
+        }
+        return result;
     }
 
     private extractInputs(
