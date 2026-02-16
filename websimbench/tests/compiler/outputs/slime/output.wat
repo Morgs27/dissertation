@@ -136,7 +136,7 @@
   
     )
 
-    (func (export "step_all") (param $base i32) (param $count i32)
+    (func (export "step_all") (param $base i32) (param $_total_count i32)
       (local $_outer_i i32) (local $ptr i32) (local $x f32) (local $y f32) (local $vx f32) (local $vy f32) (local $species f32)
       (local $sL f32)
       (local $sF f32)
@@ -150,7 +150,7 @@
       (local.set $ptr (local.get $base))
       (block $exit
         (loop $loop
-          (br_if $exit (i32.ge_u (local.get $_outer_i) (local.get $count)))
+          (br_if $exit (i32.ge_u (local.get $_outer_i) (local.get $_total_count)))
           
     ;; load agent fields
     (local.set $_agent_id (f32.load (i32.add (local.get $ptr) (i32.const 0))))

@@ -1,9 +1,20 @@
+/**
+ * JavaScript Compiler Target
+ * 
+ * Implements the CompilerTarget interface for JavaScript output.
+ * Uses the expressionAST for Float32-wrapped expression transformation.
+ */
 
-import type Logger from "../helpers/logger";
-import { DSLParser, type CommandMap, type LineInfo } from "./parser";
-import { transformExpression, isArrayExpression } from "./expressionAST";
+import type Logger from '../helpers/logger';
+import type { CommandMap, LineInfo, AVAILABLE_COMMANDS } from './parser';
+import { DSLParser } from './parser';
+import { transformExpression } from './expressionAST';
+import type { CompilerTarget, CompilationContext } from './compilerTarget';
+import { createContext } from './compilerTarget';
+import { transpileDSL } from './transpiler';
 
-// COMMANDS updated to use Float32 precision via f() wrapper for WASM/WebGPU parity
+// ─── JS Command Templates ───────────────────────────────────────────
+
 const COMMANDS: CommandMap = {
     moveUp: 'y = f(y - {arg});',
     moveDown: 'y = f(y + {arg});',
@@ -20,166 +31,95 @@ const COMMANDS: CommandMap = {
     turn: 'const __c = f(Math.cos({arg})); const __s = f(Math.sin({arg})); const __vx = f(f(vx * __c) - f(vy * __s)); vy = f(f(vx * __s) + f(vy * __c)); vx = __vx;',
     moveForward: 'x = f(x + f(vx * {arg})); y = f(y + f(vy * {arg}));',
     deposit: '_deposit({arg});',
-    sense: '', // Handled as expression
+    sense: '', // Handled as expression via FunctionRegistry
     enableTrails: '',
     print: 'if (inputs.print) inputs.print(id, {arg});',
     species: '', // Configuration only
     avoidObstacles: '_avoidObstacles({arg});',
 };
 
-/**
- * Transpiles a single line of DSL to JavaScript using shared parser
- * @param randomInputs Set of random input names for proper variable resolution
- */
-function transpileLine(line: string, randomInputs: Set<string> = new Set()): string | null {
-    const parsed = DSLParser.parseDSLLine(line);
+// ─── JS Target Implementation ────────────────────────────────────────
 
-    switch (parsed.type) {
-        case 'empty':
-            return '';
+export const JSTarget: CompilerTarget = {
+    name: 'js',
+    commands: COMMANDS,
 
-        case 'brace':
-            return line.trim();
+    emitExpression(expr: string, ctx: CompilationContext): string {
+        return transformExpression(expr, ctx.randomInputs);
+    },
 
-        case 'var': {
-            // Use AST-based transformation for proper Float32 wrapping
-            const exprTranspiled = transformExpression(parsed.expression, randomInputs);
-            // Don't wrap arrays like neighbors() in f()
-            if (isArrayExpression(parsed.expression)) {
-                return `let ${parsed.name} = ${exprTranspiled}; `;
-            }
-            // The AST already wraps the final result, no need for extra f()
-            return `let ${parsed.name} = ${exprTranspiled}; `;
+    emitVar(name: string, expression: string, ctx: CompilationContext): string[] {
+        const exprTranspiled = transformExpression(expression, ctx.randomInputs);
+        ctx.variables.set(name, { type: 'scalar' });
+        return [`let ${name} = ${exprTranspiled}; `];
+    },
+
+    emitIf(condition: string, ctx: CompilationContext): string[] {
+        return [`if (${transformExpression(condition, ctx.randomInputs)}) {`];
+    },
+
+    emitElseIf(condition: string, ctx: CompilationContext): string[] {
+        return [`else if (${transformExpression(condition, ctx.randomInputs)}) {`];
+    },
+
+    emitElse(_ctx: CompilationContext): string[] {
+        return [`else {`];
+    },
+
+    emitFor(init: string, condition: string, increment: string, ctx: CompilationContext): string[] {
+        const jsInit = init.replace(/^var\s+/, 'let ');
+        const jsCond = transformExpression(condition, ctx.randomInputs);
+        return [`for (${jsInit}; ${jsCond}; ${increment}) {`];
+    },
+
+    emitForeach(collection: string, varName: string | undefined, _itemAlias: string | undefined, ctx: CompilationContext): string[] {
+        const loopVar = varName || _itemAlias;
+        if (!loopVar) return [];
+
+        ctx.loopDepth++;
+        ctx.currentLoopVar = loopVar;
+
+        if (loopVar === collection) {
+            return [
+                `for (const _${loopVar} of ${collection}) {`,
+                `const ${loopVar} = _${loopVar};`,
+            ];
         }
+        return [`for (const ${loopVar} of ${collection}) {`];
+    },
 
-        case 'if':
-            return `if (${transformExpression(parsed.condition, randomInputs)}) {
-    `;
+    emitAssignment(target: string, expression: string, ctx: CompilationContext): string[] {
+        const exprTranspiled = transformExpression(expression, ctx.randomInputs);
+        return [`${target.trim()} = ${exprTranspiled}; `];
+    },
 
-        case 'elseif': {
-            const prefix = line.trim().startsWith('}') ? '} ' : '';
-            return `${prefix}else if (${transformExpression(parsed.condition, randomInputs)}) {
-        `;
+    emitCommand(command: AVAILABLE_COMMANDS, argument: string, ctx: CompilationContext): string[] {
+        const template = COMMANDS[command];
+        if (!template) return []; // Configuration-only commands (enableTrails, species, sense)
+        const arg = transformExpression(argument, ctx.randomInputs);
+        const result = DSLParser.applyCommandTemplate(template, arg);
+        return [result.endsWith(';') ? result : result + ';'];
+    },
+
+    emitCloseBrace(ctx: CompilationContext): string[] {
+        if (ctx.loopDepth > 0) {
+            ctx.loopDepth--;
+            if (ctx.loopDepth === 0) ctx.currentLoopVar = undefined;
         }
+        return ['}'];
+    },
 
-        case 'else': {
-            const prefix = line.trim().startsWith('}') ? '} ' : '';
-            return `${prefix}else {`;
-        }
-
-        case 'foreach': {
-            const loopVar = parsed.varName || parsed.itemAlias;
-            if (loopVar) {
-                if (loopVar === parsed.collection) {
-                    return `for (const _${loopVar} of ${parsed.collection}) {
-                    const ${loopVar} = _${loopVar};
-            `;
-                }
-                return `for (const ${loopVar} of ${parsed.collection}) {
-            `;
-            }
-            return '';
-        }
-
-        case 'for': {
-            // Handle for loops: for (var i = 0; i < n; i++)
-            const init = parsed.init.replace(/^var\s+/, 'let ');
-            const condition = transformExpression(parsed.condition, randomInputs);
-            const increment = parsed.increment;
-            return `for (${init}; ${condition}; ${increment}) {
-                `;
-        }
-
-        case 'assignment': {
-            // Handle compound assignments (+=, -=, etc.) with AST-based Float32 wrapping
-            const target = parsed.target.trim();
-            const expression = parsed.expression.trim();
-            const exprTranspiled = transformExpression(expression, randomInputs);
-            // Don't wrap arrays
-            if (isArrayExpression(expression)) {
-                return `${target} = ${exprTranspiled}; `;
-            }
-            // The AST already wraps arithmetic, no extra f() needed
-            return `${target} = ${exprTranspiled}; `;
-        }
-
-        case 'command':
-            if (COMMANDS[parsed.command] !== undefined) {
-                const template = COMMANDS[parsed.command];
-                // Handle configuration-only commands with empty templates
-                if (!template) return '';
-                // Use AST for argument transformation
-                const arg = transformExpression(parsed.argument, randomInputs);
-                const result = DSLParser.applyCommandTemplate(template, arg);
-                return result.endsWith(';') ? result : result + ';';
-            }
-            return null;
-
-        case 'unknown':
-        default:
-            return null;
-    }
-}
-
-/**
- * Parse and transpile DSL with bracket-based blocks
- */
-function parseBoidsDSL(lines: LineInfo[], logger: Logger, rawScript: string, randomInputs: string[]): string[] {
-    const statements: string[] = [];
-    const randomInputsSet = new Set(randomInputs);
-
-    for (const line of lines) {
-        const trimmed = line.content.trim();
-        if (!trimmed) continue;
-
-        const transpiled = transpileLine(trimmed, randomInputsSet);
-        if (transpiled !== null) {
-            statements.push(transpiled);
-        } else {
-            // If transpileLine returns null for a non-empty/brace line, it's an error
-            logger.codeError("Unknown syntax or command", rawScript, line.lineIndex);
-        }
-    }
-
-    return statements;
-}
-
-export const compileDSLtoJS = (lines: LineInfo[], _inputs: string[], logger: Logger, rawScript: string, randomInputs: string[] = []): string => {
-    // Try new parser for boids-style DSL
-    const boidStatements = parseBoidsDSL(lines, logger, rawScript, randomInputs);
-
-    // If no boid statements, try old command-based approach
-    if (boidStatements.length === 0) {
-        const statements = DSLParser.parseLines(lines, COMMANDS);
-        if (statements.length < 1) {
+    emitProgram(statements: string[], _inputs: string[], randomInputs: string[], ctx: CompilationContext): string {
+        if (statements.length === 0) {
             return `(agent) => ({ ...agent })`;
         }
 
-        return `(agent, inputs) => {
-                    let { id, x, y, vx, vy } = agent;
-                    let species = agent.species || 0;
-            ${statements.join('\n            ')}
-                    return { id, x, y, vx, vy, species };
-                } `;
-    }
+        // Determine which helpers to include based on used functions
+        const used = ctx.usedFunctions;
+        const helpers: string[] = [];
 
-    // Generate function with helper functions
-    // f() is the Float32 wrapper for WASM/WebGPU parity
-    const agentFunction = `(agent, inputs) => {
-                    // Float32 wrapper for precision parity with WASM/WebGPU
-                    const f = Math.fround;
-                    
-                    // Destructure agent properties with Float32 conversion
-                    let { id } = agent;
-                    let x = f(agent.x);
-                    let y = f(agent.y);
-                    let vx = f(agent.vx);
-                    let vy = f(agent.vy);
-                    let species = agent.species || 0;
-
-                    // Get agents array
-                    const agents = inputs.agents || [];
-
+        // Random helper is always included (needed for random() calls and random inputs)
+        helpers.push(`
                     // Helper function for random values (returns Float32)
                     const _random = (min, max) => {
                         if (max === undefined) {
@@ -187,23 +127,31 @@ export const compileDSLtoJS = (lines: LineInfo[], _inputs: string[], logger: Log
                             return f(f(Math.random()) * f(min));
                         }
                         return f(f(min) + f(f(Math.random()) * f(f(max) - f(min))));
-                    };
+                    };`);
 
+        // Random input initialization
+        if (randomInputs.length > 0) {
+            helpers.push(`
         // Initialize random input variables (Float32)
-        ${randomInputs.map(r => `let ${r} = f((inputs.randomValues && inputs.randomValues[id] !== undefined) ? inputs.randomValues[id] : _random());`).join('\n        ')}
+        ${randomInputs.map(r => `let ${r} = f((inputs.randomValues && inputs.randomValues[id] !== undefined) ? inputs.randomValues[id] : _random());`).join('\n        ')}`);
+        }
 
+        if (used.has('mean')) {
+            helpers.push(`
                     // Helper function: calculate mean of an array or array property (returns Float32)
                     const _mean = (arr, prop) => {
                         if (!Array.isArray(arr)) return f(0);
                         if (arr.length === 0) return f(0);
                         if (prop) {
-                            // Extract property from each element
                             const values = arr.map(item => f(item[prop] || 0));
                             return f(values.reduce((sum, val) => f(sum + val), f(0)) / f(values.length));
                         }
                         return f(arr.reduce((sum, val) => f(sum + f(val)), f(0)) / f(arr.length));
-                    };
+                    };`);
+        }
 
+        if (used.has('neighbors')) {
+            helpers.push(`
                     // Helper function: find nearby neighbors (uses Float32 for distance calc)
                     const _neighbors = (radius) => {
                         const r = f(radius);
@@ -214,20 +162,19 @@ export const compileDSLtoJS = (lines: LineInfo[], _inputs: string[], logger: Log
                             const dist = f(Math.sqrt(f(f(dx * dx) + f(dy * dy))));
                             return dist < r;
                         });
-                    };
+                    };`);
+        }
 
+        if (used.has('sense')) {
+            helpers.push(`
                     const _sense = (angleOffset, distance) => {
-                        // Read from trailMapRead (previous frame state) for order-independent sensing
                         const readMap = inputs.trailMapRead || inputs.trailMap;
                         const ao = f(angleOffset);
                         const dist = f(distance);
-                        
-                        // angle based on current velocity (Float32 precision)
                         const currentAngle = f(Math.atan2(vy, vx));
                         const angle = f(currentAngle + ao);
                         const sx = f(x + f(f(Math.cos(angle)) * dist));
                         const sy = f(y + f(f(Math.sin(angle)) * dist));
-                        // Wrap coordinates - use Math.trunc to match WASM's i32.trunc_f32_s
                         let ix = Math.trunc(sx);
                         let iy = Math.trunc(sy);
                         const w = Math.trunc(f(inputs.width));
@@ -236,20 +183,21 @@ export const compileDSLtoJS = (lines: LineInfo[], _inputs: string[], logger: Log
                         if (ix >= w) ix -= w;
                         if (iy < 0) iy += h;
                         if (iy >= h) iy -= h;
-
                         if (readMap) {
                             return f(readMap[iy * w + ix]);
                         }
                         return f(0);
-                    };
+                    };`);
+        }
 
+        // deposit helper — include if deposit command is used
+        const usesDeposit = statements.some(s => s.includes('_deposit('));
+        if (usesDeposit) {
+            helpers.push(`
                     const _deposit = (amount) => {
-                        // Write to trailMapWrite (new deposits for this frame)
                         const writeMap = inputs.trailMapWrite || inputs.trailMap;
                         if (!writeMap) return;
                         const amt = f(amount);
-                        
-                        // Use Math.trunc to match WASM's i32.trunc_f32_s
                         let ix = Math.trunc(x);
                         let iy = Math.trunc(y);
                         const w = Math.trunc(f(inputs.width));
@@ -258,12 +206,14 @@ export const compileDSLtoJS = (lines: LineInfo[], _inputs: string[], logger: Log
                         if (ix >= w) ix -= w;
                         if (iy < 0) iy += h;
                         if (iy >= h) iy -= h;
-
-                        // Atomic add to write buffer (Float32)
                         writeMap[iy * w + ix] = f(writeMap[iy * w + ix] + amt);
-                    };
+                    };`);
+        }
 
-
+        // avoidObstacles helper — include if avoidObstacles command is used
+        const usesAvoidObstacles = statements.some(s => s.includes('_avoidObstacles('));
+        if (usesAvoidObstacles) {
+            helpers.push(`
                     const _avoidObstacles = (strength) => {
                         const obstacles = inputs.obstacles || [];
                         const str = f(strength || 1);
@@ -275,7 +225,6 @@ export const compileDSLtoJS = (lines: LineInfo[], _inputs: string[], logger: Log
                             const ox2 = f(ob.x + ob.w + margin);
                             const oy2 = f(ob.y + ob.h + margin);
                             if (x > ox1 && x < ox2 && y > oy1 && y < oy2) {
-                                // Inside obstacle region — push away from center
                                 const cx = f(ob.x + f(ob.w * f(0.5)));
                                 const cy = f(ob.y + f(ob.h * f(0.5)));
                                 let dx = f(x - cx);
@@ -289,18 +238,45 @@ export const compileDSLtoJS = (lines: LineInfo[], _inputs: string[], logger: Log
                                 vy = f(vy + f(dy * str));
                             }
                         }
-                    };
+                    };`);
+        }
 
+        return `(agent, inputs) => {
+                    const f = Math.fround;
+                    
+                    let { id } = agent;
+                    let x = f(agent.x);
+                    let y = f(agent.y);
+                    let vx = f(agent.vx);
+                    let vy = f(agent.vy);
+                    let species = agent.species || 0;
 
+                    const agents = inputs.agents || [];
+${helpers.join('\n')}
 
-        // Execute DSL code
-        ${boidStatements.join('\n        ')}
+  // Execute DSL code
+  ${statements.join('\n  ')}
 
-                    // Return updated agent (ensure Float32 values)
-                    return { id, x: f(x), y: f(y), vx: f(vx), vy: f(vy), species };
-                } `;
+  // Return updated agent (ensure Float32 values)
+  return { id, x: f(x), y: f(y), vx: f(vx), vy: f(vy), species };
+}`;
+    },
+};
 
-    logger.info('Generated boids-style JavaScript function');
+// ─── Entry Point ─────────────────────────────────────────────────────
 
-    return agentFunction;
+export const compileDSLtoJS = (
+    lines: LineInfo[],
+    inputs: string[],
+    logger: Logger,
+    rawScript: string,
+    randomInputs: string[] = [],
+): string => {
+    const ctx = createContext(randomInputs);
+    const statements = transpileDSL(lines, JSTarget, logger, rawScript, ctx);
+
+    const result = JSTarget.emitProgram(statements, inputs, randomInputs, ctx);
+
+    logger.info('Generated JavaScript function');
+    return result;
 };

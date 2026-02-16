@@ -1,7 +1,20 @@
+/**
+ * WGSL Compiler Target
+ * 
+ * Implements the CompilerTarget interface for WebGPU Shading Language output.
+ * Uses regex-based expression transpilation for WGSL-specific syntax.
+ */
+
 import Logger from "../helpers/logger";
-import { DSLParser, type CommandMap, type LineInfo } from "./parser";
+import type { CommandMap, LineInfo, AVAILABLE_COMMANDS } from "./parser";
+import { DSLParser } from "./parser";
+import type { CompilerTarget, CompilationContext } from './compilerTarget';
+import { createContext } from './compilerTarget';
+import { transpileDSL } from './transpiler';
 
 export const WORKGROUP_SIZE = 64;
+
+// ─── WGSL Command Templates ─────────────────────────────────────────
 
 const COMMANDS: CommandMap = {
     moveUp: 'y = y - {arg};',
@@ -25,6 +38,8 @@ const COMMANDS: CommandMap = {
     species: '', // Configuration only
     avoidObstacles: '', // JS-only for now
 };
+
+// ─── WGSL Helper Functions ───────────────────────────────────────────
 
 const WGSL_HELPERS = `
 
@@ -73,29 +88,12 @@ fn _deposit(x: f32, y: f32, amount: f32) {
 }
 `;
 
-/**
- * Context for tracking variable metadata during WGSL compilation
- */
-interface WGSLContext {
-    variables: Map<string, VariableInfo>;
-    loopDepth: number;
-    currentLoopVar?: string;
-    randomInputs: Set<string>;
-}
-
-interface VariableInfo {
-    type: 'neighbors' | 'mean_result' | 'scalar' | 'loop_index';
-    // For neighbors: stores the radius expression
-    radiusExpr?: string;
-    // For mean: stores the collection and property
-    collection?: string;
-    property?: string;
-}
+// ─── Expression Transpilation ────────────────────────────────────────
 
 /**
- * Transpiles expressions to WGSL
+ * Transpiles expressions to WGSL syntax
  */
-function transpileExpression(expr: string, context: WGSLContext): string {
+function transpileExpression(expr: string, ctx: CompilationContext): string {
     let result = expr.trim();
 
     // Handle numeric literals - ensure they are floats for WGSL
@@ -105,72 +103,54 @@ function transpileExpression(expr: string, context: WGSLContext): string {
 
     // Handle species
     if (result === 'species') return 'species';
-    if (result.includes('_species')) return result; // handle loop vars like _loop_other.species
+    if (result.includes('_species')) return result;
 
-    // Replace ^ with * for exponentiation (WGSL uses pow() but for x^2 we can use x*x)
-    // Handle property access like inputs.something^2 first
+    // Replace ^ with * for exponentiation
     result = result.replace(/([\w.]+)\^2/g, '($1)*($1)');
-    result = result.replace(/\^/g, '**'); // Keep for potential pow() conversion
+    result = result.replace(/\^/g, '**');
 
     // Replace loop variable property access if active
-    if (context.currentLoopVar) {
-        const regex = new RegExp(`\\b${context.currentLoopVar}\\.(\\w+)`, 'g');
+    if (ctx.currentLoopVar) {
+        const regex = new RegExp(`\\b${ctx.currentLoopVar}\\.(\\w+)`, 'g');
         result = result.replace(regex, '_loop_other.$1');
     }
 
     // Handle property access on tracked variables
-    // e.g., nearbyAgents.vx -> this needs special handling
     const propAccessMatch = result.match(/^(\w+)\.(\w+)$/);
     if (propAccessMatch) {
         const varName = propAccessMatch[1];
         const prop = propAccessMatch[2];
-        const varInfo = context.variables.get(varName);
-
-        // If it's a neighbors collection, we can't directly access properties
-        // This should be caught by mean() function
+        const varInfo = ctx.variables.get(varName);
         if (varInfo?.type === 'neighbors') {
-            // This is invalid in WGSL - should be used with mean()
             return `/* ERROR: Cannot access ${varName}.${prop} directly in WGSL */`;
         }
     }
 
     // Replace .length with _count suffix for neighbor arrays
     result = result.replace(/(\w+)\.length/g, (_, varName) => {
-        const varInfo = context.variables.get(varName);
-        if (varInfo?.type === 'neighbors') {
-            return `${varName}_count`;
-        }
         return `${varName}_count`;
     });
 
-    // Handle sqrt() function - WGSL has native sqrt support
-    // Note: sqrt() is already natively supported in WGSL, so we just need to ensure
-    // the arguments are properly transpiled
+    // Handle sqrt()
     result = result.replace(/sqrt\(([^)]+)\)/g, (_match, arg) => {
-        // Recursively transpile the argument
-        const transpiledArg = transpileExpression(arg, context);
+        const transpiledArg = transpileExpression(arg, ctx);
         return `sqrt(${transpiledArg})`;
     });
 
     // Handle sense() calls in expressions
     result = result.replace(/sense\(([^)]+)\)/g, (_match, args) => {
         const parts = args.split(',').map((s: string) => s.trim());
-        const angle = transpileExpression(parts[0], context);
-        const dist = transpileExpression(parts[1], context);
+        const angle = transpileExpression(parts[0], ctx);
+        const dist = transpileExpression(parts[1], ctx);
         return `_sense(agent.x, agent.y, agent.vx, agent.vy, ${angle}, ${dist})`;
     });
 
     // Handle inputs.randomValues[id] special case
     result = result.replace(/inputs\.randomValues\[([^\]]+)\]/g, 'randomValues[u32($1)]');
-    // inputs.random sugar -> randomValues[id]
     result = result.replace(/inputs\.random\b/g, 'randomValues[u32(agent.id)]');
-
-    result = result.replace(/inputs\.randomValues/g, 'randomValues'); // simplified if just array passed? no, array access needed.
+    result = result.replace(/inputs\.randomValues/g, 'randomValues');
 
     // Handle random() calls
-    // random() -> randomValues[u32(agent.id)]
-    // random(max) -> randomValues[u32(agent.id)] * max
-    // random(min, max) -> min + randomValues[u32(agent.id)] * (max - min)
     result = result.replace(/random\(([^)]*)\)/g, (_match, args) => {
         const parts = args.split(',').filter((s: string) => s.trim().length > 0).map((s: string) => s.trim());
         const randVal = 'randomValues[u32(agent.id)]';
@@ -178,29 +158,24 @@ function transpileExpression(expr: string, context: WGSLContext): string {
         if (parts.length === 0) {
             return randVal;
         } else if (parts.length === 1) {
-            const max = transpileExpression(parts[0], context);
+            const max = transpileExpression(parts[0], ctx);
             return `(${randVal} * ${max})`;
         } else {
-            const min = transpileExpression(parts[0], context);
-            const max = transpileExpression(parts[1], context);
-            const r = `(${min} + ${randVal} * (${max} - ${min}))`;
-            return r;
+            const min = transpileExpression(parts[0], ctx);
+            const max = transpileExpression(parts[1], ctx);
+            return `(${min} + ${randVal} * (${max} - ${min}))`;
         }
     });
 
-    // Final check for any remaining bare integers being used as f32
-    // This is a safety net for things like "count = 0"
-    // Only apply to bare integers that are the ENTIRE result, to avoid 
-    // messing up variable names like agent.id or workgroup_id
+    // Bare integers → float
     if (/^\d+$/.test(result)) {
         return result + ".0";
     }
 
-    // Replace inputs.r with r if r is a random input
-    if (context.randomInputs.size > 0) {
-        // We use a regex to match inputs.NAME
+    // Replace inputs.NAME with NAME if it's a random input
+    if (ctx.randomInputs.size > 0) {
         result = result.replace(/inputs\.(\w+)/g, (match, name) => {
-            if (context.randomInputs.has(name)) {
+            if (ctx.randomInputs.has(name)) {
                 return name;
             }
             return match;
@@ -210,341 +185,172 @@ function transpileExpression(expr: string, context: WGSLContext): string {
     return result;
 }
 
-/**
- * Transpiles a single line of DSL to WGSL
- */
-function transpileLine(line: string, context: WGSLContext): string[] {
-    const parsed = DSLParser.parseDSLLine(line);
-    const statements: string[] = [];
+// ─── WGSL Target Implementation ─────────────────────────────────────
 
-    switch (parsed.type) {
-        case 'empty':
-            return [];
+export const WGSLTarget: CompilerTarget = {
+    name: 'wgsl',
+    commands: COMMANDS,
 
-        case 'brace':
-            return [line.trim()];
+    emitExpression(expr: string, ctx: CompilationContext): string {
+        return transpileExpression(expr, ctx);
+    },
 
-        case 'var': {
-            // Check if this is a neighbors() call
-            const neighborsMatch = parsed.expression.match(/neighbors\(([^)]+)\)/);
-            if (neighborsMatch) {
-                const radiusExpr = transpileExpression(neighborsMatch[1], context);
-
-                // Track this variable as a neighbors collection
-                context.variables.set(parsed.name, {
-                    type: 'neighbors',
-                    radiusExpr
-                });
-
-                // Generate neighbor finding code
-                statements.push(`// Find neighbors for ${parsed.name}`);
-                statements.push(`var ${parsed.name}_count: u32 = 0u;`);
-                statements.push(`var ${parsed.name}_sum_x: f32 = 0.0;`);
-                statements.push(`var ${parsed.name}_sum_y: f32 = 0.0;`);
-                statements.push(`var ${parsed.name}_sum_vx: f32 = 0.0;`);
-                statements.push(`var ${parsed.name}_sum_vy: f32 = 0.0;`);
-                statements.push(`for (var _ni: u32 = 0u; _ni < arrayLength(&agentsRead); _ni++) {`);
-                statements.push(`if (_ni == i) { continue; }`);
-                statements.push(`let other = agentsRead[_ni];`);
-                statements.push(`let dx = x - other.x;`);
-                statements.push(`let dy = y - other.y;`);
-                statements.push(`let dist = sqrt(dx*dx + dy*dy);`);
-                statements.push(`if (dist < ${radiusExpr}) {`);
-                statements.push(`${parsed.name}_count += 1u;`);
-                statements.push(`${parsed.name}_sum_x += other.x;`);
-                statements.push(`${parsed.name}_sum_y += other.y;`);
-                statements.push(`${parsed.name}_sum_vx += other.vx;`);
-                statements.push(`${parsed.name}_sum_vy += other.vy;`);
-                statements.push(`}`);
-                statements.push(`}`);
-                return statements;
-            }
-
-            // Check if this is a mean() call
-            const meanMatch = parsed.expression.match(/mean\((\w+)\.(\w+)\)/);
-            if (meanMatch) {
-                const collection = meanMatch[1];
-                const property = meanMatch[2];
-                const collectionInfo = context.variables.get(collection);
-
-                if (collectionInfo?.type === 'neighbors') {
-                    // Use pre-computed sum
-                    context.variables.set(parsed.name, {
-                        type: 'mean_result',
-                        collection,
-                        property
-                    });
-
-                    statements.push(`var ${parsed.name}: f32 = 0.0;`);
-                    statements.push(`if (${collection}_count > 0u) {`);
-                    statements.push(`${parsed.name} = ${collection}_sum_${property} / f32(${collection}_count);`);
-                    statements.push(`}`);
-                    return statements;
-                }
-            }
-
-            // Check for array indexing like nearbyAgents[i].x
-            const arrayAccessMatch = parsed.expression.match(/(\w+)\[(\w+)\]\.(\w+)/);
-            if (arrayAccessMatch) {
-                // Replace with _loop_other reference if inside a loop
-                let expression = parsed.expression;
-                if (context.loopDepth > 0) {
-                    expression = expression.replace(
-                        /(\w+)\[(\w+)\]\.(\w+)/g,
-                        '_loop_other.$3'
-                    );
-                }
-                const transpiled = transpileExpression(expression, context);
-                statements.push(`var ${parsed.name}: f32 = ${transpiled};`);
-                context.variables.set(parsed.name, { type: 'scalar' });
-                return statements;
-            }
-
-            // Regular variable assignment
-            const transpiled = transpileExpression(parsed.expression, context);
-            statements.push(`var ${parsed.name}: f32 = ${transpiled};`);
-            context.variables.set(parsed.name, { type: 'scalar' });
-            return statements;
-        }
-
-        case 'foreach': {
-            const collection = parsed.collection;
-            const loopVar = parsed.varName || parsed.itemAlias;
-
-            const collectionInfo = context.variables.get(collection);
-
-            if (collectionInfo?.type === 'neighbors' && loopVar) {
-                const radiusExpr = collectionInfo.radiusExpr!;
-
-                context.currentLoopVar = loopVar;
-                context.loopDepth++;
-
-                statements.push(`// Foreach over ${collection}`);
-                statements.push(`for (var _ni: u32 = 0u; _ni < arrayLength(&agentsRead); _ni++) {`);
-                statements.push(`if (_ni == i) { continue; }`);
-                statements.push(`let _loop_other = agentsRead[_ni];`);
-                statements.push(`let _loop_dx = x - _loop_other.x;`);
-                statements.push(`let _loop_dy = y - _loop_other.y;`);
-                statements.push(`let _loop_dist = sqrt(_loop_dx*_loop_dx + _loop_dy*_loop_dy);`);
-                statements.push(`if (_loop_dist >= ${radiusExpr}) { continue; }`);
-                return statements;
-            }
-            return [];
-        }
-
-        case 'if': {
-            let condition = transpileExpression(parsed.condition, context);
-
-            // Fix type consistency: if comparing a _count variable (u32) with 0, use 0u
-            condition = condition.replace(/(\w+_count)\s*>\s*0\b/g, '$1 > 0u');
-
-            statements.push(`if (${condition}) {`);
-            return statements;
-        }
-
-        case 'elseif': {
-            let condition = transpileExpression(parsed.condition, context);
-            // Fix type consistency: if comparing a _count variable (u32) with 0, use 0u
-            condition = condition.replace(/(\w+_count)\s*>\s*0\b/g, '$1 > 0u');
-            statements.push(`else if (${condition}) {`);
-            return statements;
-        }
-
-        case 'else': {
-            statements.push('else {');
-            return statements;
-        }
-
-        case 'for': {
-            // Handle for loops over neighbor arrays
-            // for (var i = 0; i < nearbyAgents.length; i++)
-            const lengthMatch = parsed.condition.match(/(\w+)\s*<\s*(\w+)\.length/);
-            if (lengthMatch) {
-                const loopVar = lengthMatch[1];
-                const collection = lengthMatch[2];
-                const collectionInfo = context.variables.get(collection);
-
-                if (collectionInfo?.type === 'neighbors') {
-                    // We need to iterate over ALL agents and check if they're neighbors
-                    const radiusExpr = collectionInfo.radiusExpr!;
-
-                    // Use a unique loop variable name to avoid collision with outer 'i'
-                    const uniqueLoopVar = `_${loopVar}_loop`;
-                    context.currentLoopVar = uniqueLoopVar;
-                    context.loopDepth++;
-
-                    statements.push(`// Loop over ${collection}`);
-                    statements.push(`for (var ${uniqueLoopVar}: u32 = 0u; ${uniqueLoopVar} < arrayLength(&agents); ${uniqueLoopVar}++) {`);
-                    statements.push(`if (${uniqueLoopVar} == i) { continue; }`);
-                    statements.push(`let _loop_other = agents[${uniqueLoopVar}];`);
-                    statements.push(`let _loop_dx = x - _loop_other.x;`);
-                    statements.push(`let _loop_dy = y - _loop_other.y;`);
-                    statements.push(`let _loop_dist = sqrt(_loop_dx*_loop_dx + _loop_dy*_loop_dy);`);
-                    statements.push(`if (_loop_dist >= ${radiusExpr}) { continue; }`);
-                    statements.push(`// Nearby agent found - execute loop body`);
-                    return statements;
-                }
-            }
-
-            // Regular for loop
-            const init = parsed.init.replace(/^var\s+/, '');
-            const condition = transpileExpression(parsed.condition, context);
-            const increment = parsed.increment;
-            statements.push(`for (var ${init}; ${condition}; ${increment}) {`);
-            context.loopDepth++;
-            return statements;
-        }
-
-        case 'assignment': {
-            // Handle array indexing in assignment RHS
-            let expression = parsed.expression;
-
-            // Replace array[loopVar].property with _loop_other.property
-            // For the neighbors loop, we need to match the original DSL loop variable (i)
-            // against our internal unique loop variable
-            if (context.loopDepth > 0) {
-                // Replace nearbyAgents[i].property with _loop_other.property
-                // Match any collection name with [i] or similar
-                expression = expression.replace(
+    emitVar(name: string, expression: string, ctx: CompilationContext): string[] {
+        // Check for array indexing like nearbyAgents[i].x
+        const arrayAccessMatch = expression.match(/(\w+)\[(\w+)\]\.(\w+)/);
+        if (arrayAccessMatch) {
+            let expr = expression;
+            if (ctx.loopDepth > 0) {
+                expr = expr.replace(
                     /(\w+)\[(\w+)\]\.(\w+)/g,
                     '_loop_other.$3'
                 );
             }
-
-            const transpiled = transpileExpression(expression, context);
-
-            // Use local variables directly (x, y, vx, vy) without agent. prefix
-            let target = parsed.target;
-            statements.push(`${target} = ${transpiled};`);
-            return statements;
+            const transpiled = transpileExpression(expr, ctx);
+            ctx.variables.set(name, { type: 'scalar' });
+            return [`var ${name}: f32 = ${transpiled};`];
         }
 
-        case 'command': {
-            if (COMMANDS[parsed.command] !== undefined) {
-                // Handle sense command specially to account for 2 args
-                if (parsed.command === 'sense') {
-                    // sense(angle, dist) -> we need to split args
-                    // This is hacky because parseCommand only extracts one argument string "a, b"
-                    const args = parsed.argument.split(',').map(s => s.trim());
-                    const angleArg = transpileExpression(args[0], context);
-                    const distArg = transpileExpression(args[1], context);
-                    // _sense(x, y, vx, vy, angle, dist) - using local variables
-                    const result = `_sense(x, y, vx, vy, ${angleArg}, ${distArg})`;
-                    statements.push(result);
-                    return statements;
-                }
+        // Regular variable assignment
+        const transpiled = transpileExpression(expression, ctx);
+        ctx.variables.set(name, { type: 'scalar' });
+        return [`var ${name}: f32 = ${transpiled};`];
+    },
 
-                const template = COMMANDS[parsed.command];
-                const arg = transpileExpression(parsed.argument, context);
-                const result = DSLParser.applyCommandTemplate(template, arg);
-                statements.push(result);
-                return statements;
-            }
-            return [];
-        }
+    emitIf(condition: string, ctx: CompilationContext): string[] {
+        let cond = transpileExpression(condition, ctx);
+        // Fix type consistency: _count (u32) vs 0
+        cond = cond.replace(/(\w+_count)\s*>\s*0\b/g, '$1 > 0u');
+        return [`if (${cond}) {`];
+    },
 
-        case 'unknown':
-        default:
-            return [];
-    }
-}
+    emitElseIf(condition: string, ctx: CompilationContext): string[] {
+        let cond = transpileExpression(condition, ctx);
+        cond = cond.replace(/(\w+_count)\s*>\s*0\b/g, '$1 > 0u');
+        return [`else if (${cond}) {`];
+    },
 
-/**
- * Parse and transpile DSL with full boids support
- */
-function parseBoidsDSL(lines: LineInfo[], logger: Logger, rawScript: string, randomInputs: string[]): string[] {
-    const statements: string[] = [];
-    const context: WGSLContext = {
-        variables: new Map(),
-        loopDepth: 0,
-        randomInputs: new Set(randomInputs)
-    };
+    emitElse(_ctx: CompilationContext): string[] {
+        return ['else {'];
+    },
 
-    let currentIndent = '';
+    emitFor(init: string, condition: string, increment: string, ctx: CompilationContext): string[] {
+        // Handle for loops over neighbor arrays
+        const lengthMatch = condition.match(/(\w+)\s*<\s*(\w+)\.length/);
+        if (lengthMatch) {
+            const loopVar = lengthMatch[1];
+            const collection = lengthMatch[2];
+            const collectionInfo = ctx.variables.get(collection);
 
-    for (const line of lines) {
-        const trimmed = line.content.trim();
-        if (!trimmed) continue;
+            if (collectionInfo?.type === 'neighbors') {
+                const radiusExpr = collectionInfo.radiusExpr!;
+                const uniqueLoopVar = `_${loopVar}_loop`;
+                ctx.currentLoopVar = uniqueLoopVar;
+                ctx.loopDepth++;
 
-        // Check if line starts with a closing brace
-        const startsWithClose = trimmed.startsWith('}');
-        if (startsWithClose) {
-            if (currentIndent.length >= 4) {
-                currentIndent = currentIndent.slice(4);
-            }
-            if (context.loopDepth > 0 && !trimmed.includes('else')) {
-                // Only decrement loop depth if it's not and 'else'/'elseif' block
-                // which will be handled by their respective transpilation if needed
-                // or if it's a standalone }
+                return [
+                    `// Loop over ${collection}`,
+                    `for (var ${uniqueLoopVar}: u32 = 0u; ${uniqueLoopVar} < arrayLength(&agents); ${uniqueLoopVar}++) {`,
+                    `if (${uniqueLoopVar} == i) { continue; }`,
+                    `let _loop_other = agents[${uniqueLoopVar}];`,
+                    `let _loop_dx = x - _loop_other.x;`,
+                    `let _loop_dy = y - _loop_other.y;`,
+                    `let _loop_dist = sqrt(_loop_dx*_loop_dx + _loop_dy*_loop_dy);`,
+                    `if (_loop_dist >= ${radiusExpr}) { continue; }`,
+                    `// Nearby agent found - execute loop body`,
+                ];
             }
         }
 
-        const transpiled = transpileLine(trimmed, context);
+        // Regular for loop
+        const jsInit = init.replace(/^var\s+/, '');
+        const cond = transpileExpression(condition, ctx);
+        ctx.loopDepth++;
+        return [`for (var ${jsInit}; ${cond}; ${increment}) {`];
+    },
 
-        // Handle loop depth management based on parsed type
-        const parsed = DSLParser.parseDSLLine(trimmed);
-        if (parsed.type === 'brace' && trimmed === '}') {
-            if (context.loopDepth > 0) {
-                context.loopDepth--;
-                if (context.loopDepth === 0) {
-                    context.currentLoopVar = undefined;
-                }
-            }
+    emitForeach(collection: string, varName: string | undefined, _itemAlias: string | undefined, ctx: CompilationContext): string[] {
+        const loopVar = varName || _itemAlias;
+        const collectionInfo = ctx.variables.get(collection);
+
+        if (collectionInfo?.type === 'neighbors' && loopVar) {
+            const radiusExpr = collectionInfo.radiusExpr!;
+            ctx.currentLoopVar = loopVar;
+            ctx.loopDepth++;
+
+            return [
+                `// Foreach over ${collection}`,
+                `for (var _ni: u32 = 0u; _ni < arrayLength(&agentsRead); _ni++) {`,
+                `if (_ni == i) { continue; }`,
+                `let _loop_other = agentsRead[_ni];`,
+                `let _loop_dx = x - _loop_other.x;`,
+                `let _loop_dy = y - _loop_other.y;`,
+                `let _loop_dist = sqrt(_loop_dx*_loop_dx + _loop_dy*_loop_dy);`,
+                `if (_loop_dist >= ${radiusExpr}) { continue; }`,
+            ];
+        }
+        return [];
+    },
+
+    emitAssignment(target: string, expression: string, ctx: CompilationContext): string[] {
+        let expr = expression;
+        if (ctx.loopDepth > 0) {
+            expr = expr.replace(
+                /(\w+)\[(\w+)\]\.(\w+)/g,
+                '_loop_other.$3'
+            );
+        }
+        const transpiled = transpileExpression(expr, ctx);
+        return [`${target} = ${transpiled};`];
+    },
+
+    emitCommand(command: AVAILABLE_COMMANDS, argument: string, ctx: CompilationContext): string[] {
+        if (COMMANDS[command] === undefined) return [];
+
+        // Handle sense command specially for 2 args
+        if (command === 'sense') {
+            const args = argument.split(',').map(s => s.trim());
+            const angleArg = transpileExpression(args[0], ctx);
+            const distArg = transpileExpression(args[1], ctx);
+            return [`_sense(x, y, vx, vy, ${angleArg}, ${distArg})`];
         }
 
-        if (transpiled.length === 0 && trimmed !== '{' && trimmed !== '}') {
-            if (parsed.type === 'unknown') {
-                logger.codeError("Unknown syntax or command", rawScript, line.lineIndex);
-            }
+        const template = COMMANDS[command];
+        if (!template) return [];
+        const arg = transpileExpression(argument, ctx);
+        const result = DSLParser.applyCommandTemplate(template, arg);
+        return [result];
+    },
+
+    emitCloseBrace(ctx: CompilationContext): string[] {
+        if (ctx.loopDepth > 0) {
+            ctx.loopDepth--;
+            if (ctx.loopDepth === 0) ctx.currentLoopVar = undefined;
         }
+        return ['}'];
+    },
 
-        for (const stmt of transpiled) {
-            let outStmt = stmt;
+    emitProgram(statements: string[], inputs: string[], randomInputs: string[], _ctx: CompilationContext): string {
+        // Identify scalar inputs vs buffer inputs
+        const bufferInputs = ['trailMap', 'randomValues'];
+        const scalarInputs = inputs.filter(i => !bufferInputs.includes(i));
+        const hasTrailMap = inputs.includes('trailMap');
+        const hasRandomValues = inputs.includes('randomValues');
 
-            // If the original line had a closing brace and the transpiled stmt doesn't,
-            // we should probably prepend it or handle it.
-            // But transpileLine for 'else' and 'elseif' doesn't include the '}'
-            if (startsWithClose && !outStmt.startsWith('}')) {
-                outStmt = '} ' + outStmt;
-            }
+        // Generate structs
+        const inputFields =
+            scalarInputs.length > 0
+                ? scalarInputs.map(k => `    ${k}: f32,`).join('\n')
+                : '    _dummy: f32,';
 
-            statements.push(currentIndent + outStmt);
-
-            // Increase indent after opening braces (but not if the brace also closes on same line)
-            const opensBrace = stmt.includes('{') && !stmt.includes('}');
-            if (opensBrace) {
-                currentIndent += '    ';
-            }
-        }
-    }
-
-    return statements;
-}
-
-export const compileDSLtoWGSL = (lines: LineInfo[], inputs: string[], logger: Logger, rawScript: string, randomInputs: string[] = []): string => {
-    // Try new parser for boids-style DSL
-    const boidStatements = parseBoidsDSL(lines, logger, rawScript, randomInputs);
-
-    // Identify scalar inputs vs buffer inputs
-    const bufferInputs = ['trailMap', 'randomValues'];
-    const scalarInputs = inputs.filter(i => !bufferInputs.includes(i));
-    const hasTrailMap = inputs.includes('trailMap');
-    const hasRandomValues = inputs.includes('randomValues');
-
-    // Generate structs
-    const inputFields =
-        scalarInputs.length > 0
-            ? scalarInputs.map(k => `    ${k}: f32,`).join('\n')
-            : '    _dummy: f32,';
-
-    const inputStruct = `
+        const inputStruct = `
 struct Inputs {
 ${inputFields}
 };
 
 @group(0) @binding(1) var<uniform> inputs: Inputs;`.trim();
 
-    const agentStruct = `
+        const agentStruct = `
 struct Agent {
     id : f32,
     x  : f32,
@@ -558,38 +364,22 @@ struct Agent {
 @group(0) @binding(5) var<storage, read> agentsRead : array<Agent>;
 @group(0) @binding(6) var<storage, read_write> agentLogs : array<vec2<f32>>;`.trim();
 
-    // Separate trail map bindings for double-buffering
-    const trailMapReadBinding = hasTrailMap
-        ? `@group(0) @binding(2) var<storage, read> trailMapRead : array<f32>;`
-        : '';
+        const trailMapReadBinding = hasTrailMap
+            ? `@group(0) @binding(2) var<storage, read> trailMapRead : array<f32>;`
+            : '';
+        const trailMapWriteBinding = hasTrailMap
+            ? `@group(0) @binding(4) var<storage, read_write> trailMapWrite : array<atomic<i32>>;`
+            : '';
+        const randomValuesBinding = hasRandomValues
+            ? `@group(0) @binding(3) var<storage, read> randomValues : array<f32>;`
+            : '';
 
-    const trailMapWriteBinding = hasTrailMap
-        ? `@group(0) @binding(4) var<storage, read_write> trailMapWrite : array<atomic<i32>>;`
-        : '';
+        let mainBody = statements.join('\n        ');
+        if (statements.length === 0) {
+            mainBody = '// no-op or failed to parse';
+        }
 
-    const randomValuesBinding = hasRandomValues
-        ? `@group(0) @binding(3) var<storage, read> randomValues : array<f32>;`
-        : '';
-
-    // If no boid statements (and also no fallback needed really as boid parser covers all),
-    // we just use what we have. If empty, it's a no-op shader.
-    // The old command-based parser text was confusing and redundant.
-
-    // If boidStatements is empty but we have lines, maybe try the legacy parsing? 
-    // But boid parser builds on the same logic so it should be fine.
-    // The only case parseBoidsDSL returns empty is if there are no lines or errors.
-
-    // Fallback for simple command list without braces if needed, but slime.ts and boids.ts use braces/structure.
-    // If specific lines fail in parseBoidsDSL, they are skipped/logged.
-
-    let mainBody = boidStatements.join('\n        ');
-    if (boidStatements.length === 0 && lines.length > 0) {
-        // Try simple command parsing for legacy specific lines if parseBoidsDSL didn't catch them
-        // (Actually parseBoidsDSL calls transpileLine which handles commands, so it should be fine)
-        mainBody = '// no-op or failed to parse';
-    }
-
-    const computeFn = `
+        const computeFn = `
 @compute @workgroup_size(${WORKGROUP_SIZE}, 1, 1)
 fn main(
     @builtin(global_invocation_id) global_id : vec3<u32>,
@@ -619,12 +409,27 @@ fn main(
         agent.vx = vx;
         agent.vy = vy;
         agent.species = species;
-        // species is preserved (not modified by DSL code)
         agents[i] = agent;
     }
 }`.trim();
 
-    const helpers = hasTrailMap ? WGSL_HELPERS : '';
+        const helpers = hasTrailMap ? WGSL_HELPERS : '';
 
-    return [agentStruct, inputStruct, trailMapReadBinding, randomValuesBinding, trailMapWriteBinding, helpers, computeFn].join('\n\n');
+        return [agentStruct, inputStruct, trailMapReadBinding, randomValuesBinding, trailMapWriteBinding, helpers, computeFn].join('\n\n');
+    },
+};
+
+// ─── Entry Point ─────────────────────────────────────────────────────
+
+export const compileDSLtoWGSL = (
+    lines: LineInfo[],
+    inputs: string[],
+    logger: Logger,
+    rawScript: string,
+    randomInputs: string[] = [],
+): string => {
+    const ctx = createContext(randomInputs);
+    const statements = transpileDSL(lines, WGSLTarget, logger, rawScript, ctx);
+
+    return WGSLTarget.emitProgram(statements, inputs, randomInputs, ctx);
 };

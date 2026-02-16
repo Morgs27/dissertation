@@ -14,6 +14,10 @@ export class Compiler {
         this.Logger = new Logger('Compiler', 'orange');
     }
 
+    private cleanInlineComments(line: string): string {
+        return line.split('//')[0].split('#')[0].trim();
+    }
+
     /**
      * Preprocesses DSL code by removing comments and extracting input variables
      */
@@ -25,41 +29,34 @@ export class Compiler {
         const rawLines = dsl.split('\n');
 
         rawLines.forEach((line, index) => {
-            // Remove inline comments first
-            const cleanLine = line.split('//')[0].split('#')[0].trim();
-            if (cleanLine.length === 0) {
-                return;
-            }
 
             // Use the clean line for further processing
-            const trimmed = cleanLine;
+            const trimmed = this.cleanInlineComments(line);
 
-            // ... (keep the input parsing logic as is) ...
-            const inputMatch = trimmed.match(/^\s*input\s+([a-zA-Z_]\w*)\s*=\s*(.+?)\s*;(.*)$/);
+            // Parse input declarations: input name = value [min, max];
+            // Range annotation [min, max] is optional and appears before the semicolon
+            const inputMatch = trimmed.match(/^\s*input\s+([a-zA-Z_]\w*)\s*=\s*(.+?)\s*;?\s*$/);
             if (inputMatch) {
-                // ... same as before ...
                 const name = inputMatch[1];
-                const valuePart = inputMatch[2].trim();
-                const comment = inputMatch[3];
+                let valuePart = inputMatch[2].trim();
 
                 if (valuePart === 'random()') {
                     randomInputs.push(name);
                     return;
                 }
 
+                // Extract optional range annotation [min, max] from the value part
+                let min = 0;
+                let max = 100;
+                const rangeMatch = valuePart.match(/^(.+?)\s*\[\s*([0-9.]+)\s*,\s*([0-9.]+)\s*\]\s*$/);
+                if (rangeMatch) {
+                    valuePart = rangeMatch[1].trim();
+                    min = parseFloat(rangeMatch[2]);
+                    max = parseFloat(rangeMatch[3]);
+                }
+
                 const defaultValue = parseFloat(valuePart);
                 if (!isNaN(defaultValue)) {
-                    let min = 0;
-                    let max = 100;
-
-                    if (comment) {
-                        const rangeMatch = comment.match(/\[\s*([0-9.]+)\s*,\s*([0-9.]+)\s*\]/);
-                        if (rangeMatch) {
-                            min = parseFloat(rangeMatch[1]);
-                            max = parseFloat(rangeMatch[2]);
-                        }
-                    }
-
                     definedInputs.push({ name, defaultValue, min, max });
                     return;
                 }

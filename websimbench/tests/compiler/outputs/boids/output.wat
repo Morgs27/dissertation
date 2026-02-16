@@ -53,6 +53,7 @@
       (local $neighbor_y f32)
       (local $neighbor_vx f32)
       (local $neighbor_vy f32)
+      (local $neighbor_species f32)
       (local $_foreach_dx f32)
       (local $_foreach_dy f32)
       (local $_foreach_dist f32)
@@ -132,6 +133,7 @@
           (local.set $neighbor_y (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 8))))
           (local.set $neighbor_vx (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 12))))
           (local.set $neighbor_vy (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 16))))
+          (local.set $neighbor_species (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 20))))
           (if (i32.const 1) (then
             ;; Loop body will be inserted here by subsequent lines
     (local.set $neighbor_x (local.get $neighbor_x))
@@ -174,7 +176,7 @@
   
     )
 
-    (func (export "step_all") (param $base i32) (param $count i32)
+    (func (export "step_all") (param $base i32) (param $_total_count i32)
       (local $_outer_i i32) (local $ptr i32) (local $x f32) (local $y f32) (local $vx f32) (local $vy f32) (local $species f32)
       (local $nearbyAgents f32)
       (local $nearbyAgents_count f32)
@@ -201,6 +203,7 @@
       (local $neighbor_y f32)
       (local $neighbor_vx f32)
       (local $neighbor_vy f32)
+      (local $neighbor_species f32)
       (local $_foreach_dx f32)
       (local $_foreach_dy f32)
       (local $_foreach_dist f32)
@@ -214,7 +217,7 @@
       (local.set $ptr (local.get $base))
       (block $exit
         (loop $loop
-          (br_if $exit (i32.ge_u (local.get $_outer_i) (local.get $count)))
+          (br_if $exit (i32.ge_u (local.get $_outer_i) (local.get $_total_count)))
           
     ;; load agent fields
     (local.set $_agent_id (f32.load (i32.add (local.get $ptr) (i32.const 0))))
@@ -285,6 +288,7 @@
           (local.set $neighbor_y (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 8))))
           (local.set $neighbor_vx (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 12))))
           (local.set $neighbor_vy (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 16))))
+          (local.set $neighbor_species (f32.load (i32.add (local.get $_foreach_ptr) (i32.const 20))))
           (if (i32.const 1) (then
             ;; Loop body will be inserted here by subsequent lines
     (local.set $neighbor_x (local.get $neighbor_x))

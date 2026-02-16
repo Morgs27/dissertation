@@ -37,13 +37,13 @@ borderWrapping();
 deposit(inputs.depositAmount);
 `,
     'Boids': `
-input perceptionRadius = 40; // [0,100]
-input alignmentFactor = 0.01; // [0,0.1]
-input separationDist = 40; // [0,100]
-input separationFactor = 0.06; // [0,0.2]
-input maxSpeed = 1; // [0,10]
-input cohesionFactor = 0.01; //[0, 0.1]
-input dt = 1; // [0, 100]
+input perceptionRadius = 40 [0, 100];
+input alignmentFactor = 0.01 [0, 0.1];
+input separationDist = 40 [0, 100];
+input separationFactor = 0.06 [0, 0.2];
+input maxSpeed = 1 [0, 10];
+input cohesionFactor = 0.01 [0, 0.1];
+input dt = 1 [0, 100];
 
 // Find nearby neighbors
 var nearbyAgents = neighbors(inputs.perceptionRadius);
