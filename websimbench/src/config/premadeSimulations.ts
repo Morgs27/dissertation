@@ -446,5 +446,56 @@ if (vx < 0.5) vx = 0.5;
 limitSpeed(inputs.maxSpeed);
 borderWrapping();
 updatePosition(1.0);
+`,
+
+    'Cosmic Web': `
+species(5);
+
+// Cyclic Pursuit:
+// Species 0 chases 1
+// Species 1 chases 2
+// Species 2 chases 3
+// Species 3 chases 4
+// Species 4 chases 0
+
+input perception = 25;
+input force = 0.5;
+input maxSpeed = 2;
+input friction = 0.9;
+
+var nearby = neighbors(inputs.perception);
+
+foreach(nearby) {
+    var dx = nearby.x - x;
+    var dy = nearby.y - y;
+    var dist2 = dx*dx + dy*dy;
+    
+    if (dist2 > 0 && dist2 < inputs.perception^2) {
+        // Check if this neighbor is the target species
+        var targetSpecies = (species + 1) % 5;
+        
+        if (nearby.species == targetSpecies) {
+             // Attraction (Chase)
+             var dist = sqrt(dist2);
+             vx += (dx / dist) * inputs.force;
+             vy += (dy / dist) * inputs.force;
+        } 
+        
+        // Separation (Short range) - from everyone to avoid clumping too hard
+        if (dist2 < 100) { // dist < 10
+             var dist = sqrt(dist2);
+             vx -= (dx / dist) * inputs.force * 2.0;
+             vy -= (dy / dist) * inputs.force * 2.0;
+        }
+    }
+}
+
+// Friction / Damping
+vx *= inputs.friction;
+vy *= inputs.friction;
+
+limitSpeed(inputs.maxSpeed);
+borderWrapping();
+updatePosition(1.0);
 `
 };

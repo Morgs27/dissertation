@@ -1,0 +1,52 @@
+species(5);
+
+// Cyclic Pursuit:
+// Species 0 chases 1
+// Species 1 chases 2
+// Species 2 chases 3
+// Species 3 chases 4
+// Species 4 chases 0
+
+input perception = 25;
+input force = 0.5;
+input maxSpeed = 2;
+input friction = 0.9;
+
+var nearby = neighbors(inputs.perception);
+
+foreach(nearby) {
+    var dx = nearby.x - x;
+    var dy = nearby.y - y;
+    var dist2 = dx*dx + dy*dy;
+    
+    if (dist2 > 0 && dist2 < inputs.perception^2) {
+        var dist = sqrt(dist2);
+        var dirX = dx / dist;
+        var dirY = dy / dist;
+
+        // Check if this neighbor is the target species
+        var targetSpecies = (species + 1) % 5;
+        
+        if (nearby.species == targetSpecies) {
+            // Attraction (Chase)
+             // Force inverse to distance? or constant?
+             // Constant force works well for "swarming"
+             vx += dirX * inputs.force;
+             vy += dirY * inputs.force;
+        } 
+        
+        // Separation (Short range) - from everyone to avoid clumping too hard
+        if (dist < 10) {
+            vx -= dirX * inputs.force * 2.0;
+            vy -= dirY * inputs.force * 2.0;
+        }
+    }
+}
+
+// Friction / Damping
+vx *= inputs.friction;
+vy *= inputs.friction;
+
+limitSpeed(inputs.maxSpeed);
+borderWrapping();
+updatePosition(1.0);
