@@ -195,8 +195,8 @@ updatePosition(1.0);
 
     'Predator-Prey': `
 species(2); 
-// 0 = Prey (Green-ish)
-// 1 = Predator (Red-ish)
+// 0 = Prey
+// 1 = Predator
 
 input preyCohesion = 0.08;
 input preySeparation = 0.15;
@@ -330,9 +330,9 @@ borderWrapping();
 
     'Multi-Species Boids': `
 species(3); 
-// 0: Red - Aggressive/Fast
-// 1: Green - Balanced/Social
-// 2: Blue - Solitary/Slow
+// 0: Aggressive/Fast
+// 1: Balanced/Social
+// 2: Solitary/Slow
 
 input perception = 40;
 input separationVal = 0.5;

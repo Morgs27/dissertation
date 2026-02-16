@@ -295,7 +295,7 @@ registerCommand({
 registerCommand({
     name: 'avoidObstacles',
     emit(argument, target, ctx) {
-        const a = arg(argument, target, ctx);
+        const a = argument.trim() ? arg(argument, target, ctx) : arg('1.0', target, ctx);
         if (target.name === 'js') return [`_avoidObstacles(${a});`];
         if (target.name === 'wgsl') return [`_avoidObstacles(${a}, &x, &y, &vx, &vy);`];
         if (target.name === 'wat') {

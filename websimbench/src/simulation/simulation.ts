@@ -4,7 +4,7 @@ import { Grapher } from "./helpers/grapher";
 import Logger from "./helpers/logger";
 import { PerformanceMonitor } from "./performance";
 import { Renderer } from "./renderer";
-import type { SimulationConstructor, Method, InputValues, Agent, CompilationResult, RenderMode } from "./types";
+import type { SimulationConstructor, Method, InputValues, Agent, CompilationResult, RenderMode, SimulationAppearance } from "./types";
 import GPU from "./helpers/gpu";
 export const MAX_AGENTS = 10_000_000;
 
@@ -108,6 +108,10 @@ export class Simulation {
 
         this.Renderer.initGPU(gpuDevice);
         this.ComputeEngine.initGPU(gpuDevice);
+    }
+
+    public updateAppearance(appearance: SimulationAppearance) {
+        this.Renderer.setAppearance(appearance);
     }
 
     public destroy() {

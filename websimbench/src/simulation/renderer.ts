@@ -74,6 +74,10 @@ export class Renderer {
         return this.appearance;
     }
 
+    setAppearance(appearance: SimulationAppearance) {
+        this.appearance = appearance;
+    }
+
     renderBackground() {
         const ctx = this.ensureContext();
         ctx.fillStyle = this.appearance.backgroundColor;

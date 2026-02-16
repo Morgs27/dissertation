@@ -56,7 +56,8 @@ export function useSimulationRunner(
         agentSize: options.agentSize,
         agentShape: options.agentShape,
         showTrails: options.showTrails,
-        trailColor: options.trailColor
+        trailColor: options.trailColor,
+        speciesColors: options.speciesColors,
       };
 
       simulationRef.current = new Simulation({
@@ -116,7 +117,22 @@ export function useSimulationRunner(
       isRunningRef.current = false;
       setIsRunning(false);
     }
-  }, [code, inputs, method, renderMode, options, obstacles]);
+  }, [code, inputs, method, renderMode, inputs.agentCount, obstacles]); // Remove full 'options' dependency to prevent restart on appearance change
+
+  // Update appearance in real-time without restarting
+  useEffect(() => {
+    if (simulationRef.current) {
+      simulationRef.current.updateAppearance({
+        agentColor: options.agentColor,
+        backgroundColor: options.backgroundColor,
+        agentSize: options.agentSize,
+        agentShape: options.agentShape,
+        showTrails: options.showTrails,
+        trailColor: options.trailColor,
+        speciesColors: options.speciesColors
+      });
+    }
+  }, [options]);
 
   // Keep inputsRef synchronized with inputs and obstacles
   useEffect(() => {
