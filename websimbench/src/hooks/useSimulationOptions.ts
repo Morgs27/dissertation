@@ -12,19 +12,27 @@ export interface SimulationAppearanceOptions {
   trailOpacity: number;
   trailColor: string;
   logLevel: LogLevel;
+  speciesColors: string[];
 }
 
 export type UpdateOptionFn = <K extends keyof SimulationAppearanceOptions>(key: K, value: SimulationAppearanceOptions[K]) => void;
 
 const DEFAULT_OPTIONS: SimulationAppearanceOptions = {
-  agentColor: '#00FFFF', // Cyan
+  agentColor: '#00FFFF', // Cyan (Default species 0)
   backgroundColor: '#000000', // Black
   agentSize: 3,
   agentShape: 'circle',
   showTrails: true,
   trailOpacity: 1.0,
   trailColor: '#50FFFF', // Light Cyan default
-  logLevel: LogLevel.Info
+  logLevel: LogLevel.Info,
+  speciesColors: [
+    '#00FFFF', // Cyan
+    '#FF4466', // Red-pink
+    '#44FF66', // Green
+    '#FFAA22', // Orange
+    '#AA66FF', // Purple
+  ]
 };
 
 export function useSimulationOptions() {

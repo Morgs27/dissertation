@@ -19,6 +19,7 @@ export type SimulationAppearance = {
     showTrails: boolean;
     trailOpacity?: number;
     trailColor: string;
+    speciesColors?: string[];
 }
 
 export type InputValues = {

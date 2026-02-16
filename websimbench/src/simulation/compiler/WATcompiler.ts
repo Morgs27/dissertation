@@ -266,13 +266,21 @@ function parseCondition(condition: string, randomInputs: Set<string>, watCtx?: W
 
 // ─── WAT Context ─────────────────────────────────────────────────────
 
+interface BlockEntry {
+  type: 'if' | 'foreach' | 'for';
+  /** Extra closing parens needed when this block is closed (from elseif expansion) */
+  pendingClose: number;
+}
+
 interface WATContext {
   loopDepth: number;
   currentLoopVar?: string;
   /** Track neighbors variable info for foreach distance filtering */
   neighborsInfo: Map<string, { radiusExpr: string }>;
   /** Track block types for proper close-brace handling */
-  blockStack: ('if' | 'foreach' | 'for')[];
+  blockStack: BlockEntry[];
+  /** Pending closures to transfer to the next pushed block entry */
+  deferredPendingClose: number;
   /** Counter for inline random() call sites (for indexed randomValues buffer) */
   randomCallCount: number;
   /** Total random values per agent (randomInputs + inline random calls) */
@@ -366,7 +374,8 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
     }
 
     case "if": {
-      context.blockStack.push('if');
+      context.blockStack.push({ type: 'if', pendingClose: context.deferredPendingClose });
+      context.deferredPendingClose = 0;
       
       // Replace loop variable property access in conditions
       let condition = parsed.condition;
@@ -388,14 +397,16 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
     }
 
     case "else":
-      context.blockStack.push('if');
+      context.blockStack.push({ type: 'if', pendingClose: context.deferredPendingClose });
+      context.deferredPendingClose = 0;
       return "(else";
     case "elseif":
-      context.blockStack.push('if');
+      context.blockStack.push({ type: 'if', pendingClose: context.deferredPendingClose });
+      context.deferredPendingClose = 0;
       return `(elseif ${parseCondition(parsed.condition, randomInputs, context)}`;
 
     case "for": {
-      context.blockStack.push('for');
+      context.blockStack.push({ type: 'for', pendingClose: 0 });
       context.loopDepth++;
       const initMatch = parsed.init.match(/var\s+(\w+)\s*=\s*(.+)/);
       const condMatch = parsed.condition.match(/(\w+)\s*<\s*(\w+)\.length/);
@@ -438,7 +449,7 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
       if (loopVar) {
         context.currentLoopVar = loopVar;
         context.loopDepth++;
-        context.blockStack.push('foreach');
+        context.blockStack.push({ type: 'foreach', pendingClose: 0 });
         localVars.add("_foreach_idx"); localVars.add("_foreach_ptr"); localVars.add(`${loopVar}_x`);
         localVars.add(`${loopVar}_y`); localVars.add(`${loopVar}_vx`); localVars.add(`${loopVar}_vy`);
         localVars.add(`${loopVar}_species`);
@@ -574,12 +585,12 @@ export const compileDSLtoWAT = (
   const statements: string[] = [];
   const localVars = new Set<string>();
   const randomInputsSet = new Set(randomInputs);
-  let pendingClosures = 0;
 
   const context: WATContext = {
     loopDepth: 0,
     neighborsInfo: new Map(),
     blockStack: [],
+    deferredPendingClose: 0,
     randomCallCount: 0,
     numRandomCalls,
     numRandomInputs: randomInputs.length,
@@ -594,10 +605,12 @@ export const compileDSLtoWAT = (
     if (trimmed.startsWith("}") && trimmed !== "}") {
       // Pop the block for the implicit }
       const closedBlock = context.blockStack.pop();
-      if (closedBlock === 'foreach' || closedBlock === 'for') {
+      if (closedBlock && (closedBlock.type === 'foreach' || closedBlock.type === 'for')) {
         context.loopDepth--;
         if (context.loopDepth <= 0) context.currentLoopVar = undefined;
       }
+      // Transfer pending closures to deferred (will be picked up by next block push)
+      if (closedBlock) context.deferredPendingClose += closedBlock.pendingClose;
       statements.push(")");
     }
 
@@ -624,31 +637,28 @@ export const compileDSLtoWAT = (
       }
       const followedByElse = nextLineContent.startsWith("else") || nextLineContent.startsWith("} else");
 
-      if (closedBlock === 'foreach') {
+      if (closedBlock && closedBlock.type === 'foreach') {
         // Close the foreach loop: close the distance/body if, skip-self if, then loop/block
         context.loopDepth--;
         if (context.loopDepth <= 0) context.currentLoopVar = undefined;
         
-        if (followedByElse) {
-          // Foreach can't have else, but just in case
-          transpiled = `))\n    ))\n    (local.set $_foreach_idx (i32.add (local.get $_foreach_idx) (i32.const 1)))\n    (local.set $_foreach_ptr (i32.add (local.get $_foreach_ptr) (i32.const 24)))\n    (br $_foreach_loop)\n    )\n    )`;
-        } else {
-          transpiled = `))\n    ))\n    (local.set $_foreach_idx (i32.add (local.get $_foreach_idx) (i32.const 1)))\n    (local.set $_foreach_ptr (i32.add (local.get $_foreach_ptr) (i32.const 24)))\n    (br $_foreach_loop)\n    )\n    )`;
-        }
-      } else if (closedBlock === 'for') {
+        transpiled = `))\n    ))\n    (local.set $_foreach_idx (i32.add (local.get $_foreach_idx) (i32.const 1)))\n    (local.set $_foreach_ptr (i32.add (local.get $_foreach_ptr) (i32.const 24)))\n    (br $_foreach_loop)\n    )\n    )`;
+      } else if (closedBlock && closedBlock.type === 'for') {
         context.loopDepth--;
         if (context.loopDepth <= 0) context.currentLoopVar = undefined;
         // Close for loop structure
         transpiled = `))\n    ))\n    (local.set $_for_idx (i32.add (local.get $_for_idx) (i32.const 1)))\n    (local.set $_for_ptr (i32.add (local.get $_for_ptr) (i32.const 24)))\n    (br $_for_loop)\n    )\n    )`;
       } else {
         // Regular if/else close brace
+        const entryPendingClose = closedBlock ? closedBlock.pendingClose : 0;
         if (followedByElse) {
           transpiled = ")";
+          // Transfer this block's pending closures to deferred for the next pushed block
+          context.deferredPendingClose += entryPendingClose;
         } else {
           transpiled = "))";
-          if (pendingClosures > 0) {
-            transpiled += ")".repeat(pendingClosures);
-            pendingClosures = 0;
+          if (entryPendingClose > 0) {
+            transpiled += ")".repeat(entryPendingClose);
           }
         }
       }
@@ -659,7 +669,10 @@ export const compileDSLtoWAT = (
       if (transpiled.startsWith("(elseif")) {
         const cond = transpiled.substring(8);
         transpiled = `(else (if ${cond} (then`;
-        pendingClosures += 2;
+        // Add 2 pending closures to the block entry just pushed by the elseif handler
+        // These close the (else and (if that were opened by the expansion
+        const lastEntry = context.blockStack[context.blockStack.length - 1];
+        if (lastEntry) lastEntry.pendingClose += 2;
       }
 
       statements.push(transpiled);

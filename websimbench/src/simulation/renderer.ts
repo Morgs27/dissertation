@@ -140,9 +140,14 @@ export class Renderer {
         const radius = this.appearance.agentSize;
         const isCircle = this.appearance.agentShape === 'circle';
 
+        // Use configured species colors or fallback to default palette
+        const palette = this.appearance.speciesColors && this.appearance.speciesColors.length > 0
+            ? this.appearance.speciesColors
+            : SPECIES_PALETTE;
+
         agents.forEach(agent => {
             const speciesIdx = agent.species || 0;
-            ctx.fillStyle = SPECIES_PALETTE[speciesIdx % SPECIES_PALETTE.length];
+            ctx.fillStyle = palette[speciesIdx % palette.length];
             ctx.beginPath();
             if (isCircle) {
                 ctx.arc(agent.x, agent.y, radius, 0, Math.PI * 2);
@@ -401,9 +406,16 @@ export class Renderer {
         this.gpuHelper.writeBuffer(device, this.gpuUniformBuffer, uniformData);
 
         // Create species color palette uniform (8 colors × vec4<f32>)
+        // Use configured or fallback
+        const paletteSource = this.appearance.speciesColors && this.appearance.speciesColors.length > 0
+            ? this.appearance.speciesColors
+            : SPECIES_PALETTE;
+
         const paletteData = new Float32Array(8 * 4);
         for (let i = 0; i < 8; i++) {
-            const { r, g, b } = hexToRgb(SPECIES_PALETTE[i]);
+            // Cycle through available colors if we need more than we have
+            const colorHex = paletteSource[i % paletteSource.length];
+            const { r, g, b } = hexToRgb(colorHex);
             paletteData[i * 4] = r;
             paletteData[i * 4 + 1] = g;
             paletteData[i * 4 + 2] = b;

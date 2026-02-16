@@ -1,0 +1,62 @@
+input vision = 60;
+input safeDist = 30;
+input maxSpeed = 3;
+input accel = 0.05;
+input laneChangeProb = 0.02;
+
+var nearby = neighbors(inputs.vision);
+var distAhead = 9999;
+
+// Analyze traffic ahead
+foreach(nearby) {
+    var dx = nearby.x - x;
+    var dy = nearby.y - y;
+    
+    // Check if car is in front (dx > 0) and in same lane (abs(dy) small)
+    // Account for wrap-around visual check? (omitted for simplicity for now)
+    
+    if (dx > 0 && dx < inputs.vision) {
+        // Roughly in same lane?
+        if (dy * dy < 100) { // +/- 10 pixels vertical
+            if (dx < distAhead) {
+                distAhead = dx;
+            }
+        }
+    }
+}
+
+// Driving logic
+if (distAhead < inputs.safeDist) {
+    // Car ahead! Brake or change lane
+    vx *= 0.9; // Brake
+    
+    if (random() < inputs.laneChangeProb) {
+        // Try changing lane
+        if (random() < 0.5) {
+            y -= 15; // Move up lane
+        } else {
+            y += 15; // Move down lane
+        }
+    }
+} else {
+    // Clear road
+    
+    // Random braking (human error)
+    if (random() < 0.1) {
+        vx *= 0.9;
+    } else {
+        // Accelerate
+        vx += inputs.accel;
+    }
+}
+
+// Lane centering / damping y velocity (simulate lanes)
+vy *= 0.8;
+
+// Keep moving right
+if (vx < 0.5) vx = 0.5; // Minimum speed
+limitSpeed(inputs.maxSpeed);
+
+// Wrap
+borderWrapping();
+updatePosition(1.0);

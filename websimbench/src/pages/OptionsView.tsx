@@ -49,23 +49,29 @@ export const OptionsView = ({ options, updateOption, resetOptions }: OptionsView
             <div className="grid gap-8">
               <div className="space-y-3">
                 <Label className="text-xs font-bold text-gray-400 flex items-center gap-2">
-                  Agent Color
+                  Species Colors
                 </Label>
-                <div className="flex items-center gap-4 bg-black/20 p-3 rounded-xl border border-white/5 focus-within:border-tropicalTeal/30 transition-all">
-                  <div className="relative w-10 h-10 shrink-0 rounded-lg overflow-hidden border border-white/10 shadow-lg">
-                    <Input
-                      type="color"
-                      className="absolute inset-[-10px] w-[200%] h-[200%] cursor-pointer border-none p-0"
-                      value={options.agentColor}
-                      onChange={(e) => updateOption('agentColor', e.target.value)}
-                    />
-                  </div>
-                  <Input
-                    type="text"
-                    className="flex-1 h-10 bg-transparent border-none text-sm font-mono focus:ring-0"
-                    value={options.agentColor}
-                    onChange={(e) => updateOption('agentColor', e.target.value)}
-                  />
+                <div className="grid grid-cols-5 gap-2">
+                  {(options.speciesColors || ['#00FFFF']).map((color, idx) => (
+                    <div key={idx} className="space-y-1">
+                      <div className="flex items-center gap-4 bg-black/20 p-2 rounded-xl border border-white/5 focus-within:border-tropicalTeal/30 transition-all">
+                        <div className="relative w-full aspect-square shrink-0 rounded-lg overflow-hidden border border-white/10 shadow-lg">
+                          <Input
+                            type="color"
+                            className="absolute inset-[-10px] w-[200%] h-[200%] cursor-pointer border-none p-0"
+                            value={color}
+                            onChange={(e) => {
+                              const newColors = [...(options.speciesColors || [])];
+                              newColors[idx] = e.target.value;
+                              updateOption('speciesColors', newColors);
+                              if (idx === 0) updateOption('agentColor', e.target.value); // Sync primarily color
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <div className="text-[10px] text-center text-gray-500 font-mono">#{idx}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
 

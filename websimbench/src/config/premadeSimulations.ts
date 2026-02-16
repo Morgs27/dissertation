@@ -295,5 +295,156 @@ else {
 
 borderWrapping();
 updatePosition(1.0);
+`,
+
+    'Rain': `
+input gravity = 0.5;
+input wind = 0.1;
+input terminalVelocity = 10;
+input resetY = 0;
+
+// Apply gravity
+vy += inputs.gravity;
+
+// Apply wind with some noise
+var r = random();
+vx += inputs.wind + (r - 0.5) * 0.2;
+
+// Limit speed
+limitSpeed(inputs.terminalVelocity);
+
+// Move
+updatePosition(1.0);
+
+// Reset if at bottom (rain recycling)
+if (y >= inputs.height) {
+    y = 0;
+    x = random() * inputs.width;
+    vy = 2; // Initial fall speed
+    vx = 0; // Reset horizontal
+}
+
+// Standard wrap for wind
+borderWrapping();
+`,
+
+    'Multi-Species Boids': `
+species(3); 
+// 0: Red - Aggressive/Fast
+// 1: Green - Balanced/Social
+// 2: Blue - Solitary/Slow
+
+input perception = 40;
+input separationVal = 0.5;
+input cohesionVal = 0.05;
+input alignVal = 0.05;
+input maxSpeed = 2;
+
+var nearby = neighbors(inputs.perception);
+var avgX = 0;
+var avgY = 0;
+var avgVx = 0;
+var avgVy = 0;
+var count = 0;
+
+foreach(nearby) {
+    var dx = x - nearby.x;
+    var dy = y - nearby.y;
+    var dist2 = dx*dx + dy*dy;
+    
+    // Separation from everyone (avoid collisions)
+    if (dist2 < 100 && dist2 > 0) {
+        vx += dx * inputs.separationVal;
+        vy += dy * inputs.separationVal;
+    }
+
+    // Species-specific behavior
+    if (species == nearby.species) {
+        // Cohesion/Alignment with own kind
+        avgX += nearby.x;
+        avgY += nearby.y;
+        avgVx += nearby.vx;
+        avgVy += nearby.vy;
+        count += 1;
+    } else {
+        // Avoid other species slightly
+        if (dist2 < 400) {
+            vx += dx * 0.1;
+            vy += dy * 0.1;
+        }
+    }
+}
+
+if (count > 0) {
+    avgX /= count; avgY /= count;
+    avgVx /= count; avgVy /= count;
+    
+    // Apply flocking forces
+    vx += (avgX - x) * inputs.cohesionVal;
+    vy += (avgY - y) * inputs.cohesionVal;
+    vx += (avgVx - vx) * inputs.alignVal;
+    vy += (avgVy - vy) * inputs.alignVal;
+}
+
+// Species quirks
+if (species == 0) {
+    limitSpeed(inputs.maxSpeed * 1.5); // Fast
+} else if (species == 2) {
+    limitSpeed(inputs.maxSpeed * 0.7); // Slow
+    // Solitary wandering
+    var r = random();
+    turn((r-0.5) * 0.2);
+} else {
+    limitSpeed(inputs.maxSpeed); // Normal
+}
+
+borderWrapping();
+updatePosition(1.0);
+`,
+
+    'Traffic': `
+input vision = 60;
+input pspace = 15;
+input maxSpeed = 3;
+
+var nearby = neighbors(inputs.vision);
+var closestDist = 9999;
+
+foreach(nearby) {
+    var dx = nearby.x - x;
+    var dy = nearby.y - y;
+
+    // Only interact with cars in front
+    if (dx > 0 && dx < inputs.vision && dy*dy < 100) {
+        if (dx < closestDist) {
+            closestDist = dx;
+        }
+    }
+}
+
+if (closestDist < inputs.pspace) {
+    // Brake hard if too close
+    vx *= 0.8;
+} else {
+    // Clear road
+    
+    // Random braking (human error)
+    if (random() < 0.1) {
+        vx *= 0.9;
+    } else {
+        // Accelerate
+        vx += 0.05;
+    }
+}
+
+// Keep in lane (dampen Y)
+vy *= 0.8;
+
+// Keep moving right
+if (vx < 0.5) vx = 0.5;
+
+limitSpeed(inputs.maxSpeed);
+borderWrapping();
+updatePosition(1.0);
 `
 };
