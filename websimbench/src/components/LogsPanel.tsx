@@ -96,7 +96,7 @@ export const LogsPanel = ({ logs, onClear }: LogsPanelProps) => {
                   log.level === 'Warning' ? 'text-orange-400' :
                     'text-tropicalTeal'
                   }`}>[{log.context}]</span>
-                <span className={`${log.level === 'Error' ? 'text-red-300' :
+                <span className={`whitespace-pre-wrap ${log.level === 'Error' ? 'text-red-300' :
                   log.level === 'Warning' ? 'text-orange-200' :
                     'text-gray-300'
                   }`}>{log.message}</span>

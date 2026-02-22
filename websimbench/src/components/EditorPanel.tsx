@@ -24,6 +24,7 @@ interface EditorPanelProps {
   handleLoadCode: (e: React.ChangeEvent<HTMLInputElement>) => void;
   compiledCode: { js: string; wasm: string; wgsl: string };
   isCompiling: boolean;
+  compileErrors: { message: string; lineIndex: number }[];
 }
 
 const editorStyle = {
@@ -39,7 +40,8 @@ export const EditorPanel = ({
   handleSaveCode,
   handleLoadCode,
   compiledCode,
-  isCompiling
+  isCompiling,
+  compileErrors
 }: EditorPanelProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -138,7 +140,17 @@ export const EditorPanel = ({
           <Editor
             value={code}
             onValueChange={setCode}
-            highlight={code => highlight(code, languages.js, 'js')}
+            highlight={code => {
+              const lines = code.split('\n');
+              return lines.map((lineContent, i) => {
+                const error = compileErrors.find(e => e.lineIndex === i);
+                const highlighted = highlight(lineContent, languages.js, 'js');
+                if (error) {
+                  return `<span style="text-decoration: underline wavy red; text-decoration-skip-ink: none; background-color: rgba(255, 0, 0, 0.1);" title="${error.message}">${highlighted || ' '}</span>`;
+                }
+                return highlighted || ' ';
+              }).join('\n');
+            }}
             padding={16}
             style={editorStyle}
             textareaClassName="focus:outline-none"

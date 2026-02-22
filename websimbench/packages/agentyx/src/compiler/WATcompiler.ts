@@ -8,7 +8,6 @@
  * than curly braces.
  */
 
-import Logger from "../helpers/logger";
 import { DSLParser, type LineInfo } from "./parser";
 import type { CompilerTarget, CompilationContext } from './compilerTarget';
 import { createContext } from './compilerTarget';
@@ -292,6 +291,10 @@ interface WATContext {
   currentLoopVar?: string;
   /** Track neighbors variable info for foreach distance filtering */
   neighborsInfo: Map<string, { radiusExpr: string }>;
+  variables: Map<string, { type: 'neighbors' | 'mean_result' | 'scalar' | 'loop_index'; radiusExpr?: string; collection?: string; property?: string; }>;
+  randomInputs: Set<string>;
+  usedFunctions: Set<string>;
+  localVars: Set<string>;
   /** Track block types for proper close-brace handling */
   blockStack: BlockEntry[];
   /** Pending closures to transfer to the next pushed block entry */
@@ -302,6 +305,9 @@ interface WATContext {
   numRandomCalls: number;
   /** Number of random input declarations (offset for inline random calls) */
   numRandomInputs: number;
+  errors: { message: string, lineIndex: number }[];
+  inputs: Set<string>;
+  currentLineIndex: number;
 }
 
 // ─── WAT transpileLine ───────────────────────────────────────────────
@@ -519,7 +525,7 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
 
     case "command": {
       // Delegate to centralized command registry
-      const ctx: CompilationContext = createContext(Array.from(randomInputs));
+      const ctx: CompilationContext = createContext(Array.from(context.inputs), Array.from(randomInputs), context.numRandomCalls);
       ctx.localVars = localVars;
       if (context.currentLoopVar) ctx.currentLoopVar = context.currentLoopVar;
       ctx.loopDepth = context.loopDepth;
@@ -597,31 +603,35 @@ export const WATTarget: CompilerTarget = {
  *
  * @param lines - Parsed DSL line array from preprocessing.
  * @param inputs - Required input names.
- * @param logger - Logger instance for compilation diagnostics.
- * @param rawScript - Original raw DSL source (used for error reporting).
  * @param randomInputs - Names of random-valued input declarations.
  * @param numRandomCalls - Total random values needed per agent per frame.
  * @returns Complete WAT module source as a string.
  */
-export function compileDSLtoWAT(
+export const compileDSLtoWAT = (
   lines: LineInfo[],
   inputs: string[],
-  logger: Logger,
-  rawScript: string,
   randomInputs: string[] = [],
   numRandomCalls: number = 0,
-): string {
+): { code: string, errors: { message: string, lineIndex: number }[] } => {
   const statements: string[] = [];
   const localVars = new Set<string>();
   const randomInputsSet = new Set(randomInputs);
+  const errors: { message: string, lineIndex: number }[] = [];
 
   const context: WATContext = {
     loopDepth: 0,
     neighborsInfo: new Map(),
+    variables: new Map(),
+    randomInputs: randomInputsSet,
+    usedFunctions: new Set(),
+    localVars,
     blockStack: [],
     deferredPendingClose: 0,
     randomCallCount: 0,
     numRandomCalls,
+    errors,
+    inputs: new Set(inputs),
+    currentLineIndex: 0,
     numRandomInputs: randomInputs.length,
   };
 
@@ -646,9 +656,8 @@ export function compileDSLtoWAT(
     let transpiled = transpileLine(trimmed, localVars, randomInputsSet, context);
 
     if (transpiled === null && trimmed !== "}") {
-      const parsed = DSLParser.parseDSLLine(trimmed);
-      if (parsed.type === 'unknown') {
-        logger.codeError("Unknown syntax or command", rawScript, line.lineIndex);
+      if (context.blockStack.length > 0) {
+        errors.push({ message: 'Missing closing brace', lineIndex: lines[lines.length - 1].lineIndex });
       }
     }
 
@@ -749,7 +758,8 @@ export function compileDSLtoWAT(
 
   const stepFuncLocals = localVars.size > 0 ? `\n      ${localVarDecls}` : "";
 
-  return `
+  return {
+    code: `
   (module
     (import "env" "memory" (memory 1))
     (import "env" "sin" (func $sin (param f32) (result f32)))
@@ -836,5 +846,6 @@ export function compileDSLtoWAT(
         )
       )
     )
-  )`;
+  )`, errors
+  };
 };

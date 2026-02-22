@@ -200,7 +200,6 @@ export default class WebGPU {
         device.popErrorScope().then(error => {
             if (error) {
                 this.logger.error("WebGPU Validation Error during initialization:", error.message);
-                this.logger.error("WGSL Code that failed:\n", this.wgslCode);
             }
         });
 
@@ -571,9 +570,6 @@ export default class WebGPU {
                     updatedAgents[i].species = data[base + 5];
                 }
 
-                if (updatedAgents.length > 0) {
-                    this.logger.log(`Readback complete: Agent[0] updated to x=${updatedAgents[0].x.toFixed(2)}, y=${updatedAgents[0].y.toFixed(2)}`);
-                }
             } finally {
                 this.stagingReadbackBuffer!.unmap(); // reuse next call
             }

@@ -7,7 +7,6 @@
  * with the WebAssembly and WebGPU backends.
  */
 
-import type Logger from '../helpers/logger';
 import type { LineInfo } from './parser';
 import { transformExpression } from './expressionAST';
 import type { CompilerTarget, CompilationContext } from './compilerTarget';
@@ -283,16 +282,13 @@ ${helpers.join('\n')}
 export const compileDSLtoJS = (
     lines: LineInfo[],
     inputs: string[],
-    logger: Logger,
-    rawScript: string,
     randomInputs: string[] = [],
     numRandomCalls: number = 0,
-): string => {
-    const ctx = createContext(randomInputs, numRandomCalls);
-    const statements = transpileDSL(lines, JSTarget, logger, rawScript, ctx);
+): { code: string, errors: { message: string, lineIndex: number }[] } => {
+    const ctx = createContext(inputs, randomInputs, numRandomCalls);
+    const statements = transpileDSL(lines, JSTarget, ctx);
 
     const result = JSTarget.emitProgram(statements, inputs, randomInputs, ctx);
 
-    logger.info('Generated JavaScript function');
-    return result;
+    return { code: result, errors: ctx.errors };
 };

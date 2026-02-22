@@ -84,9 +84,18 @@ export class Compiler {
         this.logger.info('Compiling agent code');
 
         const preprocessed = this.preprocessDSL(script);
-        const compiled = this.compileToAllTargets(preprocessed, script);
+        const compiled = this.compileToAllTargets(preprocessed);
 
         this.logCompilationResults(compiled, preprocessed);
+
+        // Deduplicate and output all compilation errors via the logger instance
+        const uniqueErrors = new Map<string, { message: string, lineIndex: number }>();
+        for (const err of compiled.errors) {
+            uniqueErrors.set(`${err.lineIndex}:${err.message}`, err);
+        }
+        for (const err of uniqueErrors.values()) {
+            this.logger.codeError(err.message, script, err.lineIndex);
+        }
 
         return this.buildCompilationResult(preprocessed, compiled);
     }
@@ -312,21 +321,25 @@ export class Compiler {
 
     /** Compile preprocessed DSL to all three backends (JS, WGSL, WAT). */
     private compileToAllTargets(
-        preprocessed: PreprocessResult,
-        script: string
-    ): { jsCode: string; wgslCode: string; watCode: string } {
+        preprocessed: PreprocessResult
+    ): { jsCode: string; wgslCode: string; watCode: string; errors: { message: string, lineIndex: number }[] } {
         const { lines, inputs, randomInputs, numRandomCalls } = preprocessed;
 
+        const jsResult = compileDSLtoJS(lines, inputs, randomInputs, numRandomCalls);
+        const wgslResult = compileDSLtoWGSL(lines, inputs, randomInputs, numRandomCalls);
+        const watResult = compileDSLtoWAT(lines, inputs, randomInputs, numRandomCalls);
+
         return {
-            jsCode: compileDSLtoJS(lines, inputs, this.logger, script, randomInputs, numRandomCalls),
-            wgslCode: compileDSLtoWGSL(lines, inputs, this.logger, script, randomInputs, numRandomCalls),
-            watCode: compileDSLtoWAT(lines, inputs, this.logger, script, randomInputs, numRandomCalls),
+            jsCode: jsResult.code,
+            wgslCode: wgslResult.code,
+            watCode: watResult.code,
+            errors: jsResult.errors,
         };
     }
 
     /** Log all compiled output and extracted inputs to the console. */
     private logCompilationResults(
-        compiled: { jsCode: string; wgslCode: string; watCode: string },
+        compiled: { jsCode: string; wgslCode: string; watCode: string; errors: { message: string, lineIndex: number }[] },
         preprocessed: PreprocessResult
     ): void {
         this.logger.code('Generated JS Code', compiled.jsCode, 'js');
@@ -339,7 +352,7 @@ export class Compiler {
     /** Assemble the final {@link CompilationResult} from preprocessed and compiled data. */
     private buildCompilationResult(
         preprocessed: PreprocessResult,
-        compiled: { jsCode: string; wgslCode: string; watCode: string }
+        compiled: { jsCode: string; wgslCode: string; watCode: string; errors: { message: string, lineIndex: number }[] }
     ): CompilationResult {
         return {
             requiredInputs: preprocessed.inputs,
@@ -350,6 +363,7 @@ export class Compiler {
             trailEnvironmentConfig: preprocessed.trailEnvironmentConfig,
             speciesCount: preprocessed.speciesCount,
             numRandomCalls: preprocessed.numRandomCalls,
+            errors: compiled.errors,
         };
     }
 }

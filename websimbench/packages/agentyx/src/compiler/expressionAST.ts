@@ -5,8 +5,10 @@
  * Provides proper tokenisation, recursive-descent parsing, and AST-based
  * transformation of DSL expressions to ensure all arithmetic operations
  * are wrapped with `Math.fround()` for Float32 precision parity with
- * WebAssembly and WebGPU.
+ * WebAssembly and WebGPU. Also validates semantic correctness for undeclared variables.
  */
+
+import type { CompilationContext } from './compilerTarget';
 
 export type ExprNode =
     | { type: 'number'; value: string }
@@ -364,6 +366,94 @@ export function transformExpression(expr: string, randomInputs: Set<string> = ne
     let result = generateJS(ast, true, randomInputs);
 
     return result;
+}
+
+/**
+ * Validates an AST node for semantic correctness, catching undeclared variables
+ * and invalid input properties. Pushes errors directly to the context.
+ */
+export function validateExpressionAST(node: ExprNode, ctx: CompilationContext): void {
+    const builtinVariables = new Set(['x', 'y', 'vx', 'vy', 'id', 'species']);
+
+    switch (node.type) {
+        case 'identifier': {
+            const name = node.name;
+            // Ignore if it's an empty fallback
+            if (name === '') return;
+
+            // Check built-ins
+            if (builtinVariables.has(name)) return;
+
+            // Check if it's 'inputs' (handled loosely here if someone just accesses inputs without property)
+            if (name === 'inputs' || name === 'Math') return;
+
+            // Allow loop variable
+            if (ctx.currentLoopVar && name === ctx.currentLoopVar) return;
+
+            // Check if it's declared in specific context maps
+            if (ctx.variables.has(name) || ctx.localVars.has(name) || ctx.randomInputs.has(name)) return;
+
+            // At this point it's an undeclared variable
+            ctx.errors.push({
+                message: `Variable '${name}' is not defined.`,
+                lineIndex: ctx.currentLineIndex
+            });
+            break;
+        }
+
+        case 'property': {
+            validateExpressionAST(node.object, ctx);
+
+            if (node.object.type === 'identifier' && node.object.name === 'inputs') {
+                const prop = node.property;
+                if (!ctx.inputs.has(prop) && !ctx.randomInputs.has(prop)) {
+                    ctx.errors.push({
+                        message: `Input '${prop}' is not declared. Ensure it is included in the simulation inputs definition.`,
+                        lineIndex: ctx.currentLineIndex
+                    });
+                }
+            } else if (node.object.type === 'identifier' && node.object.name === 'nearbyAgents' && node.property === 'length') {
+                // allow nearbyAgents.length
+            } else if (node.object.type === 'identifier' && ctx.variables.get(node.object.name)?.type === 'neighbors' && node.property === 'length') {
+                // Allow array.length on neighbors types
+            }
+            break;
+        }
+
+        case 'index':
+            validateExpressionAST(node.object, ctx);
+            validateExpressionAST(node.index, ctx);
+            break;
+
+        case 'call':
+            node.args.forEach(arg => validateExpressionAST(arg, ctx));
+            // We could validate if the function is supported here too
+            break;
+
+        case 'unary':
+            validateExpressionAST(node.operand, ctx);
+            break;
+
+        case 'binary':
+            validateExpressionAST(node.left, ctx);
+            validateExpressionAST(node.right, ctx);
+            break;
+
+        case 'group':
+            validateExpressionAST(node.expr, ctx);
+            break;
+    }
+}
+
+/**
+ * Convenience function to parse and validate a raw string expression
+ */
+export function validateExpressionString(expr: string, ctx: CompilationContext): void {
+    const tokens = tokenize(expr.trim());
+    if (tokens.length === 0) return;
+    const parser = new Parser(tokens);
+    const ast = parser.parse();
+    validateExpressionAST(ast, ctx);
 }
 
 /**

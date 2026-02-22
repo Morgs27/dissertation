@@ -247,9 +247,13 @@ export class Simulation {
     this.computeEngine = new ComputeEngine(compilationResult, this.performanceMonitor, options.agents, options.workers);
 
     if (config.canvas) {
+      config.canvas.width = this.width;
+      config.canvas.height = this.height;
+      if (config.gpuCanvas) {
+        config.gpuCanvas.width = this.width;
+        config.gpuCanvas.height = this.height;
+      }
       this.renderer = new Renderer(config.canvas, config.gpuCanvas ?? null, this.appearance);
-      this.width = config.canvas.width;
-      this.height = config.canvas.height;
     }
 
     this.agents = this.createInitialAgents(options.agents, compilationResult.speciesCount ?? 1, options.seed);

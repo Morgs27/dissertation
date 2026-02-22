@@ -8,12 +8,12 @@
  * handling.
  */
 
-import type Logger from '../helpers/logger';
 import type { LineInfo } from './parser';
 import { DSLParser } from './parser';
 import type { CompilerTarget, CompilationContext } from './compilerTarget';
 import { tryEmitFunctionVar } from './functionRegistry';
 import { emitCommand as registryEmitCommand } from './commandRegistry';
+import { validateExpressionString } from './expressionAST';
 
 /**
  * Transpile parsed DSL lines using the given compiler target.
@@ -22,8 +22,6 @@ import { emitCommand as registryEmitCommand } from './commandRegistry';
 export function transpileDSL(
     lines: LineInfo[],
     target: CompilerTarget,
-    logger: Logger,
-    rawScript: string,
     ctx: CompilationContext,
 ): string[] {
     const statements: string[] = [];
@@ -31,6 +29,8 @@ export function transpileDSL(
     for (const line of lines) {
         const trimmed = line.content.trim();
         if (!trimmed) continue;
+
+        ctx.currentLineIndex = line.lineIndex;
 
         const parsed = DSLParser.parseDSLLine(trimmed);
         let emitted: string[] = [];
@@ -58,6 +58,7 @@ export function transpileDSL(
                 break;
 
             case 'var': {
+                validateExpressionString(parsed.expression, ctx);
                 // Try function registry first (neighbors, mean, sense, random, etc.)
                 const functionResult = tryEmitFunctionVar(parsed.name, parsed.expression, target, ctx);
                 if (functionResult) {
@@ -65,14 +66,22 @@ export function transpileDSL(
                 } else {
                     emitted = target.emitVar(parsed.name, parsed.expression, ctx);
                 }
+
+                // Ensure var is tracked across all compilation pipelines for AST validation
+                if (!ctx.variables.has(parsed.name)) {
+                    ctx.variables.set(parsed.name, { type: 'scalar' });
+                }
+                ctx.localVars.add(parsed.name);
                 break;
             }
 
             case 'if':
+                validateExpressionString(parsed.condition, ctx);
                 emitted = target.emitIf(parsed.condition, ctx);
                 break;
 
             case 'elseif':
+                validateExpressionString(parsed.condition, ctx);
                 emitted = target.emitElseIf(parsed.condition, ctx);
                 break;
 
@@ -80,25 +89,41 @@ export function transpileDSL(
                 emitted = target.emitElse(ctx);
                 break;
 
-            case 'for':
+            case 'for': {
+                const initMatch = parsed.init.match(/^var\s+([a-zA-Z_]\w*)/);
+                if (initMatch) {
+                    const loopVar = initMatch[1];
+                    ctx.localVars.add(loopVar);
+                    ctx.variables.set(loopVar, { type: 'loop_index' });
+                }
+                validateExpressionString(parsed.condition, ctx);
                 emitted = target.emitFor(parsed.init, parsed.condition, parsed.increment, ctx);
                 break;
+            }
 
             case 'foreach':
                 emitted = target.emitForeach(parsed.collection, parsed.varName, parsed.itemAlias, ctx);
                 break;
 
             case 'assignment':
+                // Check that target variable exists (unless it's an array indexing assignment)
+                if (!parsed.target.includes('[') && !parsed.target.includes('.')) {
+                    validateExpressionString(parsed.target, ctx);
+                }
+                validateExpressionString(parsed.expression, ctx);
                 emitted = target.emitAssignment(parsed.target, parsed.expression, ctx);
                 break;
 
             case 'command':
+                if (parsed.argument) {
+                    validateExpressionString(parsed.argument, ctx);
+                }
                 emitted = registryEmitCommand(parsed.command, parsed.argument, target, ctx) ?? [];
                 break;
 
             case 'unknown':
             default:
-                logger.codeError('Unknown syntax or command', rawScript, line.lineIndex);
+                ctx.errors.push({ message: 'Unknown syntax or command', lineIndex: line.lineIndex });
                 continue;
         }
 
