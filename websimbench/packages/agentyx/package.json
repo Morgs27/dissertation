@@ -3,6 +3,18 @@
   "version": "0.1.0",
   "description": "Agent-based 2D simulation engine with DSL compiler and multi-backend compute execution",
   "type": "module",
+  "author": "Morgan Daniel",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "simulation",
+    "agent",
+    "dsl",
+    "webassembly",
+    "compiler"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -12,7 +24,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "scripts": {
     "clean": "rm -rf dist",
