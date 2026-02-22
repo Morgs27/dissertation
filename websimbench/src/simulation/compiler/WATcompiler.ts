@@ -38,7 +38,7 @@ function tokenizeExpression(expr: string): string[] {
         tokens.push(current);
         current = "";
       }
-    } else if (/[+\-*/^]/.test(char)) {
+    } else if (/[+\-*/^%]/.test(char)) {
       if (current) {
         tokens.push(current);
         current = "";
@@ -60,12 +60,14 @@ function tokenizeExpression(expr: string): string[] {
 
   return tokens;
 }
-
 function infixToSExpression(expr: string): string {
   expr = expr.trim();
 
   if (expr.includes(".")) {
-    expr = expr.replace(/([a-zA-Z_]\w*)\.(\w+)/g, "$1_$2");
+    expr = expr.replace(/([a-zA-Z_]\w*)\.(\w+)/g, (match, prefix, suffix) => {
+      if (prefix === 'f32' || prefix === 'i32' || prefix === 'local' || prefix === 'global' || prefix === 'call' || prefix === 'return') return match;
+      return `${prefix}_${suffix}`;
+    });
   }
 
   expr = expr.replace(/inputs_(\w+)/g, "GLOBAL_$1");
@@ -100,6 +102,10 @@ function infixToSExpression(expr: string): string {
       return `(f32.const ${token})`;
     }
     if (token.startsWith("(") && token.endsWith(")")) {
+      const inner = token.slice(1, -1).trim();
+      if (inner.match(/^(f32|i32|local|global|call|return)\b/)) {
+        return token;
+      }
       return infixToSExpression(token.slice(1, -1));
     }
     if (token === 'id') return `(local.get $_agent_id)`;
@@ -129,7 +135,7 @@ function infixToSExpression(expr: string): string {
     return `(f32.neg ${infixToSExpression(tokens.slice(1).join(" "))})`;
   }
 
-  // Multiplication/division
+  // Multiplication/division/modulo
   for (let i = tokens.length - 1; i >= 0; i--) {
     if (tokens[i] === "*" && tokens[i - 1] !== "*") {
       const left = tokens.slice(0, i).join(" ");
@@ -139,6 +145,12 @@ function infixToSExpression(expr: string): string {
       const left = tokens.slice(0, i).join(" ");
       const right = tokens.slice(i + 1).join(" ");
       return `(f32.div ${infixToSExpression(left)} ${infixToSExpression(right)})`;
+    } else if (tokens[i] === "%") {
+      const left = tokens.slice(0, i).join(" ");
+      const right = tokens.slice(i + 1).join(" ");
+      const lExpr = infixToSExpression(left);
+      const rExpr = infixToSExpression(right);
+      return `(f32.sub ${lExpr} (f32.mul (f32.trunc (f32.div ${lExpr} ${rExpr})) ${rExpr}))`;
     }
   }
 
@@ -182,6 +194,7 @@ function normalizeWASMExpression(expr: string, randomInputs: Set<string>, watCtx
   r = r.replace(/([a-zA-Z_]\w*)\.(?!length|count)(\w+)/g, (match, obj, prop) => {
     if (obj === 'inputs') return match;
     if (obj === 'nearbyAgents') return match;
+    if (obj === 'f32' || obj === 'i32' || obj === 'local' || obj === 'global' || obj === 'call' || obj === 'return') return match;
     return `${obj}_${prop}`;
   });
 
@@ -379,7 +392,7 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
     case "if": {
       context.blockStack.push({ type: 'if', pendingClose: context.deferredPendingClose });
       context.deferredPendingClose = 0;
-      
+
       // Replace loop variable property access in conditions
       let condition = parsed.condition;
       if (context.currentLoopVar) {
@@ -629,7 +642,7 @@ export const compileDSLtoWAT = (
     // Handle closing brace
     if (trimmed === "}") {
       const closedBlock = context.blockStack.pop();
-      
+
       // Look ahead to see if next line is else/elseif
       let nextLineIndex = i + 1;
       let nextLineContent = "";
@@ -644,7 +657,7 @@ export const compileDSLtoWAT = (
         // Close the foreach loop: close the distance/body if, skip-self if, then loop/block
         context.loopDepth--;
         if (context.loopDepth <= 0) context.currentLoopVar = undefined;
-        
+
         transpiled = `))\n    ))\n    (local.set $_foreach_idx (i32.add (local.get $_foreach_idx) (i32.const 1)))\n    (local.set $_foreach_ptr (i32.add (local.get $_foreach_ptr) (i32.const 24)))\n    (br $_foreach_loop)\n    )\n    )`;
       } else if (closedBlock && closedBlock.type === 'for') {
         context.loopDepth--;
