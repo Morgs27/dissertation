@@ -1,17 +1,20 @@
 import {
   Button,
   Input,
+  Label,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
   Slider,
-  Label,
+  Switch,
 } from '@/components/ui';
 import { SimulationAppearanceOptions, UpdateOptionFn } from '../hooks/useSimulationOptions';
 import { LogLevel } from '@websimbench/agentyx';
-import { Palette, Monitor, ShootingStar, Info, Circle, Square, Cube, X } from "@phosphor-icons/react";
+import { Palette, Monitor, ShootingStar, Circle, Square, Cube, X } from "@phosphor-icons/react";
+import { cn } from '@/lib/utils';
+import { useEffect, type ReactNode } from 'react';
 
 interface OptionsViewProps {
   options: SimulationAppearanceOptions;
@@ -21,274 +24,246 @@ interface OptionsViewProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const LOG_LEVEL_OPTIONS = [
+  { value: LogLevel.None, label: 'None', description: 'Quiet mode' },
+  { value: LogLevel.Error, label: 'Error', description: 'Critical failures' },
+  { value: LogLevel.Warning, label: 'Warning', description: 'Potential issues' },
+  { value: LogLevel.Info, label: 'Info', description: 'Standard output' },
+  { value: LogLevel.Verbose, label: 'Verbose', description: 'Full debug output' },
+];
+
+const FALLBACK_SPECIES_COLORS = ['#00FFFF'];
+
+const formatValue = (value: number, decimals = 2) => {
+  if (Number.isInteger(value)) return String(value);
+  return value.toFixed(decimals);
+};
+
+interface OptionsSectionProps {
+  icon: ReactNode;
+  title: string;
+  children: ReactNode;
+}
+
+const OptionsSection = ({ icon, title, children }: OptionsSectionProps) => (
+  <section className="options-section animate-in fade-in slide-in-from-bottom-3 duration-300">
+    <div className="options-section-title">
+      {icon}
+      <h3>{title}</h3>
+    </div>
+    <div className="options-grid">{children}</div>
+  </section>
+);
+
+interface ColorFieldProps {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  compact?: boolean;
+}
+
+const ColorField = ({ label, value, onChange, compact = false }: ColorFieldProps) => (
+  <div className={cn('options-card options-card-focus', compact && 'options-card-compact')}>
+    <Label className="options-label">{label}</Label>
+    <div className="options-color-field">
+      <div className={cn('options-color-preview', compact && 'options-color-preview-small')}>
+        <Input
+          type="color"
+          className="options-color-input"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      </div>
+      <Input
+        type="text"
+        className="options-text-input"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+  </div>
+);
+
 export const OptionsView = ({ options, updateOption, resetOptions, open, onOpenChange }: OptionsViewProps) => {
+  useEffect(() => {
+    if (!open) return;
+
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onOpenChange(false);
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleEsc);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleEsc);
+    };
+  }, [open, onOpenChange]);
+
   if (!open) return null;
 
+  const speciesColors = options.speciesColors?.length
+    ? options.speciesColors
+    : FALLBACK_SPECIES_COLORS;
+
+  const updateSpeciesColor = (index: number, value: string) => {
+    const updated = [...speciesColors];
+    updated[index] = value;
+    updateOption('speciesColors', updated);
+    if (index === 0) updateOption('agentColor', value);
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex justify-end" onClick={() => onOpenChange(false)}>
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+    <div className="options-overlay" onClick={() => onOpenChange(false)}>
+      <div className="options-backdrop" />
       <div
-        className="relative w-full max-w-2xl h-full bg-[#0a1a1f] border-l border-white/[0.06] shadow-2xl shadow-black/60 overflow-hidden animate-in slide-in-from-right duration-300 flex flex-col"
+        className="options-panel animate-in slide-in-from-right duration-300"
+        role="dialog"
+        aria-modal="true"
+        aria-label="System Configuration"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="h-12 flex items-center justify-between px-6 bg-white/[0.02] border-b border-white/[0.06] shrink-0">
-          <h2 className="text-sm font-bold text-white tracking-tight">System Configuration</h2>
-          <div className="flex items-center gap-2">
+        <div className="options-header">
+          <div className="options-header-copy">
+            <h2 className="options-heading">System Configuration</h2>
+            <p className="options-subheading">Appearance, trails, and runtime diagnostics</p>
+          </div>
+          <div className="options-header-actions">
             <Button
               variant="outline"
               size="sm"
-              className="text-red-400 border-red-400/30 hover:bg-red-500/10 hover:border-red-400 transition-all font-bold text-[11px]"
+              className="options-reset-btn"
               onClick={resetOptions}
             >
               Reset to Defaults
             </Button>
             <button
+              type="button"
               onClick={() => onOpenChange(false)}
-              className="w-8 h-8 rounded-md flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/[0.06] transition-colors"
+              className="options-close-btn"
             >
               <X size={16} weight="bold" />
             </button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            {/* Appearance Section */}
-            <section className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="flex items-center gap-2 pb-2 border-b border-white/[0.06]">
-                <Palette className="text-tropicalTeal" size={20} />
-                <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-gray-400">Appearance</h3>
-              </div>
-
-              <div className="grid gap-8">
-                <div className="space-y-3">
-                  <Label className="text-xs font-bold text-gray-400 flex items-center gap-2">
-                    Species Colors
-                  </Label>
-                  <div className="grid grid-cols-5 gap-2">
-                    {(options.speciesColors || ['#00FFFF']).map((color, idx) => (
-                      <div key={idx} className="space-y-1">
-                        <div className="flex items-center gap-4 bg-[#0c1317] p-2 rounded-xl border border-white/[0.08] focus-within:border-tropicalTeal/30 transition-all">
-                          <div className="relative w-full aspect-square shrink-0 rounded-lg overflow-hidden border border-white/10 shadow-lg">
-                            <Input
-                              type="color"
-                              className="absolute inset-[-10px] w-[200%] h-[200%] cursor-pointer border-none p-0"
-                              value={color}
-                              onChange={(e) => {
-                                const newColors = [...(options.speciesColors || [])];
-                                newColors[idx] = e.target.value;
-                                updateOption('speciesColors', newColors);
-                                if (idx === 0) updateOption('agentColor', e.target.value); // Sync primarily color
-                              }}
-                            />
-                          </div>
-                        </div>
-                        <div className="text-[10px] text-center text-gray-500 font-mono">#{idx}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <Label className="text-xs font-bold text-gray-400">Background Color</Label>
-                  <div className="flex items-center gap-4 bg-[#0c1317] p-3 rounded-xl border border-white/[0.08] focus-within:border-tropicalTeal/30 transition-all">
-                    <div className="relative w-10 h-10 shrink-0 rounded-lg overflow-hidden border border-white/10 shadow-lg">
-                      <Input
-                        type="color"
-                        className="absolute inset-[-10px] w-[200%] h-[200%] cursor-pointer border-none p-0"
-                        value={options.backgroundColor}
-                        onChange={(e) => updateOption('backgroundColor', e.target.value)}
-                      />
-                    </div>
-                    <Input
-                      type="text"
-                      className="flex-1 h-10 bg-transparent border-none text-sm font-mono focus:ring-0"
-                      value={options.backgroundColor}
-                      onChange={(e) => updateOption('backgroundColor', e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {options.showTrails && (
-                  <div className="space-y-3 animate-in fade-in duration-300">
-                    <Label className="text-xs font-bold text-gray-400 flex items-center gap-2">
-                      <ShootingStar size={14} /> Trail Color
-                    </Label>
-                    <div className="flex items-center gap-4 bg-[#0c1317] p-3 rounded-xl border border-white/[0.08] focus-within:border-tropicalTeal/30 transition-all">
-                      <div className="relative w-10 h-10 shrink-0 rounded-lg overflow-hidden border border-white/10 shadow-lg">
+        <div className="options-content">
+          <div className="options-stack">
+            <OptionsSection icon={<Palette className="text-zinc-400" size={17} />} title="Appearance">
+              <div className="options-card options-card-focus">
+                <Label className="options-label">Species Colors</Label>
+                <div className="options-swatch-grid">
+                  {speciesColors.map((color, index) => (
+                    <div key={index} className="options-swatch-item">
+                      <div className="options-swatch-chip">
                         <Input
                           type="color"
-                          className="absolute inset-[-10px] w-[200%] h-[200%] cursor-pointer border-none p-0"
-                          value={options.trailColor}
-                          onChange={(e) => updateOption('trailColor', e.target.value)}
+                          className="options-color-input"
+                          value={color}
+                          onChange={(e) => updateSpeciesColor(index, e.target.value)}
                         />
                       </div>
-                      <Input
-                        type="text"
-                        className="flex-1 h-10 bg-transparent border-none text-sm font-mono focus:ring-0"
-                        value={options.trailColor}
-                        onChange={(e) => updateOption('trailColor', e.target.value)}
-                      />
+                      <span className="options-swatch-label">#{index}</span>
                     </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-4 pt-6 border-t border-white/[0.08] animate-in fade-in duration-500 delay-100">
-                <div className="flex items-center gap-2 mb-4">
-                  <Cube size={16} className="text-tropicalTeal" weight="fill" />
-                  <Label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Obstacle Appearance</Label>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] text-gray-500 uppercase font-bold">Fill Color</Label>
-                    <div className="flex items-center gap-3 bg-[#0c1317] p-2 rounded-xl border border-white/[0.08] focus-within:border-tropicalTeal/30 transition-all">
-                      <div className="relative w-8 h-8 shrink-0 rounded-lg overflow-hidden border border-white/10 shadow-sm">
-                        <Input
-                          type="color"
-                          className="absolute inset-[-5px] w-[200%] h-[200%] cursor-pointer border-none p-0"
-                          value={options.obstacleColor}
-                          onChange={(e) => updateOption('obstacleColor', e.target.value)}
-                        />
-                      </div>
-                      <Input
-                        type="text"
-                        className="flex-1 h-8 bg-transparent border-none text-xs font-mono focus:ring-0 text-white"
-                        value={options.obstacleColor}
-                        onChange={(e) => updateOption('obstacleColor', e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-[10px] text-gray-500 uppercase font-bold">Border Color</Label>
-                    <div className="flex items-center gap-3 bg-[#0c1317] p-2 rounded-xl border border-white/[0.08] focus-within:border-tropicalTeal/30 transition-all">
-                      <div className="relative w-8 h-8 shrink-0 rounded-lg overflow-hidden border border-white/10 shadow-sm">
-                        <Input
-                          type="color"
-                          className="absolute inset-[-5px] w-[200%] h-[200%] cursor-pointer border-none p-0"
-                          value={options.obstacleBorderColor}
-                          onChange={(e) => updateOption('obstacleBorderColor', e.target.value)}
-                        />
-                      </div>
-                      <Input
-                        type="text"
-                        className="flex-1 h-8 bg-transparent border-none text-xs font-mono focus:ring-0 text-white"
-                        value={options.obstacleBorderColor}
-                        onChange={(e) => updateOption('obstacleBorderColor', e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3 mt-2 bg-[#0c1317] p-4 rounded-xl border border-white/[0.08]">
-                  <div className="flex justify-between items-center">
-                    <Label className="text-[10px] text-gray-500 uppercase font-bold">Opacity</Label>
-                    <span className="text-xs font-mono text-tropicalTeal bg-tropicalTeal/10 px-2 py-0.5 rounded">{options.obstacleOpacity?.toFixed(2) ?? "0.20"}</span>
-                  </div>
-                  <Slider
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    value={[options.obstacleOpacity ?? 0.2]}
-                    onValueChange={(v) => updateOption('obstacleOpacity', v[0])}
-                    className="py-1"
-                  />
+                  ))}
                 </div>
               </div>
-            </section>
 
-            {/* Configuration Section */}
-            <section className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-150">
-              <div className="flex items-center gap-2 pb-2 border-b border-white/[0.08]">
-                <Monitor className="text-tropicalTeal" size={20} />
-                <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-gray-400">Simulation Config</h3>
-              </div>
+              <ColorField
+                label="Background Color"
+                value={options.backgroundColor}
+                onChange={(value) => updateOption('backgroundColor', value)}
+              />
 
-              <div className="grid gap-8">
-                <div className="space-y-4 bg-[#0c1317] p-6 rounded-2xl border border-white/[0.08]">
-                  <div className="flex justify-between items-center mb-2">
-                    <Label className="text-sm font-medium">Agent Size (px)</Label>
-                    <span className="text-xs font-mono bg-tropicalTeal/10 text-tropicalTeal px-2 py-1 rounded-md">{options.agentSize}</span>
+              {options.showTrails && (
+                <ColorField
+                  label="Trail Color"
+                  value={options.trailColor}
+                  onChange={(value) => updateOption('trailColor', value)}
+                />
+              )}
+            </OptionsSection>
+
+            <OptionsSection icon={<Monitor className="text-zinc-400" size={17} />} title="Simulation">
+              <div className="options-grid options-grid-2">
+                <div className="options-card">
+                  <div className="options-card-header">
+                    <Label className="options-label">Agent Size</Label>
+                    <span className="options-badge">{formatValue(options.agentSize, 1)}</span>
                   </div>
                   <Slider
                     min={1}
                     max={20}
                     step={0.5}
                     value={[options.agentSize]}
-                    onValueChange={(val) => updateOption('agentSize', val[0])}
-                    className="py-2"
+                    onValueChange={(values) => updateOption('agentSize', values[0])}
+                    className="options-slider"
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-3 bg-[#0c1317] p-5 rounded-2xl border border-white/[0.08]">
-                    <Label className="text-xs font-bold text-gray-400">Agent Shape</Label>
-                    <div className="flex gap-2">
-                      <Button
-                        variant={options.agentShape === 'circle' ? 'default' : 'outline'}
-                        onClick={() => updateOption('agentShape', 'circle')}
-                        className={`flex-1 ${options.agentShape === 'circle' ? 'bg-tropicalTeal text-jetBlack hover:bg-tropicalTeal/80' : 'bg-transparent border-white/10 hover:bg-white/5'}`}
-                      >
-                        <Circle weight="fill" className="mr-2" /> Circle
-                      </Button>
-                      <Button
-                        variant={options.agentShape === 'square' ? 'default' : 'outline'}
-                        onClick={() => updateOption('agentShape', 'square')}
-                        className={`flex-1 ${options.agentShape === 'square' ? 'bg-tropicalTeal text-jetBlack hover:bg-tropicalTeal/80' : 'bg-transparent border-white/10 hover:bg-white/5'}`}
-                      >
-                        <Square weight="fill" className="mr-2" /> Square
-                      </Button>
-                    </div>
+                <div className="options-card">
+                  <Label className="options-label">Agent Shape</Label>
+                  <div className="options-segmented">
+                    <button
+                      type="button"
+                      className={cn('options-segment', options.agentShape === 'circle' && 'is-active')}
+                      onClick={() => updateOption('agentShape', 'circle')}
+                    >
+                      <Circle weight="fill" size={14} />
+                      Circle
+                    </button>
+                    <button
+                      type="button"
+                      className={cn('options-segment', options.agentShape === 'square' && 'is-active')}
+                      onClick={() => updateOption('agentShape', 'square')}
+                    >
+                      <Square weight="fill" size={14} />
+                      Square
+                    </button>
                   </div>
-
-                  <div className="space-y-3 bg-[#0c1317] p-5 rounded-2xl border border-white/[0.08] flex flex-col justify-between">
-                    <div className="flex justify-between items-center mb-2">
-                      <Label htmlFor="trail-opacity" className="text-xs font-bold text-gray-400">
-                        Trail Opacity
-                      </Label>
-                      <span className="text-xs font-mono bg-tropicalTeal/10 text-tropicalTeal px-2 py-1 rounded-md">{options.trailOpacity?.toFixed(2) ?? "1.00"}</span>
-                    </div>
-                    <Slider
-                      id="trail-opacity"
-                      min={0}
-                      max={1}
-                      step={0.01}
-                      value={[options.trailOpacity ?? 1]}
-                      onValueChange={(v) => updateOption('trailOpacity', v[0])}
-                      className="py-2"
-                    />
-                    <p className="text-[10px] text-gray-500 leading-tight flex items-start gap-1 mt-2">
-                      <Info size={12} className="shrink-0 mt-0.5" />
-                      Adjusts the intensity of the agent trails. 0 = No trails.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-3 bg-[#0c1317] p-5 rounded-2xl border border-white/[0.08]">
-                  <Label className="text-xs font-bold text-gray-400">Log Verbosity</Label>
-                  <Select
-                    value={String(options.logLevel)}
-                    onValueChange={(v) => updateOption('logLevel', parseInt(v) as LogLevel)}
-                  >
-                    <SelectTrigger className="bg-black/20 border-white/5 h-11">
-                      <SelectValue placeholder="Select Level" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-[#0c1317] border-white/[0.08]">
-                      <SelectItem value={String(LogLevel.None)}>None - Quiet Mode</SelectItem>
-                      <SelectItem value={String(LogLevel.Error)}>Error - Critical failures</SelectItem>
-                      <SelectItem value={String(LogLevel.Warning)}>Warning - Potential issues</SelectItem>
-                      <SelectItem value={String(LogLevel.Info)}>Info - Standard output</SelectItem>
-                      <SelectItem value={String(LogLevel.Verbose)}>Verbose - Full Debug</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
-            </section>
-          </div>
-        </div>
-      </div>
-    </div>
+
+
+
+            </OptionsSection>
+
+            <OptionsSection icon={<Cube size={17} className="text-zinc-400" weight="fill" />} title="Obstacles">
+              <div className="options-grid options-grid-2">
+                <ColorField
+                  label="Fill Color"
+                  value={options.obstacleColor}
+                  onChange={(value) => updateOption('obstacleColor', value)}
+                  compact
+                />
+                <ColorField
+                  label="Border Color"
+                  value={options.obstacleBorderColor}
+                  onChange={(value) => updateOption('obstacleBorderColor', value)}
+                  compact
+                />
+              </div>
+
+              <div className="options-card">
+                <div className="options-card-header">
+                  <Label className="options-label">Opacity</Label>
+                  <span className="options-badge">{formatValue(options.obstacleOpacity ?? 0.2, 2)}</span>
+                </div>
+                <Slider
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={[options.obstacleOpacity ?? 0.2]}
+                  onValueChange={(values) => updateOption('obstacleOpacity', values[0])}
+                  className="options-slider"
+                />
+              </div>
+            </OptionsSection>
+          </div >
+        </div >
+      </div >
+    </div >
   );
 };

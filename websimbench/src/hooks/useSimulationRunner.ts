@@ -12,6 +12,7 @@ export function useSimulationRunner(
   const [renderMode, setRenderMode] = useState<RenderMode>('gpu');
   const [fps, setFps] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
+  const [hasStartedSimulation, setHasStartedSimulation] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gpuCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -42,6 +43,10 @@ export function useSimulationRunner(
       return;
     }
 
+    if (code.trim().length === 0) {
+      return;
+    }
+
     if (!canvasRef.current) return;
 
     try {
@@ -55,8 +60,12 @@ export function useSimulationRunner(
         agentSize: options.agentSize,
         agentShape: options.agentShape,
         showTrails: options.showTrails,
+        trailOpacity: options.trailOpacity,
         trailColor: options.trailColor,
         speciesColors: options.speciesColors,
+        obstacleColor: options.obstacleColor,
+        obstacleBorderColor: options.obstacleBorderColor,
+        obstacleOpacity: options.obstacleOpacity,
       };
 
       simulationRef.current = new Simulation({
@@ -79,6 +88,7 @@ export function useSimulationRunner(
       lastFrameTimeRef.current = 0;
       frameTimesRef.current = [];
       setFps(0);
+      setHasStartedSimulation(true);
       isRunningRef.current = true;
       setIsRunning(true);
 
@@ -134,8 +144,12 @@ export function useSimulationRunner(
         agentSize: options.agentSize,
         agentShape: options.agentShape,
         showTrails: options.showTrails,
+        trailOpacity: options.trailOpacity,
         trailColor: options.trailColor,
-        speciesColors: options.speciesColors
+        speciesColors: options.speciesColors,
+        obstacleColor: options.obstacleColor,
+        obstacleBorderColor: options.obstacleBorderColor,
+        obstacleOpacity: options.obstacleOpacity,
       });
     }
   }, [options]);
@@ -162,6 +176,7 @@ export function useSimulationRunner(
     setRenderMode,
     fps,
     isRunning,
+    hasStartedSimulation,
     canvasRef,
     gpuCanvasRef,
     handleRun

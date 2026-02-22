@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Navbar } from './components/Navbar';
+import { OnboardingModal } from './components/OnboardingModal';
 import { ReportsView } from './pages/ReportsView';
 import { DocsView } from './pages/DocsView';
 
@@ -12,6 +13,7 @@ import { AppRoute, createHashRoute, getCurrentPageId, parseHashRoute } from './l
 import { DOCS_DEFAULT_PAGE, DOCS_LATEST_VERSION } from './config/version';
 
 const HOME_ROUTE: AppRoute = { page: 'home' };
+const ONBOARDING_STORAGE_KEY = 'websimbench_onboarding_seen_v1';
 
 function App() {
   const [route, setRoute] = useState<AppRoute>(() => {
@@ -20,6 +22,13 @@ function App() {
     }
 
     return parseHashRoute(window.location.hash);
+  });
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+
+    return window.localStorage.getItem(ONBOARDING_STORAGE_KEY) !== '1';
   });
 
   const { options, updateOption, resetOptions } = useSimulationOptions();
@@ -88,6 +97,26 @@ function App() {
     navigate({ page: nextPage });
   }, [navigate]);
 
+  const handleOnboardingOpenChange = useCallback((open: boolean) => {
+    setIsOnboardingOpen(open);
+    if (!open && typeof window !== 'undefined') {
+      window.localStorage.setItem(ONBOARDING_STORAGE_KEY, '1');
+    }
+  }, []);
+
+  const dismissOnboarding = useCallback(() => {
+    handleOnboardingOpenChange(false);
+  }, [handleOnboardingOpenChange]);
+
+  const openDocsFromOnboarding = useCallback(() => {
+    dismissOnboarding();
+    navigate({
+      page: 'docs',
+      version: DOCS_LATEST_VERSION,
+      docsPage: DOCS_DEFAULT_PAGE,
+    });
+  }, [dismissOnboarding, navigate]);
+
   const renderCurrentPage = () => {
     switch (route.page) {
       case 'reports':
@@ -132,6 +161,13 @@ function App() {
       <main className="flex-1 overflow-hidden relative">
         {renderCurrentPage()}
       </main>
+
+      <OnboardingModal
+        open={isOnboardingOpen}
+        onOpenChange={handleOnboardingOpenChange}
+        onContinue={dismissOnboarding}
+        onOpenDocs={openDocsFromOnboarding}
+      />
 
       <Toaster />
     </div>

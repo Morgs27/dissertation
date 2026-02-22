@@ -28,13 +28,20 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
 // However, App.tsx used raw strings for 'code'. 
 export function useLocalStorageString(key: string, initialValue: string) {
     const [storedValue, setStoredValue] = useState<string>(() => {
-        return window.localStorage.getItem(key) || initialValue;
+        if (typeof window === 'undefined') {
+            return initialValue;
+        }
+
+        const item = window.localStorage.getItem(key);
+        return item !== null ? item : initialValue;
     });
 
     useEffect(() => {
+        if (typeof window === 'undefined') {
+            return;
+        }
         window.localStorage.setItem(key, storedValue);
     }, [key, storedValue]);
 
     return [storedValue, setStoredValue] as const;
 }
-
