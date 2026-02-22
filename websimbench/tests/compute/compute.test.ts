@@ -2,40 +2,37 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { server } from 'vitest/browser';
 import { Compiler } from '../../src/simulation/compiler/compiler';
 import { ComputeEngine } from '../../src/simulation/compute/compute';
-import { PerformanceMonitor } from '../../src/simulation/performance';
-import type { Agent, Method, InputValues, CompilationResult } from '../../src/simulation/types';
+import { PerformanceMonitor, type FramePerformance } from '../../src/simulation/performance';
+import type { Agent, Method, InputValues, CompilationResult, RenderMode } from '../../src/simulation/types';
 import { SIMULATIONS } from '../simulations';
 import GPU from '../../src/simulation/helpers/gpu';
 import Logger, { LogLevel } from '../../src/simulation/helpers/logger';
 
 // Test configuration
-const NUM_FRAMES = 100; // Reduced to prevent WebSocket payload overflow with 500 agents
-const NUM_AGENTS = 500; // Increased to stress test GPU precision
+const NUM_FRAMES = 100;
+const NUM_AGENTS = 500;
 const WIDTH = 600;
 const HEIGHT = 600;
+
+const SHOULD_WRITE_ARTIFACTS =
+    typeof process !== 'undefined' &&
+    Boolean(process.env) &&
+    process.env.WRITE_COMPUTE_ARTIFACTS === '1';
 
 // Methods to test
 const METHODS: Method[] = ['JavaScript', 'WebAssembly', 'WebWorkers', 'WebGPU'];
 
 // Tolerances for cross-method comparison.
-// CPU methods (JS, WebAssembly, WebWorkers) should produce exact parity.
-// WebGPU uses GPU trig functions (sin, cos, atan2) which differ from CPU at the
-// float32 ULP level. For chaotic simulations these tiny diffs cascade over frames,
-// so we only validate early frames strictly and allow later frames to diverge.
 const TOLERANCES: Record<Method, number> = {
     'JavaScript': 0,
     'WebGL': 0,
-    'WebWorkers': 0,        // Exact parity with JS (same compiled code)
-    'WebAssembly': 0,       // Exact parity with JS (same float32 math)
-    'WebGPU': 0.01          // Allow small GPU float precision differences
+    'WebWorkers': 0,
+    'WebAssembly': 0,
+    'WebGPU': 0.01
 };
 
-// Only strictly assert the first N frames for WebGPU.
-// After this threshold, GPU trig precision cascades make per-frame comparison
-// unreliable for trig-heavy simulations. Differences are still logged and reported.
 const GPU_STRICT_FRAMES = 5;
 
-// Create a seeded random number generator for reproducible tests
 function seededRandom(seed: number) {
     return function () {
         seed = (seed * 1103515245 + 12345) & 0x7fffffff;
@@ -43,7 +40,27 @@ function seededRandom(seed: number) {
     };
 }
 
-// Generate deterministic initial agents
+function hashStringSeed(input: string): number {
+    let hash = 2166136261;
+    for (let i = 0; i < input.length; i++) {
+        hash ^= input.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+    }
+    return hash >>> 0;
+}
+
+function shuffleMethods(methods: Method[], seed: number): Method[] {
+    const random = seededRandom(seed);
+    const shuffled = [...methods];
+
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    return shuffled;
+}
+
 function generateAgents(count: number, width: number, height: number, seed: number = 42): Agent[] {
     const random = seededRandom(seed);
     return Array.from({ length: count }, (_, i) => ({
@@ -56,12 +73,10 @@ function generateAgents(count: number, width: number, height: number, seed: numb
     }));
 }
 
-// Deep clone agents to avoid mutation issues
 function cloneAgents(agents: Agent[]): Agent[] {
     return agents.map(a => ({ ...a }));
 }
 
-// Get default input values for a simulation
 function getDefaultInputs(
     compilationResult: CompilationResult,
     width: number,
@@ -76,15 +91,13 @@ function getDefaultInputs(
         trailMap: new Float32Array(width * height)
     };
 
-    // Add default values from defined inputs
     for (const input of compilationResult.definedInputs) {
         inputs[input.name] = input.defaultValue;
     }
 
-    // Add randomValues if required (numRandomCalls values per agent for parity across all backends)
     if (compilationResult.requiredInputs.includes('randomValues')) {
         const rng = seededRandom(seed);
-        const numRandomCalls = compilationResult.numRandomCalls || 1; // fallback 1 for safety
+        const numRandomCalls = compilationResult.numRandomCalls || 1;
         const randomValues = new Float32Array(agents.length * numRandomCalls);
         for (let i = 0; i < randomValues.length; i++) {
             randomValues[i] = rng();
@@ -92,7 +105,6 @@ function getDefaultInputs(
         inputs['randomValues'] = randomValues;
     }
 
-    // Add obstacles if required (static test obstacles for avoidObstacles command)
     if (compilationResult.requiredInputs.includes('obstacles')) {
         inputs['obstacles'] = [
             { x: 100, y: 100, w: 80, h: 80 },
@@ -104,7 +116,6 @@ function getDefaultInputs(
     return inputs;
 }
 
-// Compare two agent arrays and compute differences
 function compareAgents(agents1: Agent[], agents2: Agent[]): {
     maxPosDiff: number;
     avgPosDiff: number;
@@ -146,8 +157,11 @@ function compareAgents(agents1: Agent[], agents2: Agent[]): {
     };
 }
 
-// Helper to write file using Vitest server commands
 async function writeOutputFile(relativePath: string, content: string) {
+    if (!SHOULD_WRITE_ARTIFACTS) {
+        return;
+    }
+
     try {
         await server.commands.writeFile(relativePath, content);
     } catch (error) {
@@ -155,13 +169,21 @@ async function writeOutputFile(relativePath: string, content: string) {
     }
 }
 
+interface MethodMetrics {
+    frameCount: number;
+    kernelMs: number;
+    endToEndComputeMs: number;
+    compileMs: number | null;
+}
+
 interface MethodResult {
     method: Method;
     frames: Agent[][];
     available: boolean;
+    metrics: MethodMetrics;
+    renderMode: RenderMode;
 }
 
-// Interface for position data export
 interface PositionDataExport {
     simulation: string;
     generatedAt: string;
@@ -184,26 +206,121 @@ interface PositionDataExport {
     }>;
 }
 
+function extractMetrics(frames: FramePerformance[]): MethodMetrics {
+    if (frames.length === 0) {
+        return {
+            frameCount: 0,
+            kernelMs: 0,
+            endToEndComputeMs: 0,
+            compileMs: null
+        };
+    }
+
+    let kernelSum = 0;
+    let endToEndSum = 0;
+
+    for (const frame of frames) {
+        const setup = frame.setupTime ?? 0;
+        const compute = frame.computeTime ?? 0;
+        const readback = frame.readbackTime ?? 0;
+
+        expect(Number.isFinite(setup)).toBe(true);
+        expect(Number.isFinite(compute)).toBe(true);
+        expect(Number.isFinite(readback)).toBe(true);
+
+        expect(setup).toBeGreaterThanOrEqual(0);
+        expect(compute).toBeGreaterThanOrEqual(0);
+        expect(readback).toBeGreaterThanOrEqual(0);
+
+        kernelSum += compute;
+        endToEndSum += setup + compute + readback;
+    }
+
+    const compileFrame = frames.find(f => typeof f.compileTime === 'number');
+
+    return {
+        frameCount: frames.length,
+        kernelMs: kernelSum / frames.length,
+        endToEndComputeMs: endToEndSum / frames.length,
+        compileMs: compileFrame?.compileTime ?? null
+    };
+}
+
+async function runMethodVariant(
+    compilationResult: CompilationResult,
+    initialAgents: Agent[],
+    method: Method,
+    renderMode: RenderMode,
+    gpuDevice: GPUDevice | null,
+    captureFrames: boolean
+): Promise<{ frames: Agent[][]; logs: string[]; metrics: MethodMetrics; }> {
+    const performanceMonitor = new PerformanceMonitor();
+    const computeEngine = new ComputeEngine(
+        compilationResult,
+        performanceMonitor,
+        NUM_AGENTS,
+        4
+    );
+
+    if (method === 'WebGPU' && gpuDevice) {
+        computeEngine.initGPU(gpuDevice);
+    }
+
+    let agents = cloneAgents(initialAgents);
+    const trailMap = new Float32Array(WIDTH * HEIGHT);
+    const frames: Agent[][] = [];
+
+    const capturedLogs: string[] = [];
+    const shouldCaptureLogs = SHOULD_WRITE_ARTIFACTS;
+    const logListener = (level: LogLevel, context: string, message: string) => {
+        const levelStr = LogLevel[level] || 'INFO';
+        capturedLogs.push(`[${levelStr}] [${context}] ${message}`);
+    };
+
+    if (shouldCaptureLogs) {
+        Logger.addListener(logListener);
+    }
+
+    try {
+        for (let frame = 0; frame < NUM_FRAMES; frame++) {
+            const inputs = getDefaultInputs(compilationResult, WIDTH, HEIGHT, agents, frame);
+            inputs.trailMap = trailMap;
+
+            agents = await computeEngine.runFrame(method, agents, inputs, renderMode);
+            if (captureFrames) {
+                frames.push(cloneAgents(agents));
+            }
+        }
+
+        const metrics = extractMetrics(performanceMonitor.frames);
+        expect(metrics.frameCount).toBe(NUM_FRAMES);
+
+        return { frames, logs: capturedLogs, metrics };
+    } finally {
+        if (shouldCaptureLogs) {
+            Logger.removeListener(logListener);
+        }
+        computeEngine.destroy();
+    }
+}
+
 describe('Compute Cross-Method Comparison', () => {
     for (const [simulationName, sourceCode] of Object.entries(SIMULATIONS)) {
         describe(`${simulationName} simulation`, () => {
             let compilationResult: CompilationResult;
             let initialAgents: Agent[];
-            let gpuDevice: any | null = null;
+            let gpuDevice: GPUDevice | null = null;
 
             beforeAll(async () => {
-                // Reduce log level to prevent WebSocket payload overflow with large agent counts
                 Logger.setGlobalLogLevel(LogLevel.Error);
 
-                // Compile the simulation
                 const compiler = new Compiler();
                 compilationResult = compiler.compileAgentCode(sourceCode);
                 initialAgents = generateAgents(NUM_AGENTS, WIDTH, HEIGHT);
 
-                // Try to initialize GPU
                 try {
                     const gpuHelper = new GPU('ComputeTest');
-                    gpuDevice = await gpuHelper.getDevice();
+                    gpuDevice = await gpuHelper.getDevice() as GPUDevice;
                 } catch (e) {
                     console.warn('WebGPU not available:', e);
                 }
@@ -211,96 +328,73 @@ describe('Compute Cross-Method Comparison', () => {
 
             it('should produce matching results across all compute methods', async () => {
                 const results: Map<Method, MethodResult> = new Map();
+                const benchmarkSummary: Record<string, MethodMetrics | { unavailable: true }> = {};
 
-                // Run each method
-                for (const method of METHODS) {
-                    // Skip WebGPU if not available
+                const runOrder = shuffleMethods(METHODS, hashStringSeed(simulationName));
+
+                for (const method of runOrder) {
                     if (method === 'WebGPU' && !gpuDevice) {
-                        console.warn(`Skipping ${method} - GPU device not available`);
-                        results.set(method, { method, frames: [], available: false });
+                        results.set(method, {
+                            method,
+                            frames: [],
+                            available: false,
+                            metrics: { frameCount: 0, kernelMs: 0, endToEndComputeMs: 0, compileMs: null },
+                            renderMode: 'cpu'
+                        });
+                        benchmarkSummary['WebGPU(cpu)'] = { unavailable: true };
                         continue;
                     }
 
-                    const performanceMonitor = new PerformanceMonitor();
-                    const computeEngine = new ComputeEngine(
+                    const run = await runMethodVariant(
                         compilationResult,
-                        performanceMonitor,
-                        NUM_AGENTS,
-                        4
+                        initialAgents,
+                        method,
+                        'cpu',
+                        gpuDevice,
+                        true
                     );
 
-                    // Initialize GPU for WebGPU method
-                    if (method === 'WebGPU' && gpuDevice) {
-                        computeEngine.initGPU(gpuDevice);
+                    if (SHOULD_WRITE_ARTIFACTS) {
+                        const logPath = `tests/compute/outputs/${simulationName}/${method}_logs.txt`;
+                        await writeOutputFile(logPath, run.logs.join('\n'));
                     }
 
-                    // Start with fresh clone of initial agents
-                    let agents = cloneAgents(initialAgents);
-                    const trailMap = new Float32Array(WIDTH * HEIGHT);
-                    const frames: Agent[][] = [];
+                    results.set(method, {
+                        method,
+                        frames: run.frames,
+                        available: true,
+                        metrics: run.metrics,
+                        renderMode: 'cpu'
+                    });
 
-                    // Setup log capturing
-                    const capturedLogs: string[] = [];
-                    const logListener = (level: LogLevel, context: string, message: string) => {
-                        const levelStr = LogLevel[level] || 'INFO';
-                        capturedLogs.push(`[${levelStr}] [${context}] ${message}`);
-                    };
-                    Logger.addListener(logListener);
-
-                    try {
-                        // Run frames
-                        for (let frame = 0; frame < NUM_FRAMES; frame++) {
-                            const inputs = getDefaultInputs(compilationResult, WIDTH, HEIGHT, agents, frame);
-                            inputs.trailMap = trailMap;
-
-                            agents = await computeEngine.runFrame(method, agents, inputs, 'cpu');
-                            frames.push(cloneAgents(agents));
-                        }
-                    } finally {
-                        Logger.removeListener(logListener);
-                    }
-
-                    // Write logs to file
-                    const logPath = `tests/compute/outputs/${simulationName}/${method}_logs.txt`;
-                    await writeOutputFile(logPath, capturedLogs.join('\n'));
-
-                    results.set(method, { method, frames, available: true });
+                    benchmarkSummary[method] = run.metrics;
                 }
 
-                // Build and export position data for all methods
-                const positionData: PositionDataExport = {
-                    simulation: simulationName,
-                    generatedAt: new Date().toISOString(),
-                    numFrames: NUM_FRAMES,
-                    numAgents: NUM_AGENTS,
-                    width: WIDTH,
-                    height: HEIGHT,
-                    methods: {}
-                };
-
-                for (const [method, result] of results) {
-                    positionData.methods[method] = {
-                        available: result.available,
-                        frames: result.frames.map((agents, frameIdx) => ({
-                            frame: frameIdx,
-                            agents: agents.map(a => ({
-                                id: a.id,
-                                x: a.x,
-                                y: a.y,
-                                vx: a.vx,
-                                vy: a.vy
-                            }))
-                        }))
-                    };
+                let webgpuGpuMetrics: MethodMetrics | null = null;
+                if (gpuDevice) {
+                    const webgpuGpuRun = await runMethodVariant(
+                        compilationResult,
+                        initialAgents,
+                        'WebGPU',
+                        'gpu',
+                        gpuDevice,
+                        false
+                    );
+                    webgpuGpuMetrics = webgpuGpuRun.metrics;
+                    benchmarkSummary['WebGPU(gpu)'] = webgpuGpuRun.metrics;
+                } else {
+                    benchmarkSummary['WebGPU(gpu)'] = { unavailable: true };
                 }
 
-                // Write position data to file
-                const positionDataPath = `tests/compute/outputs/${simulationName}/positions_data.json`;
-                await writeOutputFile(positionDataPath, JSON.stringify(positionData, null, 2));
-
-                // Use JavaScript as the reference for comparison
                 const jsResult = results.get('JavaScript');
                 expect(jsResult?.available).toBe(true);
+
+                if (gpuDevice) {
+                    const webgpuCpuResult = results.get('WebGPU');
+                    expect(webgpuCpuResult?.available).toBe(true);
+                    expect(webgpuCpuResult?.metrics.frameCount).toBe(NUM_FRAMES);
+                    expect(webgpuGpuMetrics?.frameCount).toBe(NUM_FRAMES);
+                }
 
                 const comparisonReport: {
                     simulation: string;
@@ -332,13 +426,6 @@ describe('Compute Cross-Method Comparison', () => {
                     comparisons: []
                 };
 
-                // Header for detailed report
-                console.log('\n' + '='.repeat(80));
-                console.log(`PARITY REPORT: ${simulationName.toUpperCase()}`);
-                console.log(`Agents: ${NUM_AGENTS} | Frames: ${NUM_FRAMES}`);
-                console.log('='.repeat(80));
-
-                // Compare each method against JavaScript
                 for (const [method, result] of results) {
                     if (method === 'JavaScript' || !result.available) continue;
 
@@ -349,21 +436,14 @@ describe('Compute Cross-Method Comparison', () => {
                     let overallMaxError = 0;
                     let overallMinError = Infinity;
 
-                    console.log(`\n${method} vs JavaScript (tolerance: ${tolerance})`);
-                    console.log('-'.repeat(60));
-                    console.log('Frame | Avg Error  | Max Error  | Min Error  | Status');
-                    console.log('-'.repeat(60));
-
                     for (let frame = 0; frame < NUM_FRAMES; frame++) {
                         const jsAgents = jsResult!.frames[frame];
                         const methodAgents = result.frames[frame];
 
-                        // Verify agent count matches
                         expect(methodAgents.length).toBe(jsAgents.length);
 
                         const comparison = compareAgents(jsAgents, methodAgents);
 
-                        // Calculate min position diff for agents that have any diff
                         const agentsWithDiff = comparison.agentDiffs.filter(d => d.posDiff > 0);
                         const minPosDiff = agentsWithDiff.length > 0
                             ? Math.min(...agentsWithDiff.map(d => d.posDiff))
@@ -379,32 +459,14 @@ describe('Compute Cross-Method Comparison', () => {
                             passed: comparison.maxPosDiff <= tolerance
                         });
 
-                        // Track overall stats
                         totalAvgError += comparison.avgPosDiff;
                         overallMaxError = Math.max(overallMaxError, comparison.maxPosDiff);
                         if (comparison.maxPosDiff > 0) {
                             overallMinError = Math.min(overallMinError, minPosDiff > 0 ? minPosDiff : Infinity);
                         }
 
-                        // Only log every 50 frames or on failure to reduce output
-                        const shouldLog = frame % 50 === 0 || frame === NUM_FRAMES - 1 || comparison.maxPosDiff > tolerance;
-                        if (shouldLog) {
-                            const status = comparison.maxPosDiff <= tolerance ? '✓ PASS' : '✗ FAIL';
-                            console.log(
-                                `${String(frame).padStart(5)} | ` +
-                                `${comparison.avgPosDiff.toFixed(6).padStart(10)} | ` +
-                                `${comparison.maxPosDiff.toFixed(6).padStart(10)} | ` +
-                                `${minPosDiff.toFixed(6).padStart(10)} | ` +
-                                status
-                            );
-                        }
-
-                        // Assert positions match within tolerance
-                        // For WebGPU, only strictly assert first few frames (code correctness).
-                        // After GPU_STRICT_FRAMES, chaotic trig precision cascades make
-                        // frame-by-frame comparison unreliable — log but don't fail.
                         if (method === 'WebGPU' && frame >= GPU_STRICT_FRAMES && comparison.maxPosDiff > tolerance) {
-                            // Expected GPU trig cascade — log for reporting, don't assert
+                            // Expected for chaotic paths after strict window.
                         } else {
                             expect(
                                 comparison.maxPosDiff,
@@ -415,15 +477,6 @@ describe('Compute Cross-Method Comparison', () => {
 
                     const avgError = totalAvgError / NUM_FRAMES;
                     if (overallMinError === Infinity) overallMinError = 0;
-
-                    console.log('-'.repeat(60));
-                    console.log(
-                        `OVERALL | ` +
-                        `${avgError.toFixed(6).padStart(10)} | ` +
-                        `${overallMaxError.toFixed(6).padStart(10)} | ` +
-                        `${overallMinError.toFixed(6).padStart(10)} | ` +
-                        (overallMaxError <= tolerance ? '✓ PASS' : '✗ FAIL')
-                    );
 
                     comparisonReport.comparisons.push({
                         method,
@@ -436,24 +489,57 @@ describe('Compute Cross-Method Comparison', () => {
                     });
                 }
 
-                console.log('\n' + '='.repeat(80));
-                console.log('SUMMARY');
-                console.log('='.repeat(80));
-                for (const comp of comparisonReport.comparisons) {
-                    const tolerance = TOLERANCES[comp.method as Method];
-                    const status = comp.overall.maxError <= tolerance ? '✓' : '✗';
-                    console.log(
-                        `${status} ${comp.method}: ` +
-                        `avg=${comp.overall.avgError.toFixed(6)}, ` +
-                        `max=${comp.overall.maxError.toFixed(6)}, ` +
-                        `tolerance=${tolerance}`
-                    );
-                }
-                console.log('='.repeat(80) + '\n');
+                const summaryLines = Object.entries(benchmarkSummary).map(([name, metrics]) => {
+                    if ('unavailable' in metrics) {
+                        return `${name}: unavailable`;
+                    }
+                    const compile = metrics.compileMs === null ? 'n/a' : `${metrics.compileMs.toFixed(3)}ms`;
+                    return `${name}: kernel=${metrics.kernelMs.toFixed(4)}ms, e2e=${metrics.endToEndComputeMs.toFixed(4)}ms, compile=${compile}`;
+                });
+                console.log(`[${simulationName}] ${summaryLines.join(' | ')}`);
 
-                // Write comparison report
-                const reportPath = `tests/compute/outputs/${simulationName}/comparison_report.json`;
-                await writeOutputFile(reportPath, JSON.stringify(comparisonReport, null, 2));
+                if (SHOULD_WRITE_ARTIFACTS) {
+                    const positionData: PositionDataExport = {
+                        simulation: simulationName,
+                        generatedAt: new Date().toISOString(),
+                        numFrames: NUM_FRAMES,
+                        numAgents: NUM_AGENTS,
+                        width: WIDTH,
+                        height: HEIGHT,
+                        methods: {}
+                    };
+
+                    for (const [method, result] of results) {
+                        positionData.methods[method] = {
+                            available: result.available,
+                            frames: result.frames.map((agents, frameIdx) => ({
+                                frame: frameIdx,
+                                agents: agents.map(a => ({
+                                    id: a.id,
+                                    x: a.x,
+                                    y: a.y,
+                                    vx: a.vx,
+                                    vy: a.vy
+                                }))
+                            }))
+                        };
+                    }
+
+                    const positionDataPath = `tests/compute/outputs/${simulationName}/positions_data.json`;
+                    await writeOutputFile(positionDataPath, JSON.stringify(positionData, null, 2));
+
+                    const reportPath = `tests/compute/outputs/${simulationName}/comparison_report.json`;
+                    await writeOutputFile(reportPath, JSON.stringify(comparisonReport, null, 2));
+
+                    const performanceReportPath = `tests/compute/outputs/${simulationName}/performance_report.json`;
+                    await writeOutputFile(performanceReportPath, JSON.stringify({
+                        simulation: simulationName,
+                        generatedAt: new Date().toISOString(),
+                        numFrames: NUM_FRAMES,
+                        numAgents: NUM_AGENTS,
+                        benchmarks: benchmarkSummary
+                    }, null, 2));
+                }
             });
         });
     }
