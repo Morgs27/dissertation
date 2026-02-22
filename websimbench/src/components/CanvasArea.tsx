@@ -1,9 +1,8 @@
 import React from 'react';
 
 import { Obstacle, SimulationAppearance, InputDefinition } from '@websimbench/agentyx';
-import { ObstacleToolbar } from './ObstacleToolbar';
-import { PerformanceWidget } from './Controls/PerformanceWidget';
 import { CanvasInputs } from './Controls/CanvasInputs';
+import { CanvasActionBar } from './Controls/CanvasActionBar';
 
 interface CanvasAreaProps {
     canvasRef: React.RefObject<HTMLCanvasElement>;
@@ -12,7 +11,7 @@ interface CanvasAreaProps {
     isHidden?: boolean;
     isPlacing?: boolean;
     setIsPlacing?: (v: boolean) => void;
-    onPlaceObstacle?: (x: number, y: number) => void;
+    onPlaceObstacle?: (x: number, y: number, simulationWidth: number, simulationHeight: number) => void;
     onClearObstacles?: () => void;
     obstacles?: Obstacle[];
     options?: SimulationAppearance;
@@ -21,7 +20,53 @@ interface CanvasAreaProps {
     inputs?: Record<string, number>;
     definedInputs?: InputDefinition[];
     handleInputChange?: (key: string, value: number) => void;
+    isRunning?: boolean;
+    handleRun?: () => void;
+    showPlaceholder?: boolean;
+    placeholderText?: string;
+    canRun?: boolean;
 }
+
+interface ContainedRect {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+}
+
+const getContainedRect = (
+    containerWidth: number,
+    containerHeight: number,
+    contentWidth: number,
+    contentHeight: number
+): ContainedRect => {
+    if (containerWidth <= 0 || containerHeight <= 0 || contentWidth <= 0 || contentHeight <= 0) {
+        return { left: 0, top: 0, width: containerWidth, height: containerHeight };
+    }
+
+    const containerAspect = containerWidth / containerHeight;
+    const contentAspect = contentWidth / contentHeight;
+
+    if (containerAspect > contentAspect) {
+        const height = containerHeight;
+        const width = height * contentAspect;
+        return {
+            left: (containerWidth - width) / 2,
+            top: 0,
+            width,
+            height
+        };
+    }
+
+    const width = containerWidth;
+    const height = width / contentAspect;
+    return {
+        left: 0,
+        top: (containerHeight - height) / 2,
+        width,
+        height
+    };
+};
 
 export const CanvasArea = ({
     canvasRef,
@@ -38,7 +83,12 @@ export const CanvasArea = ({
     hideObstaclesUI,
     inputs,
     definedInputs,
-    handleInputChange
+    handleInputChange,
+    isRunning,
+    handleRun,
+    showPlaceholder,
+    placeholderText,
+    canRun
 }: CanvasAreaProps) => {
 
     console.log("CanvasArea Props Check:", {
@@ -48,45 +98,89 @@ export const CanvasArea = ({
         hideObstaclesUI
     });
 
+    const containerRef = React.useRef<HTMLDivElement>(null);
+    const [containerSize, setContainerSize] = React.useState({ width: 0, height: 0 });
+
+    React.useEffect(() => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        const updateSize = () => {
+            const rect = container.getBoundingClientRect();
+            setContainerSize({ width: rect.width, height: rect.height });
+        };
+
+        updateSize();
+
+        const observer = new ResizeObserver(updateSize);
+        observer.observe(container);
+
+        return () => observer.disconnect();
+    }, []);
+
+    const simulationCanvas = renderMode === 'gpu'
+        ? gpuCanvasRef.current ?? canvasRef.current
+        : canvasRef.current;
+    const simulationWidth = simulationCanvas?.width ?? 800;
+    const simulationHeight = simulationCanvas?.height ?? 600;
+
+    const viewportRect = getContainedRect(
+        containerSize.width,
+        containerSize.height,
+        simulationWidth,
+        simulationHeight
+    );
+
     const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (!isPlacing || !onPlaceObstacle || !canvasRef.current) return;
+        if (!isPlacing || !onPlaceObstacle) return;
+
+        const activeCanvas = renderMode === 'gpu'
+            ? gpuCanvasRef.current ?? canvasRef.current
+            : canvasRef.current;
+        if (!activeCanvas) return;
+        const simWidth = activeCanvas.width || 800;
+        const simHeight = activeCanvas.height || 600;
 
         const rect = e.currentTarget.getBoundingClientRect();
-        // Calculate relative position (0-1)
-        const relX = (e.clientX - rect.left) / rect.width;
-        const relY = (e.clientY - rect.top) / rect.height;
+        const contentRect = getContainedRect(rect.width, rect.height, simWidth, simHeight);
+        const localX = e.clientX - rect.left;
+        const localY = e.clientY - rect.top;
 
-        // Map to simulation coordinates (800x600 default)
-        const simX = relX * 800;
-        const simY = relY * 600;
+        const withinX = localX >= contentRect.left && localX <= contentRect.left + contentRect.width;
+        const withinY = localY >= contentRect.top && localY <= contentRect.top + contentRect.height;
+        if (!withinX || !withinY) return;
 
-        onPlaceObstacle(simX, simY);
+        const relX = (localX - contentRect.left) / contentRect.width;
+        const relY = (localY - contentRect.top) / contentRect.height;
+        const simX = relX * simWidth;
+        const simY = relY * simHeight;
+
+        onPlaceObstacle(simX, simY, simWidth, simHeight);
     };
+
+    const safeSimulationWidth = Math.max(simulationWidth, 1);
+    const safeSimulationHeight = Math.max(simulationHeight, 1);
 
     return (
         <div
+            ref={containerRef}
             onClick={handleCanvasClick}
-            className={`w-full h-full relative flex bg-transparent items-center justify-center transition-opacity duration-300 ${isHidden ? 'hidden' : ''} ${isPlacing ? 'cursor-crosshair' : ''}`}
+            className={`canvas-area ${isHidden ? 'hidden' : ''} ${isPlacing ? 'cursor-crosshair' : ''}`}
         >
             {/* CPU rendering canvas */}
             <canvas
                 ref={canvasRef}
                 width={800}
                 height={600}
-                className={`absolute inset-0 w-full h-full object-contain ${renderMode === 'cpu' ? 'block' : 'hidden'}`}
+                className={`canvas-layer ${renderMode === 'cpu' ? 'block' : 'hidden'}`}
             />
             {/* GPU rendering canvas */}
             <canvas
                 ref={gpuCanvasRef}
                 width={800}
                 height={600}
-                className={`absolute inset-0 w-full h-full object-contain ${renderMode === 'gpu' ? 'block' : 'hidden'}`}
+                className={`canvas-layer ${renderMode === 'gpu' ? 'block' : 'hidden'}`}
             />
-
-            {/* Performance Overlay */}
-            {fps !== undefined && !hideObstaclesUI && (
-                <PerformanceWidget fps={fps} />
-            )}
 
             {/* Inputs Overlay */}
             {!hideObstaclesUI && inputs && definedInputs && handleInputChange && (
@@ -98,36 +192,62 @@ export const CanvasArea = ({
             )}
 
             {/* Obstacles Overlay */}
-            <div className="absolute inset-0 w-full h-full pointer-events-none">
+            <div
+                className="canvas-overlay"
+                style={{
+                    left: viewportRect.left,
+                    top: viewportRect.top,
+                    width: viewportRect.width,
+                    height: viewportRect.height
+                }}
+            >
                 {obstacles?.map((ob, i) => (
                     <div
                         key={i}
-                        className="absolute"
                         style={{
-                            left: `${(ob.x / 800) * 100}%`,
-                            top: `${(ob.y / 600) * 100}%`,
-                            width: `${(ob.w / 800) * 100}%`,
-                            height: `${(ob.h / 600) * 100}%`,
+                            left: `${(ob.x / safeSimulationWidth) * 100}%`,
+                            top: `${(ob.y / safeSimulationHeight) * 100}%`,
+                            width: `${(ob.w / safeSimulationWidth) * 100}%`,
+                            height: `${(ob.h / safeSimulationHeight) * 100}%`,
                             backgroundColor: options?.obstacleColor || 'rgba(255, 0, 0, 0.2)',
                             borderColor: options?.obstacleBorderColor || 'red',
                             opacity: options?.obstacleOpacity || 0.2,
-                            borderWidth: '1px',
-                            borderStyle: 'solid'
+                            borderStyle: 'solid',
+                            position: 'absolute'
                         }}
                     />
                 ))}
             </div>
 
-            {/* Floating Toolbar */}
-            {setIsPlacing && onClearObstacles && !hideObstaclesUI && (
-                <div className="absolute top-4 left-4 z-10 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-                    <ObstacleToolbar
-                        isPlacing={!!isPlacing}
-                        setIsPlacing={setIsPlacing}
-                        onClear={onClearObstacles}
-                        obstacleCount={obstacles?.length || 0}
-                    />
+            {showPlaceholder && !isHidden && (
+                <div
+                    className="canvas-placeholder"
+                    style={{
+                        left: viewportRect.left,
+                        top: viewportRect.top,
+                        width: viewportRect.width,
+                        height: viewportRect.height
+                    }}
+                >
+                    {placeholderText || 'Run the simulation to start rendering.'}
                 </div>
+            )}
+
+            {/* Floating Toolbar */}
+            {setIsPlacing && onClearObstacles && !hideObstaclesUI && handleInputChange && inputs && definedInputs && handleRun && isRunning !== undefined && (
+                <CanvasActionBar
+                    isRunning={isRunning}
+                    onRun={handleRun}
+                    agentCount={inputs.agentCount || 1000}
+                    setAgentCount={(val) => handleInputChange('agentCount', val)}
+                    isAgentCountDefined={definedInputs.some(d => d.name === 'agentCount')}
+                    isPlacing={!!isPlacing}
+                    setIsPlacing={setIsPlacing}
+                    onClearObstacles={onClearObstacles}
+                    hideObstaclesUI={hideObstaclesUI}
+                    fps={fps}
+                    canRun={canRun}
+                />
             )}
         </div>
     );

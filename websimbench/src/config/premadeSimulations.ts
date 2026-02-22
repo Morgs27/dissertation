@@ -1,5 +1,84 @@
 
 export const PREMADE_SIMULATIONS: Record<string, string> = {
+    'Tutorial': `// --- Agentyx DSL Tutorial ---
+// This tutorial walks you through the core features of the language.
+
+// 1. INPUTS
+// Declare parameters that can be adjusted in real-time.
+input accel = 1.05 [1.0, 1.2]; // Factor to "multiply" speed each frame
+input maxSpeed = 3.5 [1.0, 10];
+input turnAngle = 0.1 [0, 1.0];
+input perception = 35 [10, 100];
+input depositAmount = 2.0;
+input decayFactor = 0.05;
+
+// 2. SPECIES
+// Use species to define different behavior groups.
+species(2);
+
+// 3. TRAILS & PHEROMONES
+enableTrails(inputs.depositAmount, inputs.decayFactor);
+
+// 4. ENVIRONMENT INTERACTION
+avoidObstacles(1.2);
+
+// 5. BEHAVIOR LOGIC
+if (species == 0) {
+    // --- Species 0: "Explorers" ---
+    
+    var r = random();
+    turn((r - 0.5) * inputs.turnAngle);
+    
+    // We demonstrate "exponential" speed up by multiplying velocity
+    // Then we MUST use limitSpeed to keep them under control.
+    vx *= inputs.accel;
+    vy *= inputs.accel;
+    
+    // Ensure they don't move too slow initially
+    if (vx*vx + vy*vy < 0.1) {
+        moveForward(0.5);
+    }
+
+    // CAP the speed using the built-in command
+    limitSpeed(inputs.maxSpeed);
+    
+    deposit(inputs.depositAmount);
+} 
+else {
+    // --- Species 1: "Followers" ---
+    
+    var sL = sense(0.4, 15);
+    var sR = sense(-0.4, 15);
+    
+    if (sL > sR) {
+        turn(inputs.turnAngle);
+    } else if (sR > sL) {
+        turn(-inputs.turnAngle);
+    }
+    
+    moveForward(1.5);
+}
+
+// 6. NEIGHBOR INTERACTION
+var nearby = neighbors(inputs.perception);
+foreach (nearby as neighbor) {
+    var dx = x - neighbor.x;
+    var dy = y - neighbor.y;
+    var dist2 = dx*dx + dy*dy;
+    
+    if (dist2 < 100 && dist2 > 0) {
+        vx += dx * 0.05;
+        vy += dy * 0.05;
+    }
+}
+
+// 7. BOUNDARIES & UPDATES
+borderWrapping();
+
+// When manipulating vx/vy directly (for acceleration/limitSpeed),
+// we call updatePosition() to apply those vectors to the agent's x/y.
+updatePosition(1.0);
+    `,
     'Slime Mold': `// Slime Mold Simulation
 input sensorAngle = 0.6;
 input sensorDist = 15;

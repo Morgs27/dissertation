@@ -283,12 +283,12 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   };
 
   return (
-    <div className="flex h-full w-full bg-[#0a1a1f]">
-      <div className="flex flex-col w-[320px] border-r border-white/[0.06] bg-white/[0.02]">
-        <div className="h-12 flex px-6 items-center justify-between border-b border-white/[0.06] shrink-0">
-          <div className="flex items-center gap-2">
+    <div className="reports-layout">
+      <div className="reports-sidebar">
+        <div className="page-header">
+          <div className="page-title">
             <ChartBar className="text-tropicalTeal" size={20} weight="bold" />
-            <h2 className="text-2xl md:text-[1.0rem] font-bold text-white leading-tight tracking-tight">Reports</h2>
+            <h2 className="page-title-text">Reports</h2>
           </div>
 
           <AlertDialog>
@@ -346,10 +346,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             {reports.map((report) => (
               <div
                 key={report.id}
-                className={`group p-3 cursor-pointer rounded-xl transition-all duration-200 border ${selectedReportId === report.id
-                  ? 'bg-tropicalTeal/10 border-tropicalTeal/30 text-white shadow-lg shadow-black/20'
-                  : 'bg-transparent border-transparent hover:bg-white/5 text-gray-400 hover:text-gray-200'
-                  }`}
+                className="report-list-item group"
+                data-selected={selectedReportId === report.id}
                 onClick={() => setSelectedReportId(report.id)}
               >
                 {editingId === report.id ? (
@@ -372,7 +370,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 ) : (
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-3 overflow-hidden">
-                      <div className={`p-2 rounded-lg transition-colors ${selectedReportId === report.id ? 'bg-tropicalTeal text-jetBlack' : 'bg-black/40 group-hover:bg-black/60'}`}>
+                      <div className="report-list-icon">
                         <Calendar size={16} weight={selectedReportId === report.id ? 'fill' : 'regular'} />
                       </div>
                       <div className="overflow-hidden">
@@ -436,39 +434,39 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               </p>
             </div>
 
-            <div className="bg-[#0c1317] rounded-md border border-white/[0.08] p-4">
-              <h3 className="text-sm font-bold mb-3">Summary</h3>
-              <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+            <div className="report-summary-block">
+              <h3 className="report-summary-title">Summary</h3>
+              <div className="report-metric-grid">
                 <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Runs</p>
-                  <p className="text-lg font-bold">{filteredSummary.totalRuns}</p>
+                  <p className="report-metric-label">Runs</p>
+                  <p className="report-metric-value">{filteredSummary.totalRuns}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Completed</p>
-                  <p className="text-lg font-bold text-emerald-400">{filteredSummary.completedRuns}</p>
+                  <p className="report-metric-label">Completed</p>
+                  <p className="report-metric-value text-emerald-400">{filteredSummary.completedRuns}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Failed</p>
-                  <p className="text-lg font-bold text-red-400">{filteredSummary.failedRuns}</p>
+                  <p className="report-metric-label">Failed</p>
+                  <p className="report-metric-value text-red-400">{filteredSummary.failedRuns}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Frames</p>
-                  <p className="text-lg font-bold">{filteredSummary.frameCount.toLocaleString()}</p>
+                  <p className="report-metric-label">Frames</p>
+                  <p className="report-metric-value">{filteredSummary.frameCount.toLocaleString()}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Total Exec (ms)</p>
-                  <p className="text-lg font-bold">{filteredSummary.totalExecutionMs.toFixed(2)}</p>
+                  <p className="report-metric-label">Total Exec (ms)</p>
+                  <p className="report-metric-value">{filteredSummary.totalExecutionMs.toFixed(2)}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Avg Frame (ms)</p>
-                  <p className="text-lg font-bold">{filteredSummary.averageFrameMs.toFixed(4)}</p>
+                  <p className="report-metric-label">Avg Frame (ms)</p>
+                  <p className="report-metric-value">{filteredSummary.averageFrameMs.toFixed(4)}</p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-[#0c1317] rounded-md border border-white/[0.08] p-4 space-y-3">
-              <h3 className="text-sm font-bold">Filters</h3>
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+            <div className="report-summary-block space-y-3">
+              <h3 className="report-summary-title">Filters</h3>
+              <div className="report-filter-grid">
                 <Select value={methodFilter} onValueChange={setMethodFilter}>
                   <SelectTrigger className="h-8">
                     <SelectValue placeholder="Method" />
@@ -526,7 +524,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               </div>
             </div>
 
-            <div className="overflow-x-auto bg-black/30 rounded-md border border-white/10">
+            <div className="report-table-container">
               <Table className="text-xs">
                 <TableHeader>
                   <TableRow className="bg-white/[0.02] hover:bg-white/[0.02] border-white/[0.06]">

@@ -11,12 +11,14 @@ import { useSimulationRunner } from '../hooks/useSimulationRunner';
 import { useLogger } from '../hooks/useLogger';
 import { useObstacles } from '../hooks/useObstacles';
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Tabs } from '../components/ui/tabs';
 import { useState, useRef } from 'react';
-import { GameController, Speedometer, Gear } from '@phosphor-icons/react';
+import { GameControllerIcon, Gear } from '@phosphor-icons/react';
 import { SimulationAppearanceOptions, UpdateOptionFn } from '@/hooks/useSimulationOptions';
 import type { BenchmarkReport } from '@/types/benchmark';
 import { OptionsView } from './OptionsView';
+import { HeaderIconButton } from '@/components/ui/header-icon-button';
+
 
 interface HomeProps {
   options: SimulationAppearanceOptions;
@@ -26,6 +28,9 @@ interface HomeProps {
 }
 
 export const Home = ({ options, updateOption, resetOptions, onBenchmarkComplete }: HomeProps) => {
+  const OBSTACLE_SIZE = 50;
+  const OBSTACLE_HALF_SIZE = OBSTACLE_SIZE / 2;
+
   const [activeHomeTab, setActiveHomeTab] = useState('playground');
   const [benchmarkRenderMode, setBenchmarkRenderMode] = useState<RenderMode>('cpu');
   const [isBenchmarkRunning, setIsBenchmarkRunning] = useState(false);
@@ -60,6 +65,7 @@ export const Home = ({ options, updateOption, resetOptions, onBenchmarkComplete 
     setRenderMode,
     fps,
     isRunning,
+    hasStartedSimulation,
     canvasRef,
     gpuCanvasRef,
     handleRun,
@@ -67,20 +73,29 @@ export const Home = ({ options, updateOption, resetOptions, onBenchmarkComplete 
 
   const { logs, clearLogs } = useLogger();
 
-  const handlePlaceObstacle = (x: number, y: number) => {
-    addObstacle({ x: x - 25, y: y - 25, w: 50, h: 50 });
+  const handlePlaceObstacle = (x: number, y: number, simulationWidth: number, simulationHeight: number) => {
+    const maxX = Math.max(simulationWidth - OBSTACLE_SIZE, 0);
+    const maxY = Math.max(simulationHeight - OBSTACLE_SIZE, 0);
+
+    addObstacle({
+      x: Math.min(Math.max(x - OBSTACLE_HALF_SIZE, 0), maxX),
+      y: Math.min(Math.max(y - OBSTACLE_HALF_SIZE, 0), maxY),
+      w: OBSTACLE_SIZE,
+      h: OBSTACLE_SIZE
+    });
   };
 
   const activeRenderMode =
     activeHomeTab === 'benchmark'
       ? benchmarkRenderMode
       : renderMode;
+  const canRunSimulation = code.trim().length > 0;
 
   return (
     <PanelGroup direction="horizontal">
       <Panel defaultSize={50} minSize={20}>
         <PanelGroup direction="vertical">
-          <Panel defaultSize={70} minSize={20}>
+          <Panel defaultSize={80} minSize={20}>
             <EditorPanel
               code={code}
               setCode={setCode}
@@ -92,74 +107,39 @@ export const Home = ({ options, updateOption, resetOptions, onBenchmarkComplete 
             />
           </Panel>
 
-          <PanelResizeHandle className="h-1 bg-white/[0.04] cursor-row-resize transition-all hover:bg-tropicalTeal/30" />
+          <PanelResizeHandle className="panel-resize-row" />
 
-          <Panel defaultSize={30} minSize={10}>
+          <Panel defaultSize={20} minSize={10}>
             <LogsPanel logs={logs} onClear={clearLogs} />
           </Panel>
         </PanelGroup>
       </Panel>
 
-      <PanelResizeHandle className="w-1 bg-white/[0.04] cursor-col-resize transition-all hover:bg-tropicalTeal/30" />
+      <PanelResizeHandle className="panel-resize-col" />
 
       <Panel defaultSize={50} minSize={20}>
-        <div className="flex flex-col h-full bg-[#0a1a1f] overflow-hidden">
-          <Tabs value={activeHomeTab} onValueChange={setActiveHomeTab} className="flex-1 flex flex-col overflow-hidden">
-            <div className="bg-white/[0.02] border-b border-white/[0.06] px-4 h-12 flex items-center shrink-0">
-              <TabsList className="bg-transparent h-8 p-0 gap-1">
-                <TabsTrigger value="playground" className="px-3 h-8 data-[state=active]:bg-tropicalTeal data-[state=active]:text-jetBlack rounded-md text-xs font-bold transition-all flex items-center gap-2">
-                  <GameController size={16} weight="fill" /> Playground
-                </TabsTrigger>
-                <TabsTrigger value="benchmark" className="px-3 h-8 data-[state=active]:bg-tropicalTeal data-[state=active]:text-jetBlack rounded-md text-xs font-bold transition-all flex items-center gap-2">
-                  <Speedometer size={16} weight="fill" /> Benchmark
-                </TabsTrigger>
-              </TabsList>
+        <div className="page-container">
+          <Tabs value={activeHomeTab} onValueChange={setActiveHomeTab} className="home-tabs">
+            <div className="page-header-compact gap-4 justify-start">
+              <PlaygroundControls
+                method={method}
+                setMethod={setMethod}
+                renderMode={activeRenderMode === 'gpu' ? 'gpu' : 'cpu'}
+                setRenderMode={setRenderMode}
+              />
 
-              <button
+              <HeaderIconButton
                 onClick={() => setOptionsOpen(true)}
-                className="ml-auto w-8 h-8 rounded-md flex items-center justify-center text-gray-400 hover:text-tropicalTeal hover:bg-white/[0.06] transition-colors"
+                // className="ml-auto"
                 title="System Configuration"
-              >
-                <Gear size={16} weight="fill" />
-              </button>
+                icon={<Gear size={28} weight="fill" />}
+                label="Options"
+              />
             </div>
 
             <PanelGroup direction="vertical">
-              <Panel ref={controlsPanelRef} defaultSize={40} minSize={20} className="flex flex-col">
-                <div className="p-4 overflow-y-auto flex-1">
-                  <TabsContent value="playground" className="m-0 focus-visible:outline-none">
-                    <PlaygroundControls
-                      method={method}
-                      setMethod={setMethod}
-                      renderMode={renderMode}
-                      setRenderMode={setRenderMode}
-                      isRunning={isRunning}
-                      handleRun={handleRun}
-                      inputs={inputs}
-                      definedInputs={definedInputs}
-                      handleInputChange={handleInputChange}
-                    />
-                  </TabsContent>
-
-                  <TabsContent value="benchmark" className="m-0 focus-visible:outline-none">
-                    <BenchmarkControls
-                      code={code}
-                      definedInputs={definedInputs}
-                      onComplete={onBenchmarkComplete}
-                      options={options}
-                      canvasRef={canvasRef}
-                      gpuCanvasRef={gpuCanvasRef}
-                      onRenderModeChange={setBenchmarkRenderMode}
-                      onRunningChange={setIsBenchmarkRunning}
-                    />
-                  </TabsContent>
-                </div>
-              </Panel>
-
-              <PanelResizeHandle className="h-1 bg-white/[0.04] cursor-row-resize transition-all hover:bg-tropicalTeal/30" />
-
-              <Panel defaultSize={60} minSize={20}>
-                <div className="flex-1 h-full min-h-0 bg-black relative shadow-inner">
+              <Panel defaultSize={100} minSize={20}>
+                <div className="home-canvas-container">
                   <CanvasArea
                     canvasRef={canvasRef}
                     gpuCanvasRef={gpuCanvasRef}
@@ -176,6 +156,11 @@ export const Home = ({ options, updateOption, resetOptions, onBenchmarkComplete 
                     inputs={inputs}
                     definedInputs={definedInputs}
                     handleInputChange={handleInputChange}
+                    isRunning={isRunning}
+                    handleRun={handleRun}
+                    canRun={canRunSimulation}
+                    showPlaceholder={!hasStartedSimulation && obstacles.length === 0 && activeHomeTab !== 'benchmark'}
+                    placeholderText="Run the simulation to start."
                   />
                 </div>
               </Panel>

@@ -1,13 +1,24 @@
-import { useRef } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
+import { useState, useRef } from 'react';
+
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { CircleNotch, FloppyDisk, UploadSimple, PencilLineIcon, CubeIcon, FileJsIcon, GraphicsCardIcon, BookOpen } from "@phosphor-icons/react";
+import {
+  CircleNotch,
+  FloppyDisk,
+  UploadSimple,
+  PencilLineIcon,
+  BookOpen,
+  BookOpenText,
+  ListBullets,
+  Function as FunctionIcon,
+  RocketLaunch,
+} from "@phosphor-icons/react";
+import { NavDropdown } from "@/components/ui/nav-dropdown";
+import { HeaderIconButton } from "@/components/ui/header-icon-button";
 import Editor from 'react-simple-code-editor';
 import { highlight, languages } from 'prismjs';
 import 'prismjs/components/prism-clike';
@@ -15,6 +26,8 @@ import 'prismjs/components/prism-javascript';
 import 'prismjs/components/prism-wasm';
 
 import { PREMADE_SIMULATIONS } from '../config/premadeSimulations';
+import { DOCS_LATEST_VERSION } from '@/config/version';
+import { createHashRoute } from '@/lib/routes';
 
 interface EditorPanelProps {
   code: string;
@@ -33,6 +46,12 @@ const editorStyle = {
   backgroundColor: 'rgba(0, 0, 0, 0.1)',
 };
 
+const DSL_DOC_LINKS = [
+  { label: 'DSL Basics', page: 'dsl-basics', icon: BookOpenText },
+  { label: 'Commands', page: 'dsl-commands', icon: ListBullets },
+  { label: 'Functions', page: 'dsl-functions', icon: FunctionIcon },
+];
+
 export const EditorPanel = ({
   code,
   setCode,
@@ -42,7 +61,18 @@ export const EditorPanel = ({
   isCompiling,
   compileErrors
 }: EditorPanelProps) => {
+  const [activeTab, setActiveTab] = useState('sim-code');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isEditorEmpty = code.trim().length === 0;
+
+  const navigateToDocsPage = (docsPage: string) => {
+    if (typeof window === 'undefined') return;
+    window.location.hash = createHashRoute({
+      page: 'docs',
+      version: DOCS_LATEST_VERSION,
+      docsPage,
+    });
+  };
 
   const handleLoadPremade = (simCode: string) => {
     // Confirm before overwriting if the code is not empty? 
@@ -52,30 +82,24 @@ export const EditorPanel = ({
   };
 
   return (
-    <Tabs defaultValue="sim-code" className="h-full flex flex-col bg-[#0a1a1f]">
-      <div className="h-12 flex items-center justify-between px-3 bg-white/[0.02] border-b border-white/[0.06] shrink-0">
-        <TabsList className="bg-transparent h-8 p-0 gap-1">
-          <TabsTrigger value="sim-code" className="h-8 px-4 data-[state=active]:bg-white/10 data-[state=active]:text-white rounded-md text-xs font-bold transition-all flex items-center gap-2">
-            <PencilLineIcon />
-            Editor
-          </TabsTrigger>
-          <TabsTrigger value="wasm" className="h-8 px-4 data-[state=active]:bg-white/10 data-[state=active]:text-white rounded-md text-xs font-bold transition-all flex items-center gap-2">
-            <CubeIcon size={18} />
-            WASM
-          </TabsTrigger>
-          <TabsTrigger value="javascript" className="h-8 px-4 data-[state=active]:bg-white/10 data-[state=active]:text-white rounded-md text-xs font-bold transition-all flex items-center gap-2">
-            <FileJsIcon size={18} />
-            JS
-          </TabsTrigger>
-          <TabsTrigger value="wgsl" className="h-8 px-4 data-[state=active]:bg-white/10 data-[state=active]:text-white rounded-md text-xs font-bold transition-all flex items-center gap-2">
-            <GraphicsCardIcon size={18} />
-            WGSL
-          </TabsTrigger>
-        </TabsList>
+    <div className="editor-panel">
+      <div className="editor-header">
+        <NavDropdown
+          icon={<PencilLineIcon size={16} />}
+          label="Editor"
+          value={activeTab}
+          onValueChange={setActiveTab}
+          options={[
+            { value: "sim-code", label: "Agent Code" },
+            { value: "wasm", label: "WASM" },
+            { value: "javascript", label: "JS" },
+            { value: "wgsl", label: "WGSL" }
+          ]}
+        />
 
-        <div className="flex gap-2">
+        <div className="editor-actions">
           {isCompiling && (
-            <div className="flex items-center gap-2 px-3 py-1 bg-tropicalTeal/10 text-tropicalTeal rounded-md text-[10px] font-bold uppercase tracking-wider">
+            <div className="editor-compiling">
               <CircleNotch size={18} className="animate-spin" />
               Compiling...
             </div>
@@ -83,21 +107,17 @@ export const EditorPanel = ({
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-lg"
-                className="h-8 w-8 text-tropicalTeal hover:text-tropicalTeal hover:bg-white/10"
+              <HeaderIconButton
                 title="Premade Simulations"
-              >
-                <BookOpen size={18} />
-              </Button>
+                icon={<BookOpen size={18} />}
+                label="Simulations"
+              />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 bg-[#16262b] border-white/10 text-white">
+            <DropdownMenuContent align="end">
               {Object.entries(PREMADE_SIMULATIONS).map(([name, simCode]) => (
                 <DropdownMenuItem
                   key={name}
                   onClick={() => handleLoadPremade(simCode)}
-                  className="cursor-pointer hover:bg-white/10 focus:bg-white/10 focus:text-white"
                 >
                   {name}
                 </DropdownMenuItem>
@@ -105,58 +125,85 @@ export const EditorPanel = ({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button
-            variant="ghost"
-            size="icon-lg"
-            className="h-8 w-8 text-tropicalTeal hover:text-tropicalTeal hover:bg-white/10"
+          <HeaderIconButton
             onClick={handleSaveCode}
             title="Save Simulation"
-          >
-            <FloppyDisk size={18} />
-          </Button>
+            icon={<FloppyDisk size={18} />}
+            label="Save"
+          />
 
-          <Button
-            variant="ghost"
-            size="icon-lg"
-            className="h-8 w-8 text-tropicalTeal hover:text-tropicalTeal hover:bg-white/10"
+          <HeaderIconButton
             onClick={() => fileInputRef.current?.click()}
             title="Load Simulation"
-          >
-            <UploadSimple size={18} />
-          </Button>
+            icon={<UploadSimple size={18} />}
+            label="Load"
+          />
           <input
             type="file"
             ref={fileInputRef}
             onChange={handleLoadCode}
-            className="hidden"
+            style={{ display: 'none' }}
             accept=".js,.ts,.txt,.sim"
           />
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden relative">
-        <TabsContent value="sim-code" className="h-full p-0 m-0 overflow-y-auto focus-visible:outline-none">
-          <Editor
-            value={code}
-            onValueChange={setCode}
-            highlight={code => {
-              const lines = code.split('\n');
-              return lines.map((lineContent, i) => {
-                const error = compileErrors.find(e => e.lineIndex === i);
-                const highlighted = highlight(lineContent, languages.js, 'js');
-                if (error) {
-                  return `<span style="text-decoration: underline wavy red; text-decoration-skip-ink: none; background-color: rgba(255, 0, 0, 0.1);" title="${error.message}">${highlighted || ' '}</span>`;
-                }
-                return highlighted || ' ';
-              }).join('\n');
-            }}
-            padding={16}
-            style={editorStyle}
-            textareaClassName="focus:outline-none"
-            className="agentyx-code"
-          />
-        </TabsContent>
-        <TabsContent value="wasm" className="h-full p-0 m-0 overflow-y-auto focus-visible:outline-none">
+      <div className="editor-content-area">
+        <div className={`editor-content-tab ${activeTab !== 'sim-code' ? 'hidden' : ''}`}>
+          <div className="editor-code-wrapper">
+            <Editor
+              value={code}
+              onValueChange={setCode}
+              highlight={code => {
+                const lines = code.split('\n');
+                return lines.map((lineContent, i) => {
+                  const error = compileErrors.find(e => e.lineIndex === i);
+                  const highlighted = highlight(lineContent, languages.js, 'js');
+                  if (error) {
+                    return `<span style="text-decoration: underline wavy red; text-decoration-skip-ink: none; background-color: rgba(255, 0, 0, 0.1);" title="${error.message}">${highlighted || ' '}</span>`;
+                  }
+                  return highlighted || ' ';
+                }).join('\n');
+              }}
+              padding={16}
+              style={editorStyle}
+              textareaClassName="focus:outline-none"
+              className="agentyx-code"
+            />
+
+            {isEditorEmpty && (
+              <div className="editor-empty-placeholder">
+                <p className="editor-empty-title">No simulation code yet.</p>
+                <p className="editor-empty-subtitle">
+                  Start typing, or jump to the DSL docs:
+                </p>
+                <div className="editor-empty-links">
+                  {DSL_DOC_LINKS.map((item) => (
+                    <button
+                      type="button"
+                      key={item.page}
+                      className="editor-empty-link-btn"
+                      onClick={() => navigateToDocsPage(item.page)}
+                    >
+                      <item.icon size={14} weight="bold" />
+                      {item.label}
+                    </button>
+                  ))}
+                  <div style={{ flex: 1, flexBasis: '100%' }}></div>
+                  <button
+                    type="button"
+                    className="editor-empty-link-btn editor-empty-link-btn-primary"
+                    onClick={() => handleLoadPremade(PREMADE_SIMULATIONS['Tutorial'])}
+                  >
+                    <RocketLaunch size={14} weight="bold" />
+                    Load Example
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className={`editor-content-tab ${activeTab !== 'wasm' ? 'hidden' : ''}`}>
           <Editor
             value={compiledCode.wasm}
             onValueChange={() => { }}
@@ -166,8 +213,8 @@ export const EditorPanel = ({
             style={editorStyle}
             className="agentyx-code"
           />
-        </TabsContent>
-        <TabsContent value="javascript" className="h-full p-0 m-0 overflow-y-auto focus-visible:outline-none">
+        </div>
+        <div className={`editor-content-tab ${activeTab !== 'javascript' ? 'hidden' : ''}`}>
           <Editor
             value={compiledCode.js}
             onValueChange={() => { }}
@@ -177,8 +224,8 @@ export const EditorPanel = ({
             style={editorStyle}
             className="agentyx-code"
           />
-        </TabsContent>
-        <TabsContent value="wgsl" className="h-full p-0 m-0 overflow-y-auto focus-visible:outline-none">
+        </div>
+        <div className={`editor-content-tab ${activeTab !== 'wgsl' ? 'hidden' : ''}`}>
           <Editor
             value={compiledCode.wgsl}
             onValueChange={() => { }}
@@ -188,8 +235,8 @@ export const EditorPanel = ({
             style={editorStyle}
             className="agentyx-code"
           />
-        </TabsContent>
+        </div>
       </div>
-    </Tabs>
+    </div >
   );
 };

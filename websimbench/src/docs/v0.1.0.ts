@@ -519,13 +519,13 @@ export const docsV010: DocsVersion = {
       id: 'overview',
       title: 'Overview',
       description:
-        'Agentyx is a browser-native simulation engine that compiles a simple DSL into JavaScript, WebAssembly, and WebGPU \u2014 letting you run massive agent populations without leaving the browser.',
+        'Agentyx is a browser-native simulation engine that compiles a simple DSL into JavaScript, WebAssembly, and WebGPU.  Letting you run massive agent populations without leaving the browser.',
       sections: [
         {
           id: 'what-is-agentyx',
           title: 'What is Agentyx?',
           content: [
-            p('Traditional agent-based modeling tools often require native installations, specialized languages, or server infrastructure. Agentyx eliminates all of that. You write agent behavior in a concise DSL designed for spatial agent logic, and the engine compiles it to three targets simultaneously: JavaScript, WebAssembly Text (WAT), and WGSL (WebGPU Shading Language).'),
+            p('Traditional agent-based modeling tools often require native installations, specialized languages, or server infrastructure. Agentyx eliminates all of that. You write agent behavior in a concise DSL designed for 2D spatial agent logic, and the engine compiles it to three targets simultaneously: JavaScript, WebAssembly Text (WAT), and WGSL (WebGPU Shading Language).'),
             p('This means you can run the exact same behavior script on any compute backend \u2014 switching between JavaScript, WebWorkers, WebAssembly, and WebGPU at runtime \u2014 without changing a single line of your simulation code. Everything runs client-side: compilation, execution, rendering, and performance tracking.'),
             tip('Agentyx is distributed as an NPM package (`@websimbench/agentyx`) and works with any JavaScript framework or vanilla HTML/JS setup.'),
             linkCards([
