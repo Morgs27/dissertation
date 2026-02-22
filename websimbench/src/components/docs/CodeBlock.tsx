@@ -1,4 +1,6 @@
+import { useState, useCallback } from 'react';
 import type { DocsCodeSnippet } from '@/docs/types';
+import { Copy, Check } from '@phosphor-icons/react';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-clike';
 import 'prismjs/components/prism-javascript';
@@ -27,6 +29,14 @@ const languageMap: Record<DocsCodeSnippet['language'], string> = {
 };
 
 export const CodeBlock = ({ snippet }: CodeBlockProps) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(snippet.code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [snippet.code]);
+
   const prismLanguage = languageMap[snippet.language] ?? 'javascript';
   const grammar = Prism.languages[prismLanguage] ?? Prism.languages.javascript;
   const highlighted = Prism.highlight(snippet.code, grammar, prismLanguage);
@@ -37,9 +47,18 @@ export const CodeBlock = ({ snippet }: CodeBlockProps) => {
         <span className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
           {snippet.title}
         </span>
-        <span className="text-[10px] uppercase tracking-wide text-gray-600 font-mono">
-          {snippet.language}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] uppercase tracking-wide text-gray-600 font-mono">
+            {snippet.language}
+          </span>
+          <button
+            onClick={handleCopy}
+            className="text-gray-500 hover:text-white transition-colors flex items-center justify-center p-1 rounded-md hover:bg-white/[0.06]"
+            title="Copy code to clipboard"
+          >
+            {copied ? <Check size={14} className="text-emerald-400" weight="bold" /> : <Copy size={14} />}
+          </button>
+        </div>
       </div>
       <pre className="text-[13px] leading-[1.7] p-4 overflow-x-auto m-0 bg-transparent">
         <code

@@ -15,6 +15,7 @@ import type {
   DocsLinkCard,
   DocsNavigationSection,
   DocsPage,
+  RunnableExample,
 } from '@/docs/types';
 import {
   Lightbulb,
@@ -44,6 +45,14 @@ import {
   Package,
 } from '@phosphor-icons/react';
 import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
+import { Dock } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface DocsViewProps {
   requestedVersion: string;
@@ -276,12 +285,14 @@ function ContentBlockRenderer({
   sectionId,
   index,
   version,
+  runnableExamples,
   onNavigate,
 }: {
   block: DocsContentBlock;
   sectionId: string;
   index: number;
   version: string;
+  runnableExamples: RunnableExample[];
   onNavigate: (next: { version: string; page: string }) => void;
 }) {
   const key = `${sectionId}-block-${index}`;
@@ -349,6 +360,16 @@ function ContentBlockRenderer({
         />
       );
 
+    case 'example-runner': {
+      const example = runnableExamples.find((ex) => ex.id === block.exampleId);
+      if (!example) return null;
+      return (
+        <div key={key} className="mt-6 mb-8">
+          <ExamplesRunner examples={[example]} />
+        </div>
+      );
+    }
+
     default:
       return null;
   }
@@ -361,10 +382,12 @@ function ContentBlockRenderer({
 function SectionContent({
   section,
   version,
+  runnableExamples,
   onNavigate,
 }: {
   section: DocsContentSection;
   version: string;
+  runnableExamples: RunnableExample[];
   onNavigate: (next: { version: string; page: string }) => void;
 }) {
   if (section.content && section.content.length > 0) {
@@ -378,6 +401,7 @@ function SectionContent({
             index={i}
             version={version}
             onNavigate={onNavigate}
+            runnableExamples={runnableExamples}
           />
         ))}
       </div>
@@ -500,7 +524,7 @@ function OnThisPage({
   if (sections.length <= 1) return null;
 
   return (
-    <div className="sticky top-8">
+    <div className="sticky top-8 ml-3">
       <h4 className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-3">
         On this page
       </h4>
@@ -511,11 +535,10 @@ function OnThisPage({
             <li key={section.id}>
               <button
                 onClick={() => handleClick(section.id)}
-                className={`block w-full text-left text-xs pl-3 py-1 -ml-px border-l-2 transition-colors ${
-                  isActive
-                    ? 'border-tropicalTeal text-tropicalTeal'
-                    : 'border-transparent text-gray-500 hover:text-gray-300 hover:border-gray-600'
-                }`}
+                className={`block w-full text-left text-xs pl-3 py-1 -ml-px border-l-2 transition-colors ${isActive
+                  ? 'border-tropicalTeal text-tropicalTeal'
+                  : 'border-transparent text-gray-500 hover:text-gray-300 hover:border-gray-600'
+                  }`}
               >
                 {section.title}
               </button>
@@ -635,17 +658,16 @@ export const DocsView = ({ requestedVersion, requestedPage, onNavigate }: DocsVi
 
         {/* ---- Left sidebar ---- */}
         <aside
-          className={`${
-            mobileNavOpen
-              ? 'fixed inset-0 z-40 bg-[#0a1a1f]/95 backdrop-blur-sm'
-              : 'hidden'
-          } lg:relative lg:block border-r border-white/[0.06] overflow-y-auto`}
+          className={`${mobileNavOpen
+            ? 'fixed inset-0 z-40 bg-[#0a1a1f]/95 backdrop-blur-sm'
+            : 'hidden'
+            } lg:relative lg:block border-r border-white/[0.06] overflow-y-auto`}
         >
           {/* Sidebar header */}
-          <div className="p-4 m-3 mb-1 rounded-xl bg-gradient-to-br from-tropicalTeal/[0.08] to-transparent border border-tropicalTeal/[0.12]">
+          <div className="p-2 m-3 mb-1 rounded-xl bg-gradient-to-br  to-transparent ">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-tropicalTeal/20 flex items-center justify-center">
-                <Cpu size={18} weight="duotone" className="text-tropicalTeal" />
+                <Dock size={18} className="text-tropicalTeal" />
               </div>
               <div>
                 <div className="text-sm font-bold text-white tracking-tight leading-tight">{PACKAGE_NAME}</div>
@@ -653,19 +675,25 @@ export const DocsView = ({ requestedVersion, requestedPage, onNavigate }: DocsVi
               </div>
             </div>
             <div className="mt-3">
-              <select
-                className="w-full h-7 rounded-md border border-white/10 bg-black/30 px-2 text-[11px] text-gray-300 focus:outline-none focus:border-tropicalTeal/40 cursor-pointer"
+              <Select
                 value={resolvedVersion}
-                onChange={(event) =>
-                  onNavigate({ version: event.target.value, page: activePage.id })
-                }
+                onValueChange={(value) => onNavigate({ version: value, page: activePage.id })}
               >
-                {availableVersions.map((version) => (
-                  <option key={version} value={version}>
-                    {version}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="w-full h-7 rounded-md border border-white/[0.06] bg-black/20 hover:bg-black/40 px-2.5 text-[11px] font-medium text-gray-400 focus:outline-none focus:ring-0 focus:border-white/[0.12] focus-visible:ring-0 cursor-pointer data-[state=open]:bg-black/40 transition-colors shadow-none">
+                  <SelectValue placeholder="Select version" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#0c1317] border border-white/[0.08] shadow-xl shadow-black/40">
+                  {availableVersions.map((version) => (
+                    <SelectItem
+                      key={version}
+                      value={version}
+                      className="text-[11px] font-medium text-gray-400 focus:bg-white/[0.04] focus:text-white cursor-pointer py-1.5 pl-6"
+                    >
+                      {version}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -687,11 +715,10 @@ export const DocsView = ({ requestedVersion, requestedPage, onNavigate }: DocsVi
                             onClick={() =>
                               onNavigate({ version: resolvedVersion, page: page.id })
                             }
-                            className={`w-full text-left px-3 py-1.5 rounded-md text-[13px] transition-colors ${
-                              isActive
-                                ? 'bg-tropicalTeal/[0.12] text-tropicalTeal font-medium'
-                                : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04]'
-                            }`}
+                            className={`w-full text-left px-3 pt-1.5 pb-1 rounded-md text-[13px] transition-colors ${isActive
+                              ? 'bg-tropicalTeal/[0.12] text-tropicalTeal font-medium'
+                              : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04]'
+                              }`}
                           >
                             {page.title}
                           </button>
@@ -740,17 +767,11 @@ export const DocsView = ({ requestedVersion, requestedPage, onNavigate }: DocsVi
                 <SectionContent
                   section={section}
                   version={resolvedVersion}
+                  runnableExamples={docsVersion.runnableExamples}
                   onNavigate={onNavigate}
                 />
               </section>
             ))}
-
-            {/* Examples runner */}
-            {activePage.id === 'examples' && (
-              <div className="mt-10">
-                <ExamplesRunner examples={docsVersion.runnableExamples} />
-              </div>
-            )}
 
             {/* Prev / Next */}
             <PageNavigation

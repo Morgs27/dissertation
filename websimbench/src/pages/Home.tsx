@@ -13,19 +13,23 @@ import { useObstacles } from '../hooks/useObstacles';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { useState, useRef } from 'react';
-import { GameController, Speedometer } from '@phosphor-icons/react';
-import { SimulationAppearanceOptions } from '@/hooks/useSimulationOptions';
+import { GameController, Speedometer, Gear } from '@phosphor-icons/react';
+import { SimulationAppearanceOptions, UpdateOptionFn } from '@/hooks/useSimulationOptions';
 import type { BenchmarkReport } from '@/types/benchmark';
+import { OptionsView } from './OptionsView';
 
 interface HomeProps {
   options: SimulationAppearanceOptions;
+  updateOption: UpdateOptionFn;
+  resetOptions: () => void;
   onBenchmarkComplete: (report: BenchmarkReport) => Promise<void> | void;
 }
 
-export const Home = ({ options, onBenchmarkComplete }: HomeProps) => {
+export const Home = ({ options, updateOption, resetOptions, onBenchmarkComplete }: HomeProps) => {
   const [activeHomeTab, setActiveHomeTab] = useState('playground');
   const [benchmarkRenderMode, setBenchmarkRenderMode] = useState<RenderMode>('cpu');
   const [isBenchmarkRunning, setIsBenchmarkRunning] = useState(false);
+  const [optionsOpen, setOptionsOpen] = useState(false);
   const controlsPanelRef = useRef<ImperativePanelHandle>(null);
 
   const {
@@ -88,7 +92,7 @@ export const Home = ({ options, onBenchmarkComplete }: HomeProps) => {
             />
           </Panel>
 
-          <PanelResizeHandle className="h-1 bg-white/5 cursor-row-resize transition-all hover:bg-tropicalTeal/30" />
+          <PanelResizeHandle className="h-1 bg-white/[0.04] cursor-row-resize transition-all hover:bg-tropicalTeal/30" />
 
           <Panel defaultSize={30} minSize={10}>
             <LogsPanel logs={logs} onClear={clearLogs} />
@@ -96,12 +100,12 @@ export const Home = ({ options, onBenchmarkComplete }: HomeProps) => {
         </PanelGroup>
       </Panel>
 
-      <PanelResizeHandle className="w-1 bg-white/5 cursor-col-resize transition-all hover:bg-tropicalTeal/30" />
+      <PanelResizeHandle className="w-1 bg-white/[0.04] cursor-col-resize transition-all hover:bg-tropicalTeal/30" />
 
       <Panel defaultSize={50} minSize={20}>
-        <div className="flex flex-col h-full bg-black/20 overflow-hidden">
+        <div className="flex flex-col h-full bg-[#0a1a1f] overflow-hidden">
           <Tabs value={activeHomeTab} onValueChange={setActiveHomeTab} className="flex-1 flex flex-col overflow-hidden">
-            <div className="bg-black/40 border-b border-white/5 px-4 h-12 flex items-center shrink-0">
+            <div className="bg-white/[0.02] border-b border-white/[0.06] px-4 h-12 flex items-center shrink-0">
               <TabsList className="bg-transparent h-8 p-0 gap-1">
                 <TabsTrigger value="playground" className="px-3 h-8 data-[state=active]:bg-tropicalTeal data-[state=active]:text-jetBlack rounded-md text-xs font-bold transition-all flex items-center gap-2">
                   <GameController size={16} weight="fill" /> Playground
@@ -110,6 +114,14 @@ export const Home = ({ options, onBenchmarkComplete }: HomeProps) => {
                   <Speedometer size={16} weight="fill" /> Benchmark
                 </TabsTrigger>
               </TabsList>
+
+              <button
+                onClick={() => setOptionsOpen(true)}
+                className="ml-auto w-8 h-8 rounded-md flex items-center justify-center text-gray-400 hover:text-tropicalTeal hover:bg-white/[0.06] transition-colors"
+                title="System Configuration"
+              >
+                <Gear size={16} weight="fill" />
+              </button>
             </div>
 
             <PanelGroup direction="vertical">
@@ -144,7 +156,7 @@ export const Home = ({ options, onBenchmarkComplete }: HomeProps) => {
                 </div>
               </Panel>
 
-              <PanelResizeHandle className="h-1 bg-white/5 cursor-row-resize transition-all hover:bg-tropicalTeal/30" />
+              <PanelResizeHandle className="h-1 bg-white/[0.04] cursor-row-resize transition-all hover:bg-tropicalTeal/30" />
 
               <Panel defaultSize={60} minSize={20}>
                 <div className="flex-1 h-full min-h-0 bg-black relative shadow-inner">
@@ -171,6 +183,14 @@ export const Home = ({ options, onBenchmarkComplete }: HomeProps) => {
           </Tabs>
         </div>
       </Panel>
+
+      <OptionsView
+        options={options}
+        updateOption={updateOption}
+        resetOptions={resetOptions}
+        open={optionsOpen}
+        onOpenChange={setOptionsOpen}
+      />
     </PanelGroup>
   );
 };

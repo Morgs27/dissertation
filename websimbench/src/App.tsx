@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Navbar } from './components/Navbar';
 import { ReportsView } from './pages/ReportsView';
-import { OptionsView } from './pages/OptionsView';
 import { DocsView } from './pages/DocsView';
 
 import { useBenchmarkHistory } from './hooks/useBenchmarkHistory';
@@ -76,7 +75,7 @@ function App() {
     window.location.hash = nextHash;
   }, []);
 
-  const handleNavigatePage = useCallback((nextPage: 'home' | 'reports' | 'options' | 'docs') => {
+  const handleNavigatePage = useCallback((nextPage: 'home' | 'reports' | 'docs') => {
     if (nextPage === 'docs') {
       navigate({
         page: 'docs',
@@ -101,14 +100,6 @@ function App() {
             onRename={updateReportName}
           />
         );
-      case 'options':
-        return (
-          <OptionsView
-            options={options}
-            updateOption={updateOption as UpdateOptionFn}
-            resetOptions={resetOptions}
-          />
-        );
       case 'docs':
         return (
           <DocsView
@@ -126,7 +117,7 @@ function App() {
       case 'home':
       default:
         return (
-          <Home options={options} onBenchmarkComplete={addReport} />
+          <Home options={options} updateOption={updateOption as UpdateOptionFn} resetOptions={resetOptions} onBenchmarkComplete={addReport} />
         );
     }
   };

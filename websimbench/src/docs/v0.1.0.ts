@@ -392,28 +392,7 @@ const EXAMPLE_HTML_TEMPLATE = `<!doctype html>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <style>
-      html, body {
-        margin: 0;
-        padding: 0;
-        background: #0c1216;
-        color: #dff9f4;
-        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      }
-      .shell {
-        min-height: 100vh;
-        display: grid;
-        grid-template-rows: auto auto 1fr;
-        gap: 10px;
-        padding: 14px;
-        box-sizing: border-box;
-      }
-      .row {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 10px;
-      }
-      .row button {
+      button {
         border: 0;
         border-radius: 8px;
         padding: 8px 12px;
@@ -421,35 +400,15 @@ const EXAMPLE_HTML_TEMPLATE = `<!doctype html>
         color: #07211f;
         font-weight: 700;
         cursor: pointer;
-      }
-      .row label {
-        font-size: 12px;
-      }
-      .row input[type='range'] {
-        width: 160px;
-      }
-      #sim {
-        width: min(100%, 980px);
-        aspect-ratio: 4 / 3;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        border-radius: 10px;
-        background: #000;
-      }
-      .hint {
-        font-size: 12px;
-        opacity: 0.75;
+        margin-bottom: 10px;
       }
     </style>
   </head>
   <body>
-    <div class="shell">
       <div class="row">
         <button id="toggle">Start</button>
-        <span class="hint">Loaded from docs runner</span>
       </div>
-      <div class="row" id="controls"></div>
-      <canvas id="sim" width="800" height="600"></canvas>
-    </div>
+      <canvas id="sim" width="600" height="400"></canvas>
   </body>
 </html>`;
 
@@ -469,164 +428,6 @@ let running = false;
 async function tick() {
   if (!running) return;
   await simulation.runFrame('JavaScript', { speed: 2, turnAngle: 0.35 }, 'cpu');
-  requestAnimationFrame(tick);
-}
-
-toggle.addEventListener('click', () => {
-  running = !running;
-  toggle.textContent = running ? 'Stop' : 'Start';
-  if (running) tick();
-});`;
-
-const EXAMPLE_BOIDS_CONTROLS_JS = `import { Simulation } from '${CDN_IMPORT_URL}';
-
-const canvas = document.getElementById('sim');
-const toggle = document.getElementById('toggle');
-const controls = document.getElementById('controls');
-
-controls.innerHTML = [
-  '<label>perception <input id="p" type="range" min="10" max="80" step="1" value="40"></label>',
-  '<label>alignment <input id="a" type="range" min="0" max="0.08" step="0.001" value="0.01"></label>',
-  '<label>cohesion <input id="c" type="range" min="0" max="0.08" step="0.001" value="0.01"></label>',
-  '<label>separation <input id="s" type="range" min="0" max="0.2" step="0.001" value="0.06"></label>'
-].join('');
-
-const simulation = new Simulation({
-  canvas,
-  source: { kind: 'dsl', code: ${DSL_LITERAL(PRESET_BOIDS)} },
-  options: { agents: 7000 },
-});
-
-let running = false;
-
-const inputs = {
-  get perceptionRadius() { return Number(document.getElementById('p').value); },
-  get alignmentFactor() { return Number(document.getElementById('a').value); },
-  get cohesionFactor() { return Number(document.getElementById('c').value); },
-  get separationFactor() { return Number(document.getElementById('s').value); },
-  separationDist: 40,
-  maxSpeed: 1,
-  dt: 1,
-};
-
-async function tick() {
-  if (!running) return;
-  await simulation.runFrame('JavaScript', {
-    perceptionRadius: inputs.perceptionRadius,
-    alignmentFactor: inputs.alignmentFactor,
-    cohesionFactor: inputs.cohesionFactor,
-    separationFactor: inputs.separationFactor,
-    separationDist: inputs.separationDist,
-    maxSpeed: inputs.maxSpeed,
-    dt: inputs.dt,
-  }, 'cpu');
-  requestAnimationFrame(tick);
-}
-
-toggle.addEventListener('click', () => {
-  running = !running;
-  toggle.textContent = running ? 'Stop' : 'Start';
-  if (running) tick();
-});`;
-
-const EXAMPLE_GPU_TRAILS_JS = `import { Simulation } from '${CDN_IMPORT_URL}';
-
-const canvas = document.getElementById('sim');
-const toggle = document.getElementById('toggle');
-
-const simulation = new Simulation({
-  canvas,
-  source: { kind: 'dsl', code: ${DSL_LITERAL(PRESET_SLIME_MOLD)} },
-  options: { agents: 24000 },
-  appearance: {
-    showTrails: true,
-    trailColor: '#6bffd9',
-    trailOpacity: 1,
-    backgroundColor: '#000000',
-    agentColor: '#d9fff8',
-    agentSize: 1.1,
-    agentShape: 'circle',
-    obstacleColor: '#FF0000',
-    obstacleBorderColor: '#FF0000',
-    obstacleOpacity: 0.2,
-  },
-});
-
-await simulation.initGPU();
-
-let running = false;
-
-async function tick() {
-  if (!running) return;
-  await simulation.runFrame('WebGPU', {}, 'gpu');
-  requestAnimationFrame(tick);
-}
-
-toggle.addEventListener('click', () => {
-  running = !running;
-  toggle.textContent = running ? 'Stop' : 'Start';
-  if (running) tick();
-});`;
-
-const EXAMPLE_PREDATOR_PREY_JS = `import { Simulation } from '${CDN_IMPORT_URL}';
-
-const canvas = document.getElementById('sim');
-const toggle = document.getElementById('toggle');
-
-const simulation = new Simulation({
-  canvas,
-  source: { kind: 'dsl', code: ${DSL_LITERAL(PRESET_PREDATOR_PREY)} },
-  options: { agents: 9000 },
-});
-
-let running = false;
-
-async function tick() {
-  if (!running) return;
-  await simulation.runFrame('WebAssembly', {}, 'cpu');
-  requestAnimationFrame(tick);
-}
-
-toggle.addEventListener('click', () => {
-  running = !running;
-  toggle.textContent = running ? 'Stop' : 'Start';
-  if (running) tick();
-});`;
-
-const EXAMPLE_HEADLESS_BENCH_JS = `import { Simulation } from '${CDN_IMPORT_URL}';
-
-const canvas = document.getElementById('sim');
-const toggle = document.getElementById('toggle');
-
-const simulation = new Simulation({
-  canvas,
-  source: { kind: 'dsl', code: ${DSL_LITERAL(PRESET_TRAFFIC)} },
-  options: { agents: 25000 },
-  tracking: {
-    enabled: true,
-    captureAgentStates: false,
-    captureFrameInputs: false,
-    captureLogs: true,
-    captureDeviceMetrics: true,
-  },
-});
-
-await simulation.initGPU();
-
-let running = false;
-let frames = 0;
-
-async function tick() {
-  if (!running) return;
-
-  await simulation.runFrame('WebGPU', {}, 'none');
-  frames += 1;
-
-  if (frames % 120 === 0) {
-    const report = simulation.getTrackingReport({ includeAgentPositions: false });
-    console.log('frames:', report.summary.frameCount, 'avg(ms):', report.summary.averageExecutionMs);
-  }
-
   requestAnimationFrame(tick);
 }
 
@@ -700,11 +501,14 @@ export const docsV010: DocsVersion = {
         { id: 'dsl-performance', title: 'Performance Guidance' },
       ],
     },
-    {
-      id: 'examples',
-      title: 'Examples',
-      pages: [{ id: 'examples', title: 'Runnable Examples' }],
-    },
+    // {
+    //   id: 'examples',
+    //   title: 'Examples',
+    //   pages: [
+    //     { id: 'examples-overview', title: 'Examples Overview' },
+    //     { id: 'basic-cpu', title: 'Basic CPU Loop' },
+    //   ],
+    // },
   ],
 
   pages: [
@@ -1806,10 +1610,9 @@ input r = random();`),
 
     // =====================================================================
     //  RUNNABLE EXAMPLES
-    // =====================================================================
     {
-      id: 'examples',
-      title: 'Runnable Examples',
+      id: 'examples-overview',
+      title: 'Examples Overview',
       description: 'Edit HTML and JavaScript snippets, then execute them in an isolated preview. Examples load Agentyx from a CDN \u2014 no bundler required.',
       sections: [
         {
@@ -1817,12 +1620,25 @@ input r = random();`),
           title: 'How the Runner Works',
           content: [
             p('Each example consists of an HTML template and a JavaScript module that imports Agentyx from `esm.sh`. The runner creates an isolated `<iframe>` with your code, so changes are safe to experiment with.'),
-            bullets([
-              'Click **Run** to execute the current code in the preview panel.',
-              'Click **Reset Preset** to restore the original code for the selected example.',
-              'Switch between examples using the preset dropdown.',
-            ]),
+
             tip('The examples use the JavaScript compute backend by default for maximum compatibility. Try changing `"JavaScript"` to `"WebGPU"` (and adding `await simulation.initGPU()`) to see the GPU path in action.'),
+            linkCards([
+              { page: 'basic-cpu', title: 'Basic CPU Loop', description: 'Minimal JavaScript compute + cpu render integration.', icon: 'examples' }
+            ]),
+          ],
+        },
+      ],
+    },
+    {
+      id: 'basic-cpu',
+      title: 'Basic CPU Loop',
+      description: 'Minimal JavaScript compute + cpu render integration.',
+      sections: [
+        {
+          id: 'runner',
+          title: 'Example',
+          content: [
+            { kind: 'example-runner', exampleId: 'basic-cpu' }
           ],
         },
       ],
@@ -1836,34 +1652,6 @@ input r = random();`),
       description: 'Minimal JavaScript compute + cpu render integration.',
       html: EXAMPLE_HTML_TEMPLATE,
       javascript: EXAMPLE_BASIC_JS,
-    },
-    {
-      id: 'boids-controls',
-      title: 'Boids with Host Controls',
-      description: 'Preset boids script with UI sliders mapped to runtime inputs.',
-      html: EXAMPLE_HTML_TEMPLATE,
-      javascript: EXAMPLE_BOIDS_CONTROLS_JS,
-    },
-    {
-      id: 'gpu-trails',
-      title: 'GPU Trails (Slime Mold)',
-      description: 'Trail/sense simulation using WebGPU compute and gpu render mode.',
-      html: EXAMPLE_HTML_TEMPLATE,
-      javascript: EXAMPLE_GPU_TRAILS_JS,
-    },
-    {
-      id: 'predator-prey',
-      title: 'Predator-Prey (WASM CPU)',
-      description: 'Species behavior with WebAssembly compute backend and cpu rendering.',
-      html: EXAMPLE_HTML_TEMPLATE,
-      javascript: EXAMPLE_PREDATOR_PREY_JS,
-    },
-    {
-      id: 'headless-benchmark',
-      title: 'Headless Benchmark Style',
-      description: 'WebGPU compute in renderMode=none with periodic report logging.',
-      html: EXAMPLE_HTML_TEMPLATE,
-      javascript: EXAMPLE_HEADLESS_BENCH_JS,
-    },
+    }
   ],
 };

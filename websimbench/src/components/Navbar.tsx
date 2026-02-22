@@ -1,16 +1,16 @@
-import { ChartLine, House, ChartBar, Gear, BookOpen } from "@phosphor-icons/react";
+import { House, ChartBar, BookOpen } from "@phosphor-icons/react";
 import { APP_VERSION_LABEL } from '@/config/version';
 
 interface NavbarProps {
   currentPage: string;
-  onNavigatePage: (page: 'home' | 'reports' | 'options' | 'docs') => void;
+  onNavigatePage: (page: 'home' | 'reports' | 'docs') => void;
 }
 
 export const Navbar = ({ currentPage, onNavigatePage }: NavbarProps) => (
-  <nav className="h-[60px] flex items-center justify-between px-6 border-b border-white/10 bg-black/60 backdrop-blur-md z-50">
+  <nav className="h-12 flex items-center justify-between px-6 border-b border-white/[0.06] bg-[#000000] z-50">
     <div className="flex items-center gap-8">
       <div className="flex items-center gap-3">
-        <h1 className="text-xl font-bold text-white tracking-tight">
+        <h1 className="text-lg font-bold text-white tracking-tight">
           WebSim<span className="text-tropicalTeal">Bench</span>
         </h1>
       </div>
@@ -23,27 +23,21 @@ export const Navbar = ({ currentPage, onNavigatePage }: NavbarProps) => (
           label="Home"
         />
         <NavButton
-          active={currentPage === 'reports'}
-          onClick={() => onNavigatePage('reports')}
-          icon={<ChartBar size={18} />}
-          label="Reports"
-        />
-        <NavButton
           active={currentPage === 'docs'}
           onClick={() => onNavigatePage('docs')}
           icon={<BookOpen size={18} />}
           label="Docs"
         />
         <NavButton
-          active={currentPage === 'options'}
-          onClick={() => onNavigatePage('options')}
-          icon={<Gear size={18} />}
-          label="Options"
+          active={currentPage === 'reports'}
+          onClick={() => onNavigatePage('reports')}
+          icon={<ChartBar size={18} />}
+          label="Reports"
         />
       </div>
     </div>
     <div className="flex items-center gap-4 text-xs font-medium text-gray-400">
-      <span className="bg-white/5 px-2 py-1 rounded">{APP_VERSION_LABEL}</span>
+      <span className="bg-white/[0.04] px-2 py-1 rounded">{APP_VERSION_LABEL}</span>
     </div>
   </nav>
 );

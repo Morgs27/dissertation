@@ -13,7 +13,6 @@ import { highlight, languages } from 'prismjs';
 import 'prismjs/components/prism-clike';
 import 'prismjs/components/prism-javascript';
 import 'prismjs/components/prism-wasm';
-import 'prismjs/themes/prism-dark.css';
 
 import { PREMADE_SIMULATIONS } from '../config/premadeSimulations';
 
@@ -53,8 +52,8 @@ export const EditorPanel = ({
   };
 
   return (
-    <Tabs defaultValue="sim-code" className="h-full flex flex-col bg-[#16262b]">
-      <div className="h-12 flex items-center justify-between px-3 bg-black/40 border-b border-white/5 shrink-0">
+    <Tabs defaultValue="sim-code" className="h-full flex flex-col bg-[#0a1a1f]">
+      <div className="h-12 flex items-center justify-between px-3 bg-white/[0.02] border-b border-white/[0.06] shrink-0">
         <TabsList className="bg-transparent h-8 p-0 gap-1">
           <TabsTrigger value="sim-code" className="h-8 px-4 data-[state=active]:bg-white/10 data-[state=active]:text-white rounded-md text-xs font-bold transition-all flex items-center gap-2">
             <PencilLineIcon />
@@ -154,6 +153,7 @@ export const EditorPanel = ({
             padding={16}
             style={editorStyle}
             textareaClassName="focus:outline-none"
+            className="agentyx-code"
           />
         </TabsContent>
         <TabsContent value="wasm" className="h-full p-0 m-0 overflow-y-auto focus-visible:outline-none">
@@ -164,6 +164,7 @@ export const EditorPanel = ({
             padding={16}
             readOnly
             style={editorStyle}
+            className="agentyx-code"
           />
         </TabsContent>
         <TabsContent value="javascript" className="h-full p-0 m-0 overflow-y-auto focus-visible:outline-none">
@@ -174,6 +175,7 @@ export const EditorPanel = ({
             padding={16}
             readOnly
             style={editorStyle}
+            className="agentyx-code"
           />
         </TabsContent>
         <TabsContent value="wgsl" className="h-full p-0 m-0 overflow-y-auto focus-visible:outline-none">
@@ -184,6 +186,7 @@ export const EditorPanel = ({
             padding={16}
             readOnly
             style={editorStyle}
+            className="agentyx-code"
           />
         </TabsContent>
       </div>

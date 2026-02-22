@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { RunnableExample } from '@/docs/types';
-import { Play, ArrowClockwise } from '@phosphor-icons/react';
+import { Copy, Check } from '@phosphor-icons/react';
+import Editor from 'react-simple-code-editor';
+import Prism from 'prismjs';
+import 'prismjs/components/prism-javascript';
+import 'prismjs/components/prism-markup';
 
 interface ExamplesRunnerProps {
   examples: RunnableExample[];
@@ -9,7 +13,38 @@ interface ExamplesRunnerProps {
 const composeSrcDoc = (html: string, javascript: string): string => {
   const safeJavaScript = javascript.replace(/<\/script>/gi, '<\\/script>');
 
-  const runtimeScript = `\n<script type="module">\ntry {\n${safeJavaScript}\n} catch (error) {\n  console.error(error);\n  const pre = document.createElement('pre');\n  pre.textContent = String(error);\n  pre.style.color = '#ff8a8a';\n  pre.style.whiteSpace = 'pre-wrap';\n  pre.style.padding = '12px';\n  document.body.appendChild(pre);\n}\n</script>\n`;
+  const runtimeScript = `
+<script>
+  window.addEventListener('error', function(event) {
+    const errorMsg = event.error ? event.error.stack || event.error.message : event.message;
+    console.error(errorMsg);
+    const pre = document.createElement('pre');
+    pre.textContent = String(errorMsg);
+    pre.style.color = '#ff8a8a';
+    pre.style.whiteSpace = 'pre-wrap';
+    pre.style.padding = '12px';
+    pre.style.fontFamily = 'monospace';
+    pre.style.position = 'relative';
+    pre.style.zIndex = '9999';
+    document.body.appendChild(pre);
+  });
+  window.addEventListener('unhandledrejection', function(event) {
+    console.error(event.reason);
+    const pre = document.createElement('pre');
+    pre.textContent = String(event.reason);
+    pre.style.color = '#ff8a8a';
+    pre.style.whiteSpace = 'pre-wrap';
+    pre.style.padding = '12px';
+    pre.style.fontFamily = 'monospace';
+    pre.style.position = 'relative';
+    pre.style.zIndex = '9999';
+    document.body.appendChild(pre);
+  });
+</script>
+<script type="module">
+${safeJavaScript}
+</script>
+`;
 
   if (html.includes('</body>')) {
     return html.replace('</body>', `${runtimeScript}</body>`);
@@ -25,22 +60,19 @@ export const ExamplesRunner = ({ examples }: ExamplesRunnerProps) => {
   const [htmlCode, setHtmlCode] = useState(initialExample?.html ?? '');
   const [jsCode, setJsCode] = useState(initialExample?.javascript ?? '');
   const [srcDoc, setSrcDoc] = useState('');
+  const [copied, setCopied] = useState(false);
 
   const selectedExample = useMemo(
     () => examples.find((example) => example.id === selectedExampleId) ?? examples[0],
     [examples, selectedExampleId],
   );
 
-  const runCode = useCallback(() => {
-    setSrcDoc(composeSrcDoc(htmlCode, jsCode));
-  }, [htmlCode, jsCode]);
-
-  const restorePreset = useCallback(() => {
-    if (!selectedExample) return;
-    setHtmlCode(selectedExample.html);
-    setJsCode(selectedExample.javascript);
-    setSrcDoc(composeSrcDoc(selectedExample.html, selectedExample.javascript));
-  }, [selectedExample]);
+  const handleCopy = useCallback(() => {
+    const codeToCopy = activeFile === 'js' ? jsCode : htmlCode;
+    navigator.clipboard.writeText(codeToCopy);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [activeFile, jsCode, htmlCode]);
 
   useEffect(() => {
     if (!selectedExample) return;
@@ -58,24 +90,25 @@ export const ExamplesRunner = ({ examples }: ExamplesRunnerProps) => {
   return (
     <div className="space-y-5">
       {/* ---- Example tabs ---- */}
-      <div className="flex flex-wrap gap-1.5">
-        {examples.map((ex) => {
-          const isSelected = ex.id === selectedExampleId;
-          return (
-            <button
-              key={ex.id}
-              onClick={() => setSelectedExampleId(ex.id)}
-              className={`px-3.5 py-2 rounded-lg text-xs font-medium transition-all ${
-                isSelected
+      {examples.length > 1 && (
+        <div className="flex flex-wrap gap-1.5">
+          {examples.map((ex) => {
+            const isSelected = ex.id === selectedExampleId;
+            return (
+              <button
+                key={ex.id}
+                onClick={() => setSelectedExampleId(ex.id)}
+                className={`px-3.5 py-2 rounded-lg text-xs font-medium transition-all ${isSelected
                   ? 'bg-tropicalTeal/[0.12] text-tropicalTeal border border-tropicalTeal/30'
                   : 'text-gray-500 border border-white/[0.06] hover:text-gray-300 hover:border-white/[0.12] hover:bg-white/[0.02]'
-              }`}
-            >
-              {ex.title}
-            </button>
-          );
-        })}
-      </div>
+                  }`}
+              >
+                {ex.title}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* ---- Description ---- */}
       <p className="text-sm text-gray-400">{selectedExample.description}</p>
@@ -87,21 +120,19 @@ export const ExamplesRunner = ({ examples }: ExamplesRunnerProps) => {
           <div className="flex">
             <button
               onClick={() => setActiveFile('js')}
-              className={`px-4 py-2.5 text-xs font-mono transition-all border-b-2 ${
-                activeFile === 'js'
-                  ? 'text-white border-tropicalTeal bg-white/[0.03]'
-                  : 'text-gray-500 border-transparent hover:text-gray-300'
-              }`}
+              className={`px-4 py-2.5 text-xs font-mono transition-all border-b-2 ${activeFile === 'js'
+                ? 'text-white border-tropicalTeal bg-white/[0.03]'
+                : 'text-gray-500 border-transparent hover:text-gray-300'
+                }`}
             >
               index.js
             </button>
             <button
               onClick={() => setActiveFile('html')}
-              className={`px-4 py-2.5 text-xs font-mono transition-all border-b-2 ${
-                activeFile === 'html'
-                  ? 'text-white border-tropicalTeal bg-white/[0.03]'
-                  : 'text-gray-500 border-transparent hover:text-gray-300'
-              }`}
+              className={`px-4 py-2.5 text-xs font-mono transition-all border-b-2 ${activeFile === 'html'
+                ? 'text-white border-tropicalTeal bg-white/[0.03]'
+                : 'text-gray-500 border-transparent hover:text-gray-300'
+                }`}
             >
               index.html
             </button>
@@ -109,31 +140,40 @@ export const ExamplesRunner = ({ examples }: ExamplesRunnerProps) => {
 
           <div className="flex items-center gap-1.5 pr-2">
             <button
-              onClick={runCode}
-              className="inline-flex items-center gap-1.5 h-7 rounded-md bg-tropicalTeal text-jetBlack px-3 text-[11px] font-bold hover:brightness-110 transition"
-              type="button"
-            >
-              <Play size={12} weight="fill" />
-              Run
-            </button>
-            <button
-              onClick={restorePreset}
+              onClick={handleCopy}
               className="inline-flex items-center gap-1.5 h-7 rounded-md border border-white/[0.1] bg-white/[0.03] text-gray-400 px-2.5 text-[11px] font-medium hover:text-white hover:bg-white/[0.06] transition"
               type="button"
+              title="Copy code"
             >
-              <ArrowClockwise size={12} />
-              Reset
+              {copied ? (
+                <>
+                  <Check size={12} className="text-emerald-400" strokeWidth={3} />
+                  <span className="text-emerald-400">Copied</span>
+                </>
+              ) : (
+                <>
+                  <Copy size={12} />
+                  Copy
+                </>
+              )}
             </button>
           </div>
         </div>
 
         {/* Code area */}
-        <textarea
-          value={currentCode}
-          onChange={(e) => setCurrentCode(e.target.value)}
-          spellCheck={false}
-          className="w-full min-h-[300px] p-4 font-mono text-[13px] leading-[1.7] text-[#c9d8e0] bg-transparent border-none resize-y focus:outline-none focus:ring-0 selection:bg-tropicalTeal/20"
-        />
+        <div className="w-full min-h-[300px] overflow-auto border-t border-white/[0.07] bg-black/20">
+          <Editor
+            value={currentCode}
+            onValueChange={(code) => setCurrentCode(code)}
+            highlight={(code) => Prism.highlight(code, activeFile === 'js' ? Prism.languages.javascript : Prism.languages.markup, activeFile === 'js' ? 'javascript' : 'html')}
+            padding={16}
+            className="agentyx-code w-full min-h-[300px] font-mono text-[13px] leading-[1.7] text-[#c9d8e0] focus:outline-none"
+            style={{
+              fontFamily: '"Fira code", "Fira Mono", monospace',
+            }}
+            textareaClassName="focus:outline-none focus:ring-0"
+          />
+        </div>
       </div>
 
       {/* ---- Preview panel ---- */}

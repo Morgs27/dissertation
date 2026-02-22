@@ -51,8 +51,8 @@ export const LogsPanel = ({ logs, onClear }: LogsPanelProps) => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#0d1619]">
-      <div className="h-10 flex px-4 items-center bg-black/40 border-b border-white/5 shrink-0">
+    <div className="flex flex-col h-full bg-[#0a1a1f]">
+      <div className="h-10 flex px-4 items-center bg-white/[0.02] border-b border-white/[0.06] shrink-0">
         <Terminal className="mr-2 text-tropicalTeal" size={16} />
         {/* <span className="font-bold mr-4 text-xs tracking-wider uppercase text-gray-400">Console</span> */}
 
