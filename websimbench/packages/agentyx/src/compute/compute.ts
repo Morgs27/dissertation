@@ -1,3 +1,13 @@
+/**
+ * @module compute
+ * Multi-backend compute engine orchestrator.
+ *
+ * The {@link ComputeEngine} lazily instantiates and delegates work to one of
+ * four compute backends (main-thread JavaScript, WebWorkers, WebAssembly, or
+ * WebGPU) depending on the requested {@link Method}. It also manages the
+ * double-buffered trail map used for pheromone simulations.
+ */
+
 import Logger from "../helpers/logger";
 import type { PerformanceMonitor } from "../performance";
 import type { CompilationResult, Method, InputValues, Agent, RenderMode } from "../types";
@@ -6,8 +16,10 @@ import type { WebGPURenderResources } from "./webGPU";
 import WebGPU from "./webGPU";
 import { WebAssemblyCompute } from "./webAssembly";
 
+/** Function signature of a compiled agent update kernel. */
 export type AgentFunction = (agent: Agent, inputs: InputValues) => Agent;
 
+/** @internal Trail map state for a single frame. */
 type TrailMapFrameState = {
     hasTrailMap: boolean;
     width: number;
@@ -16,11 +28,13 @@ type TrailMapFrameState = {
     externalTrailMap?: Float32Array;
 };
 
+/** @internal Prepared inputs and trail state for a frame dispatch. */
 type PreparedFrame = {
     inputs: InputValues;
     trail: TrailMapFrameState;
 };
 
+/** @internal Timing breakdown returned by each backend. */
 type MethodPerformanceDetails = {
     setupTime: number;
     computeTime: number;
@@ -28,12 +42,19 @@ type MethodPerformanceDetails = {
     specificStats: Record<string, number>;
 };
 
+/**
+ * Multi-backend compute engine.
+ *
+ * Lazily instantiates WebWorkers, WebAssembly, and WebGPU backends on first
+ * use and routes each {@link runFrame} call to the requested backend,
+ * collecting timing metrics through the injected {@link PerformanceMonitor}.
+ */
 export class ComputeEngine {
     private readonly compilationResult: CompilationResult;
     private agentFunction: AgentFunction;
     private agentCount: number = 0;
     private workerCount?: number;
-    private readonly Logger: Logger;
+    private readonly logger: Logger;
 
     private gpuDevice: GPUDevice | null = null;
     private readonly PerformanceMonitor: PerformanceMonitor;
@@ -54,9 +75,9 @@ export class ComputeEngine {
         this.agentFunction = this.buildAgentFunction();
 
         this.agentCount = agentCount;
-        this.Logger = new Logger("ComputeEngine", "purple");
+        this.logger = new Logger("ComputeEngine", "purple");
 
-        this.Logger.log("ComputeEngine initialized");
+        this.logger.log("ComputeEngine initialized");
     }
 
     /**
@@ -152,7 +173,7 @@ export class ComputeEngine {
 
         if (method !== "WebWorkers") {
             inputs.print = (id: number, val: number) => {
-                this.Logger.info(`AGENT[${id}] PRINT:`, val);
+                this.logger.info(`AGENT[${id}] PRINT:`, val);
             };
         }
 
@@ -224,8 +245,16 @@ export class ComputeEngine {
         return this._WebAssembly;
     }
 
+    /**
+     * Provide a GPU device for the WebGPU backend.
+     *
+     * If the WebGPU instance already exists, initialises it immediately;
+     * otherwise the device is stored for deferred initialisation.
+     *
+     * @param device - The WebGPU device obtained from the Renderer.
+     */
     initGPU(device: GPUDevice) {
-        this.Logger.log("Initializing ComputeEngine with GPU device:", device, "and agent count:", this.agentCount);
+        this.logger.log("Initializing ComputeEngine with GPU device:", device, "and agent count:", this.agentCount);
         this.gpuDevice = device;
 
         if (this._WebGPU && !this._WebGPUInitPromise) {
@@ -236,8 +265,17 @@ export class ComputeEngine {
         }
     }
 
+    /**
+     * Execute a single simulation frame on the specified compute backend.
+     *
+     * @param method - Compute backend to use.
+     * @param agents - Current agent state array.
+     * @param inputValues - Per-frame input values (width, height, trailMap, etc.).
+     * @param renderMode - Determines whether GPU results are read back to CPU.
+     * @returns Updated agent array after one step.
+     */
     async runFrame(method: Method, agents: Agent[], inputValues: InputValues, renderMode: RenderMode): Promise<Agent[]> {
-        this.Logger.log("Running Compute:", method);
+        this.logger.log("Running Compute:", method);
         this.agentCount = agents.length;
 
         const prepared = this.prepareFrameInputs(method, inputValues);
@@ -379,6 +417,7 @@ export class ComputeEngine {
         });
     }
 
+    /** Release all backend instances and buffers. */
     destroy(): void {
         this._WebWorkers?.destroy();
         this._WebWorkers = undefined;
@@ -400,11 +439,12 @@ export class ComputeEngine {
         this.compileTimes = {};
     }
 
+    /** Build the agent update function from compiled JavaScript source. */
     private buildAgentFunction(): AgentFunction {
         try {
             return new Function(`return ${this.compilationResult.jsCode}`)() as AgentFunction;
         } catch (err) {
-            this.Logger?.error("Failed to build agent function from compiled JS:", err);
+            this.logger?.error("Failed to build agent function from compiled JS:", err);
             throw new Error(`Failed to compile agent function: ${err instanceof Error ? err.message : String(err)}`);
         }
     }

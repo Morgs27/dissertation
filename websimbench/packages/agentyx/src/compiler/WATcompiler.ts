@@ -1,12 +1,11 @@
 /**
- * WAT (WebAssembly Text) Compiler
- * 
- * Generates WAT S-expression output from DSL.
- * Unlike JS/WGSL, WAT requires its own iteration/brace management because
- * S-expression nesting uses `(if ... (then ... ))` closers, loop block/br patterns,
- * and elseif→nested else+if conversion that don't map to the shared transpiler.
- * 
- * Expression handling uses infix→S-expression conversion internally.
+ * @module WATcompiler
+ * WebAssembly Text (WAT) backend for the DSL compiler.
+ *
+ * Generates WAT S-expression output from DSL. Unlike JS/WGSL, WAT requires
+ * its own iteration/brace management because S-expression nesting uses
+ * `(if ... (then ... ))` closers and `loop`/`block`/`br` patterns rather
+ * than curly braces.
  */
 
 import Logger from "../helpers/logger";
@@ -590,14 +589,28 @@ export const WATTarget: CompilerTarget = {
 // The CompilerTarget interface is implemented above for type compatibility
 // and future shared-transpiler migration if WAT nesting is unified.
 
-export const compileDSLtoWAT = (
+/**
+ * Compile Agentyx DSL lines into a complete WAT (WebAssembly Text) module.
+ *
+ * Uses its own iteration logic (rather than the shared transpiler) due to
+ * S-expression nesting requirements unique to the WAT format.
+ *
+ * @param lines - Parsed DSL line array from preprocessing.
+ * @param inputs - Required input names.
+ * @param logger - Logger instance for compilation diagnostics.
+ * @param rawScript - Original raw DSL source (used for error reporting).
+ * @param randomInputs - Names of random-valued input declarations.
+ * @param numRandomCalls - Total random values needed per agent per frame.
+ * @returns Complete WAT module source as a string.
+ */
+export function compileDSLtoWAT(
   lines: LineInfo[],
   inputs: string[],
   logger: Logger,
   rawScript: string,
   randomInputs: string[] = [],
   numRandomCalls: number = 0,
-): string => {
+): string {
   const statements: string[] = [];
   const localVars = new Set<string>();
   const randomInputsSet = new Set(randomInputs);

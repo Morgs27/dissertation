@@ -1,3 +1,13 @@
+/**
+ * @module webWorkers
+ * Web Workers compute backend.
+ *
+ * Spawns a pool of {@link Worker} instances, distributes agent slices
+ * across them, and merges results. The compiled agent function is
+ * serialised as source and re-compiled inside each worker via
+ * `new Function()`.
+ */
+
 import type { Agent, InputValues } from "../types";
 import type { AgentFunction } from "./compute";
 import Logger from "../helpers/logger";
@@ -74,12 +84,14 @@ const WorkerScript = `
     };
 `;
 
+/** @internal Error response from a worker thread. */
 type WorkerErrorMessage = {
     type: "error";
     requestId: number;
     message: string;
 };
 
+/** @internal Log message forwarded from a worker thread. */
 type WorkerLogMessage = {
     type: "log";
     requestId: number;
@@ -87,6 +99,7 @@ type WorkerLogMessage = {
     message: string;
 };
 
+/** @internal Compute result containing updated agents and timing. */
 type WorkerResultMessage = {
     type: "result";
     requestId: number;
@@ -95,6 +108,7 @@ type WorkerResultMessage = {
     executionTime: number;
 };
 
+/** @internal Acknowledgement that a worker initialised successfully. */
 type WorkerInitAckMessage = {
     type: "init_ack";
     requestId: number;
@@ -102,6 +116,7 @@ type WorkerInitAckMessage = {
 
 type WorkerResponseMessage = WorkerErrorMessage | WorkerLogMessage | WorkerResultMessage | WorkerInitAckMessage;
 
+/** Result of a Web Workers compute dispatch with timing breakdown. */
 export type WorkerComputeResult = {
     agents: Agent[];
     trailMap?: Float32Array;
@@ -112,8 +127,15 @@ export type WorkerComputeResult = {
     };
 };
 
+/**
+ * Web Workers compute backend.
+ *
+ * Distributes agent update work across a configurable number of worker
+ * threads. Each worker receives a serialised copy of the compiled agent
+ * function and independently processes its slice of the agent array.
+ */
 class WebWorkers {
-    private readonly Logger: Logger;
+    private readonly logger: Logger;
     private workers: Worker[];
     private readonly workerCount: number;
     private readonly agentFunctionSource: string;
@@ -122,7 +144,7 @@ class WebWorkers {
     private nextRequestId = 1;
 
     constructor(agentFunction: AgentFunction, workerCount?: number) {
-        this.Logger = new Logger("WebWorkersComputeEngine");
+        this.logger = new Logger("WebWorkersComputeEngine");
         this.workerCount = workerCount ?? navigator.hardwareConcurrency ?? 4;
         this.agentFunctionSource = agentFunction.toString();
 
@@ -133,6 +155,13 @@ class WebWorkers {
         this.initPromise = this.initializeWorkers();
     }
 
+    /**
+     * Distribute agents across workers and collect results.
+     *
+     * @param agents - Current agent array.
+     * @param inputValues - Per-frame input values.
+     * @returns Merged agent array, optional trail-map deltas, and timing.
+     */
     async compute(agents: Agent[], inputValues: InputValues): Promise<WorkerComputeResult> {
         await this.initPromise;
 
@@ -197,9 +226,9 @@ class WebWorkers {
                     }
 
                     if (data.type === "log") {
-                        if (data.level === "info") this.Logger.info(data.message);
-                        else if (data.level === "warn") this.Logger.warn(data.message);
-                        else this.Logger.error(data.message);
+                        if (data.level === "info") this.logger.info(data.message);
+                        else if (data.level === "warn") this.logger.warn(data.message);
+                        else this.logger.error(data.message);
                         return;
                     }
 
@@ -282,6 +311,7 @@ class WebWorkers {
         });
     }
 
+    /** Terminate all worker threads and free resources. */
     destroy() {
         for (const worker of this.workers) {
             worker.terminate();
@@ -352,11 +382,12 @@ class WebWorkers {
         });
 
         await Promise.all(initJobs);
-        this.Logger.info(`Initialized ${this.workers.length} web workers.`);
+        this.logger.info(`Initialized ${this.workers.length} web workers.`);
     }
 
+    /** Create worker threads from an inline Blob script. */
     private createWorkers(numWorkers: number): { workers: Worker[]; scriptUrl: string } {
-        this.Logger.info(`Creating ${numWorkers} web workers.`);
+        this.logger.info(`Creating ${numWorkers} web workers.`);
 
         const scriptUrl = URL.createObjectURL(new Blob([WorkerScript], { type: "application/javascript" }));
         const workers: Worker[] = [];

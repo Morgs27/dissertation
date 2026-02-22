@@ -1,11 +1,23 @@
+/**
+ * @module webGPU
+ * WebGPU compute backend.
+ *
+ * Manages GPU buffer allocation, compute shader dispatch, optional agent
+ * readback, and the GPU-side diffuse/decay trail-map pipeline. When the
+ * render mode is `'gpu'`, agent data stays on the GPU and a vertex buffer
+ * reference is returned for zero-copy rendering.
+ */
+
 import Logger from "../helpers/logger";
 import GPU from "../helpers/gpu";
 import type { Agent, InputValues } from "../types";
 import { WORKGROUP_SIZE } from "../compiler/WGSLcompiler";
 
 const FLOAT_SIZE = 4;
-const COMPONENTS_PER_AGENT = 6; // id, x, y, vx, vy, species
+/** Agent layout: id, x, y, vx, vy, species (6 × f32). */
+const COMPONENTS_PER_AGENT = 6;
 
+/** GPU resources passed to the Renderer for zero-copy GPU rendering. */
 export type WebGPURenderResources = {
     device: GPUDevice;
     agentVertexBuffer: GPUBuffer;
@@ -14,6 +26,7 @@ export type WebGPURenderResources = {
     trailMapBuffer?: GPUBuffer;
 };
 
+/** Result of a WebGPU compute dispatch with optional readback. */
 export type WebGPUComputeResult = {
     updatedAgents?: Agent[];
     renderResources?: WebGPURenderResources;
@@ -24,8 +37,15 @@ export type WebGPUComputeResult = {
     };
 };
 
+/**
+ * WebGPU compute backend.
+ *
+ * Creates a compute pipeline from DSL-generated WGSL, manages grow-only
+ * GPU buffers for agents, inputs, trail maps, and random values, and
+ * dispatches agent-update work with optional CPU readback.
+ */
 export default class WebGPU {
-    private Logger = new Logger("WebGPUCompute");
+    private logger = new Logger("WebGPUCompute");
     private gpuHelper = new GPU("WebGPUComputeHelper");
     private wgslCode: string;
     private inputsExpected: string[];
@@ -84,11 +104,18 @@ export default class WebGPU {
         this.agentCount = agentCount;
     }
 
+    /**
+     * Initialise the compute pipeline, bind-group layout, and preallocate
+     * worst-case GPU buffers for the given agent count.
+     *
+     * @param device - An initialised `GPUDevice`.
+     * @param agentCount - Maximum number of agents to allocate for.
+     */
     async init(device: GPUDevice, agentCount: number) {
         const AGENT_BUFFER_SIZE = agentCount * COMPONENTS_PER_AGENT * FLOAT_SIZE;
         this.agentCount = agentCount;
 
-        this.Logger.log("Initializing WebGPU with device:", device);
+        this.logger.log("Initializing WebGPU with device:", device);
 
         // Push error scope to capture initialization errors
         device.pushErrorScope('validation');
@@ -96,11 +123,11 @@ export default class WebGPU {
         const module = device.createShaderModule({ code: this.wgslCode });
 
         // Check for compilation errors
-        this.Logger.log("Generated WGSL shader for WebGPU");
+        this.logger.log("Generated WGSL shader for WebGPU");
         module.getCompilationInfo().then(info => {
             for (const message of info.messages) {
                 const type = message.type === 'error' ? 'error' : 'warning';
-                this.Logger[type === 'error' ? 'error' : 'warn'](
+                this.logger[type === 'error' ? 'error' : 'warn'](
                     `WGSL ${message.type}: ${message.message} at line ${message.lineNum}, col ${message.linePos}`
                 );
             }
@@ -172,8 +199,8 @@ export default class WebGPU {
         // Pop validation error scope and log any errors
         device.popErrorScope().then(error => {
             if (error) {
-                this.Logger.error("WebGPU Validation Error during initialization:", error.message);
-                this.Logger.error("WGSL Code that failed:\n", this.wgslCode);
+                this.logger.error("WebGPU Validation Error during initialization:", error.message);
+                this.logger.error("WGSL Code that failed:\n", this.wgslCode);
             }
         });
 
@@ -230,7 +257,7 @@ export default class WebGPU {
         );
 
         this.device = device;
-        this.Logger.info(
+        this.logger.info(
             `Initialized. Preallocated for ${agentCount.toLocaleString()} agents (~${Math.round(
                 AGENT_BUFFER_SIZE / (1024 * 1024)
             )} MB per buffer).`
@@ -325,7 +352,7 @@ export default class WebGPU {
             compute: { module: diffuseModule, entryPoint: "main" },
         });
 
-        this.Logger.info("Diffuse/decay GPU compute pipeline initialized.");
+        this.logger.info("Diffuse/decay GPU compute pipeline initialized.");
     }
 
     /**
@@ -370,10 +397,24 @@ export default class WebGPU {
         [this.trailMapBuffer, this.trailMapBuffer2] = [this.trailMapBuffer2, this.trailMapBuffer];
     }
 
+    /**
+     * Run the compute shader with results kept on GPU (for GPU rendering).
+     *
+     * @param agents - Current agent array (used for initial GPU upload).
+     * @param inputs - Per-frame input values.
+     * @returns Render resources referencing GPU-side vertex buffer.
+     */
     public async runGPU(agents: Agent[], inputs: InputValues): Promise<WebGPUComputeResult> {
         return this._compute(agents, inputs, false);
     }
 
+    /**
+     * Run the compute shader and read agent data back to CPU.
+     *
+     * @param agents - Current agent array.
+     * @param inputs - Per-frame input values.
+     * @returns Updated agent array copied from GPU staging buffer.
+     */
     public async runGPUReadback(agents: Agent[], inputs: InputValues): Promise<WebGPUComputeResult> {
         return this._compute(agents, inputs, true);
     }
@@ -384,7 +425,7 @@ export default class WebGPU {
      *  - Copy storage -> staging -> CPU only for the active agent range.
      */
     private async _compute(agents: Agent[], inputs: InputValues, readback: boolean): Promise<WebGPUComputeResult> {
-        this.Logger.log(`Starting WebGPU compute for ${agents.length} agents (readback: ${readback})`);
+        this.logger.log(`Starting WebGPU compute for ${agents.length} agents (readback: ${readback})`);
 
         if (!this.device || !this.computePipeline) throw new Error("WebGPU not initialized");
 
@@ -531,7 +572,7 @@ export default class WebGPU {
                 }
 
                 if (updatedAgents.length > 0) {
-                    this.Logger.log(`Readback complete: Agent[0] updated to x=${updatedAgents[0].x.toFixed(2)}, y=${updatedAgents[0].y.toFixed(2)}`);
+                    this.logger.log(`Readback complete: Agent[0] updated to x=${updatedAgents[0].x.toFixed(2)}, y=${updatedAgents[0].y.toFixed(2)}`);
                 }
             } finally {
                 this.stagingReadbackBuffer!.unmap(); // reuse next call
@@ -556,7 +597,7 @@ export default class WebGPU {
                     const isEnabled = logData[i * 2];
                     const value = logData[i * 2 + 1];
                     if (isEnabled > 0.5) {
-                        this.Logger.info(`AGENT[${agents[i].id}] PRINT:`, value);
+                        this.logger.info(`AGENT[${agents[i].id}] PRINT:`, value);
                     }
                 }
             } finally {
@@ -612,7 +653,7 @@ export default class WebGPU {
 
     private ensureAndWriteInputs(device: GPUDevice, inputs: InputValues) {
         const bufferInputs = ['trailMap', 'randomValues', 'obstacles']; // these have their own storage bindings
-        
+
         // If obstacles are used, derive obstacleCount locally for uniform packing.
         const obstacleCount = this.hasObstacles
             ? (Array.isArray(inputs.obstacles) ? (inputs.obstacles as any[]).length : 0)
@@ -690,7 +731,7 @@ export default class WebGPU {
                 device.queue.writeBuffer(this.trailMapBuffer2!, 0, zeros);
                 device.queue.writeBuffer(this.trailMapDeposits!, 0, zeros);
                 this.trailMapGPUSeeded = true;
-                this.Logger.info("Trail map seeded to GPU (first frame only)");
+                this.logger.info("Trail map seeded to GPU (first frame only)");
             }
         }
 
@@ -768,7 +809,7 @@ export default class WebGPU {
                 "AgentVertex"
             );
             this.agentVertexCapacity = requiredSize;
-            this.Logger.info(
+            this.logger.info(
                 `Allocated GPU vertex buffer for up to ${this.agentCount.toLocaleString()} agents.`
             );
         }

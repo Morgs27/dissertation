@@ -1,9 +1,11 @@
 /**
- * Shared Transpiler Orchestrator
- * 
- * Replaces the duplicated `parseBoidsDSL` functions across all 3 compilers.
- * Iterates over parsed DSL lines, delegates to the CompilerTarget's emit methods,
- * and checks the FunctionRegistry for custom function handling.
+ * @module transpiler
+ * Shared DSL transpilation orchestrator.
+ *
+ * Replaces the duplicated `parseBoidsDSL` functions across all backends.
+ * Iterates over parsed DSL lines, delegates to the {@link CompilerTarget}
+ * emit methods, and checks the {@link FunctionRegistry} for custom function
+ * handling.
  */
 
 import type Logger from '../helpers/logger';

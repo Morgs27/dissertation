@@ -1,9 +1,11 @@
 /**
- * FunctionRegistry — centralized custom DSL function handling
- * 
- * Each DSL function (neighbors, mean, sense, deposit, random, avoidObstacles)
- * is registered here with detection logic and per-target code generation.
- * Only functions actually used in the DSL get their helpers emitted.
+ * @module functionRegistry
+ * Centralised custom DSL function handling.
+ *
+ * Each DSL function (`neighbors`, `mean`, `sense`, `deposit`, `random`,
+ * `avoidObstacles`) is registered here with detection logic and per-target
+ * code generation. Only functions actually used in the DSL get their helpers
+ * emitted.
  */
 
 import type { CompilerTarget, CompilationContext } from './compilerTarget';

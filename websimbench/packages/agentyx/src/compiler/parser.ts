@@ -1,4 +1,13 @@
+/**
+ * @module parser
+ * DSL lexer and line-level parser.
+ *
+ * Provides the {@link DSLParser} class which tokenises individual lines of
+ * Agentyx DSL code into structured {@link ParsedLineType} unions, identifying
+ * variable declarations, control flow, commands, assignments, and loops.
+ */
 
+/** Characters that begin single-line comments in DSL source. */
 export const COMMENT_CHARACTERS = ['//', '#'];
 
 export type AVAILABLE_COMMANDS =
@@ -48,20 +57,32 @@ export const AVAILABLE_COMMANDS_LIST: AVAILABLE_COMMANDS[] = [
 
 
 /**
- * Represents a parsed command with its name and argument
+ * A parsed DSL command with its name and arguments.
+ *
+ * @property command - One of the {@link AVAILABLE_COMMANDS} identifiers.
+ * @property argument - The raw argument string (e.g. `'1'`, `'inputs.speed'`).
  */
 export interface ParsedCommand {
     command: AVAILABLE_COMMANDS;
     argument: string;
 }
 
+/**
+ * Source location metadata for a single DSL line.
+ *
+ * @property content - The trimmed line content.
+ * @property lineIndex - Zero-based line index in the original source.
+ */
 export interface LineInfo {
     content: string;
     lineIndex: number;
 }
 
 /**
- * Parsed DSL line types
+ * Discriminated union of all possible parsed DSL line types.
+ *
+ * Each variant carries the data needed by the transpiler to emit
+ * target-specific code.
  */
 export type ParsedLineType =
     | { type: 'empty' | 'brace' | 'else' }

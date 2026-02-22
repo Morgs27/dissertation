@@ -1,8 +1,10 @@
 /**
- * JavaScript Compiler Target
- * 
- * Implements the CompilerTarget interface for JavaScript output.
- * Uses the expressionAST for Float32-wrapped expression transformation.
+ * @module JScompiler
+ * JavaScript backend for the DSL compiler.
+ *
+ * Implements the {@link CompilerTarget} interface for JavaScript output,
+ * wrapping all arithmetic in `Math.fround()` for Float32 precision parity
+ * with the WebAssembly and WebGPU backends.
  */
 
 import type Logger from '../helpers/logger';
@@ -13,9 +15,13 @@ import { createContext } from './compilerTarget';
 import { transpileDSL } from './transpiler';
 
 /**
- * Pre-process an expression to replace random(...) calls with _random(INDEX, ...)
- * so that each call site gets a compile-time fixed index, matching WGSL/WAT behavior.
- * This ensures parity: all backends read the same randomValues[id * stride + callIndex].
+ * Pre-process an expression to replace `random(...)` calls with `_random(INDEX, ...)`
+ * so that each call site gets a compile-time fixed index, matching WGSL/WAT behaviour.
+ *
+ * @param expr - The raw DSL expression string.
+ * @param ctx - Compilation context for tracking random call indices.
+ * @returns Expression with indexed random calls.
+ * @internal
  */
 function indexRandomCalls(expr: string, ctx: CompilationContext): string {
     return expr.replace(/\brandom\(([^)]*)\)/g, (_match, args) => {
@@ -263,6 +269,17 @@ ${helpers.join('\n')}
 
 // ─── Entry Point ─────────────────────────────────────────────────────
 
+/**
+ * Compile Agentyx DSL lines into a self-contained JavaScript agent function.
+ *
+ * @param lines - Parsed DSL line array from preprocessing.
+ * @param inputs - Required input names.
+ * @param logger - Logger instance for compilation diagnostics.
+ * @param rawScript - Original raw DSL source (used for error reporting).
+ * @param randomInputs - Names of random-valued input declarations.
+ * @param numRandomCalls - Total random values needed per agent per frame.
+ * @returns Complete JavaScript function source as a string.
+ */
 export const compileDSLtoJS = (
     lines: LineInfo[],
     inputs: string[],

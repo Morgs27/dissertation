@@ -1,8 +1,10 @@
 /**
- * WGSL Compiler Target
- * 
- * Implements the CompilerTarget interface for WebGPU Shading Language output.
- * Uses regex-based expression transpilation for WGSL-specific syntax.
+ * @module WGSLcompiler
+ * WGSL (WebGPU Shading Language) backend for the DSL compiler.
+ *
+ * Implements the {@link CompilerTarget} interface for WGSL compute-shader
+ * output. WGSL-specific concerns include pointer-based variable passing,
+ * atomic trail-map writes, and workgroup-sized dispatch.
  */
 
 import Logger from "../helpers/logger";
@@ -445,16 +447,27 @@ fn main(
 
 // ─── Entry Point ─────────────────────────────────────────────────────
 
-export const compileDSLtoWGSL = (
+/**
+ * Compile Agentyx DSL lines into a complete WGSL compute shader.
+ *
+ * @param lines - Parsed DSL line array from preprocessing.
+ * @param inputs - Required input names.
+ * @param logger - Logger instance for compilation diagnostics.
+ * @param rawScript - Original raw DSL source (used for error reporting).
+ * @param randomInputs - Names of random-valued input declarations.
+ * @param numRandomCalls - Total random values needed per agent per frame.
+ * @returns Complete WGSL compute shader source as a string.
+ */
+export function compileDSLtoWGSL(
     lines: LineInfo[],
     inputs: string[],
     logger: Logger,
     rawScript: string,
     randomInputs: string[] = [],
     numRandomCalls: number = 0,
-): string => {
+): string {
     const ctx = createContext(randomInputs, numRandomCalls);
     const statements = transpileDSL(lines, WGSLTarget, logger, rawScript, ctx);
 
     return WGSLTarget.emitProgram(statements, inputs, randomInputs, ctx);
-};
+}

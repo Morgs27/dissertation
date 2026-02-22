@@ -12,47 +12,112 @@ var LogLevel = /* @__PURE__ */ ((LogLevel2) => {
 })(LogLevel || {});
 var GlobalLogLevel = 4 /* Verbose */;
 var _Logger = class _Logger {
+  /**
+   * Create a new logger instance.
+   *
+   * @param context - Human-readable context name shown in log prefixes.
+   * @param color - CSS colour string for styled console output.
+   */
   constructor(context, color = "black") {
     this.context = context;
     this.color = color;
   }
+  /**
+   * Set the global minimum log level for all Logger instances.
+   *
+   * Messages below this level are silently discarded.
+   *
+   * @param level - The new minimum log level.
+   */
   static setGlobalLogLevel(level) {
     GlobalLogLevel = level;
   }
+  /**
+   * Register a global listener that receives all log messages.
+   *
+   * @param listener - Callback invoked for each log message.
+   */
   static addListener(listener) {
     this.listeners.push(listener);
   }
+  /**
+   * Remove a previously registered global listener.
+   *
+   * @param listener - The listener callback to remove.
+   */
   static removeListener(listener) {
     this.listeners = this.listeners.filter((l) => l !== listener);
   }
+  /**
+   * Emit a log message to all registered listeners.
+   *
+   * @param level - Log level of the message.
+   * @param message - Primary message string.
+   * @param args - Additional arguments (serialised into the message for listeners).
+   * @internal
+   */
   emit(level, message, ...args) {
     const fullMessage = args.length > 0 ? `${message} ${args.map((arg2) => typeof arg2 === "object" ? JSON.stringify(arg2) : String(arg2)).join(" ")}` : message;
     _Logger.listeners.forEach((listener) => listener(level, this.context, fullMessage, args));
   }
+  /**
+   * Log a verbose/debug message.
+   *
+   * @param message - Message string.
+   * @param args - Additional values to log.
+   */
   log(message, ...args) {
     if (GlobalLogLevel >= 4 /* Verbose */) {
       this.emit(4 /* Verbose */, message, ...args);
       console.log(`%c[${this.context}] : ${message}`, `color: ${this.color}`, ...args);
     }
   }
+  /**
+   * Log an informational message.
+   *
+   * @param message - Message string.
+   * @param args - Additional values to log.
+   */
   info(message, ...args) {
     if (GlobalLogLevel >= 3 /* Info */) {
       this.emit(3 /* Info */, message, ...args);
       console.info(`[${this.context}] INFO: ${message}`, ...args);
     }
   }
+  /**
+   * Log a warning message.
+   *
+   * @param message - Message string.
+   * @param args - Additional values to log.
+   */
   warn(message, ...args) {
     if (GlobalLogLevel >= 2 /* Warning */) {
       this.emit(2 /* Warning */, message, ...args);
       console.warn(`[${this.context}] WARNING: ${message}`, ...args);
     }
   }
+  /**
+   * Log an error message.
+   *
+   * @param message - Message string.
+   * @param args - Additional values to log.
+   */
   error(message, ...args) {
     if (GlobalLogLevel >= 1 /* Error */) {
       this.emit(1 /* Error */, message, ...args);
       console.error(`[${this.context}] ERROR: ${message}`, ...args);
     }
   }
+  /**
+   * Log an error with surrounding source-code context.
+   *
+   * Shows 2 lines above and below the error line with a `>` marker
+   * pointing to the offending line.
+   *
+   * @param message - Error description.
+   * @param code - Full source code string.
+   * @param lineIndex - Zero-based line index where the error occurred.
+   */
   codeError(message, code, lineIndex) {
     if (GlobalLogLevel >= 1 /* Error */) {
       const lines = code.split("\n");
@@ -70,6 +135,16 @@ ${contextLines}`;
       console.error(`[${this.context}] CODE ERROR: ${message}`, "\n", contextLines);
     }
   }
+  /**
+   * Pretty-print a code snippet to the console with syntax-appropriate formatting.
+   *
+   * JavaScript code is formatted with Prettier; WGSL and WAT use a simple
+   * indentation-based formatter.
+   *
+   * @param label - Descriptive label for the code block.
+   * @param code - The source code to format and display.
+   * @param language - Language identifier for formatting.
+   */
   async code(label, code, language) {
     if (GlobalLogLevel >= 4 /* Verbose */) {
       let formattedCode;
@@ -79,21 +154,26 @@ ${contextLines}`;
             formattedCode = await this.formatJS(code);
             break;
           case "wgsl":
-            formattedCode = this.formatGeneralCode(code);
-            break;
           case "wasm":
             formattedCode = this.formatGeneralCode(code);
             break;
           default:
             formattedCode = code;
         }
-      } catch (e) {
+      } catch {
         formattedCode = code;
       }
       console.log(`%c[${this.context}] ${label}:
 %c${formattedCode}`, `color: ${this.color}; font-weight: bold;`, "color: gray; font-family: monospace;");
     }
   }
+  /**
+   * Format JavaScript code using Prettier.
+   *
+   * @param code - Raw JavaScript source.
+   * @returns Formatted JavaScript source.
+   * @internal
+   */
   async formatJS(code) {
     return prettier.format(code, {
       parser: "babel",
@@ -103,6 +183,15 @@ ${contextLines}`;
       tabWidth: 2
     });
   }
+  /**
+   * Apply simple indentation-based formatting to WGSL/WAT code.
+   *
+   * Adjusts indentation based on brace/bracket nesting.
+   *
+   * @param code - Raw WGSL or WAT source.
+   * @returns Re-indented source.
+   * @internal
+   */
   formatGeneralCode(code) {
     const lines = code.split(/\r?\n/).map((line) => {
       let s = line.replace(/\t/g, "  ");
@@ -126,6 +215,7 @@ ${contextLines}`;
     return out.join("\n") + "\n";
   }
 };
+/** @internal Global listener registry for log interception. */
 _Logger.listeners = [];
 var Logger = _Logger;
 
@@ -1863,7 +1953,7 @@ var WATTarget = {
     return ";; WAT program generation uses compileDSLtoWAT directly";
   }
 };
-var compileDSLtoWAT = (lines, inputs, logger, rawScript, randomInputs = [], numRandomCalls = 0) => {
+function compileDSLtoWAT(lines, inputs, logger, rawScript, randomInputs = [], numRandomCalls = 0) {
   const statements = [];
   const localVars = /* @__PURE__ */ new Set();
   const randomInputsSet = new Set(randomInputs);
@@ -2074,7 +2164,7 @@ var compileDSLtoWAT = (lines, inputs, logger, rawScript, randomInputs = [], numR
       )
     )
   )`;
-};
+}
 
 // src/compiler/WGSLcompiler.ts
 var WORKGROUP_SIZE = 64;
@@ -2424,11 +2514,11 @@ fn main(
     return [agentStruct, inputStruct, trailMapReadBinding, randomValuesBinding, trailMapWriteBinding, obstaclesBinding, obstacleHelpers, helpers, computeFn].join("\n\n");
   }
 };
-var compileDSLtoWGSL = (lines, inputs, logger, rawScript, randomInputs = [], numRandomCalls = 0) => {
+function compileDSLtoWGSL(lines, inputs, logger, rawScript, randomInputs = [], numRandomCalls = 0) {
   const ctx = createContext(randomInputs, numRandomCalls);
   const statements = transpileDSL(lines, WGSLTarget, logger, rawScript, ctx);
   return WGSLTarget.emitProgram(statements, inputs, randomInputs, ctx);
-};
+}
 
 // src/compiler/compiler.ts
 var COMMAND_INPUT_DEPENDENCIES = {
@@ -2442,6 +2532,15 @@ var Compiler = class {
   constructor() {
     this.logger = new Logger("Compiler", "orange");
   }
+  /**
+   * Compile DSL source code into a multi-target {@link CompilationResult}.
+   *
+   * Preprocesses the DSL to extract inputs, trail config, and species
+   * declarations, then delegates to each backend compiler.
+   *
+   * @param agentCode - Raw Agentyx DSL source code.
+   * @returns Compilation output with JS, WGSL, and WAT code.
+   */
   compileAgentCode(agentCode) {
     const script = agentCode?.trim() ?? "";
     this.logger.info("Compiling agent code");
@@ -2450,6 +2549,13 @@ var Compiler = class {
     this.logCompilationResults(compiled, preprocessed);
     return this.buildCompilationResult(preprocessed, compiled);
   }
+  /**
+   * Preprocess DSL source: parse lines, extract inputs, trail config,
+   * species count, and random value requirements.
+   *
+   * @param dsl - Raw DSL source code.
+   * @returns Preprocessed data for the compilation pipeline.
+   */
   preprocessDSL(dsl) {
     const { lines, definedInputs, randomInputs } = this.parseLines(dsl);
     const inputs = this.extractInputs(dsl, lines, definedInputs, randomInputs);
@@ -2460,6 +2566,7 @@ var Compiler = class {
     const numRandomCalls = randomInputs.length + inlineRandomCount;
     return { lines, inputs, definedInputs, trailEnvironmentConfig, randomInputs, speciesCount, numRandomCalls };
   }
+  /** Count `random()` call sites across all DSL lines. */
   countInlineRandomCalls(lines) {
     let count = 0;
     for (const line of lines) {
@@ -2468,6 +2575,7 @@ var Compiler = class {
     }
     return count;
   }
+  /** Parse raw DSL source into structured lines, extracting input and random declarations. */
   parseLines(dsl) {
     const lines = [];
     const definedInputs = [];
@@ -2489,9 +2597,11 @@ var Compiler = class {
     });
     return { lines, definedInputs, randomInputs };
   }
+  /** Remove `//` and `#` comments from a source line. */
   stripComments(line) {
     return line.split("//")[0].split("#")[0].trim();
   }
+  /** Parse an `input name = value` declaration, returning metadata or `null`. */
   parseInputDeclaration(line) {
     const match = line.match(/^\s*input\s+([a-zA-Z_]\w*)\s*=\s*(.+?)\s*;?\s*$/);
     if (!match) return null;
@@ -2509,6 +2619,7 @@ var Compiler = class {
       defined: { name, defaultValue, min, max }
     };
   }
+  /** Extract the numeric value and optional `[min, max]` range from a value part. */
   parseValueWithRange(valuePart) {
     const rangeMatch = valuePart.match(/^(.+?)\s*\[\s*([0-9.]+)\s*,\s*([0-9.]+)\s*\]\s*$/);
     if (rangeMatch) {
@@ -2520,6 +2631,7 @@ var Compiler = class {
     }
     return { value: valuePart, min: 0, max: 100 };
   }
+  /** Split a line at `;` boundaries, expanding braceless `if` into block form. */
   splitStatements(line) {
     const parts = line.split(";").map((s) => s.trim()).filter((s) => s.length > 0);
     const result = [];
@@ -2543,6 +2655,7 @@ var Compiler = class {
     }
     return result;
   }
+  /** Collect all required input names from explicit references and command dependencies. */
   extractInputs(dsl, lines, definedInputs, randomInputs) {
     const explicitInputs = Array.from(dsl.matchAll(/inputs\.([a-zA-Z_]\w*)/g)).map((m) => m[1]);
     const definedNames = definedInputs.map((d) => d.name);
@@ -2552,6 +2665,7 @@ var Compiler = class {
     this.addCommandDependencies(lines, inputs);
     return Array.from(inputs);
   }
+  /** Add implicit input dependencies required by DSL commands. */
   addCommandDependencies(lines, inputs) {
     for (const line of lines) {
       const parsed = DSLParser.parseCommandLine(line.content.trim());
@@ -2560,6 +2674,7 @@ var Compiler = class {
       }
     }
   }
+  /** Extract trail environment configuration from `enableTrails` commands. */
   extractTrailConfig(lines, inputs) {
     for (const line of lines) {
       const parsed = DSLParser.parseCommandLine(line.content.trim());
@@ -2577,6 +2692,7 @@ var Compiler = class {
     }
     return void 0;
   }
+  /** Extract the species count from a `species` command declaration. */
   extractSpeciesCount(lines) {
     for (const line of lines) {
       const parsed = DSLParser.parseCommandLine(line.content.trim());
@@ -2587,6 +2703,7 @@ var Compiler = class {
     }
     return void 0;
   }
+  /** Ensure `randomValues` is listed as a required input when random is used. */
   ensureRandomValuesDependency(inputs, randomInputs, lines) {
     let needsRandomValues = inputs.includes("random") || randomInputs.length > 0;
     if (!needsRandomValues) {
@@ -2601,6 +2718,7 @@ var Compiler = class {
       inputs.push("randomValues");
     }
   }
+  /** Compile preprocessed DSL to all three backends (JS, WGSL, WAT). */
   compileToAllTargets(preprocessed, script) {
     const { lines, inputs, randomInputs, numRandomCalls } = preprocessed;
     return {
@@ -2609,6 +2727,7 @@ var Compiler = class {
       watCode: compileDSLtoWAT(lines, inputs, this.logger, script, randomInputs, numRandomCalls)
     };
   }
+  /** Log all compiled output and extracted inputs to the console. */
   logCompilationResults(compiled, preprocessed) {
     this.logger.code("Generated JS Code", compiled.jsCode, "js");
     this.logger.code("Generated WGSL Code", compiled.wgslCode, "wgsl");
@@ -2616,6 +2735,7 @@ var Compiler = class {
     this.logger.log("Expected Inputs", preprocessed.inputs);
     this.logger.log("Defined Inputs", preprocessed.definedInputs);
   }
+  /** Assemble the final {@link CompilationResult} from preprocessed and compiled data. */
   buildCompilationResult(preprocessed, compiled) {
     return {
       requiredInputs: preprocessed.inputs,
@@ -2705,7 +2825,7 @@ var WorkerScript = `
 var WebWorkers = class {
   constructor(agentFunction, workerCount) {
     this.nextRequestId = 1;
-    this.Logger = new Logger("WebWorkersComputeEngine");
+    this.logger = new Logger("WebWorkersComputeEngine");
     this.workerCount = workerCount ?? navigator.hardwareConcurrency ?? 4;
     this.agentFunctionSource = agentFunction.toString();
     const workerSetup = this.createWorkers(this.workerCount);
@@ -2713,6 +2833,13 @@ var WebWorkers = class {
     this.workerScriptUrl = workerSetup.scriptUrl;
     this.initPromise = this.initializeWorkers();
   }
+  /**
+   * Distribute agents across workers and collect results.
+   *
+   * @param agents - Current agent array.
+   * @param inputValues - Per-frame input values.
+   * @returns Merged agent array, optional trail-map deltas, and timing.
+   */
   async compute(agents, inputValues) {
     await this.initPromise;
     if (agents.length === 0) {
@@ -2764,9 +2891,9 @@ var WebWorkers = class {
             return;
           }
           if (data.type === "log") {
-            if (data.level === "info") this.Logger.info(data.message);
-            else if (data.level === "warn") this.Logger.warn(data.message);
-            else this.Logger.error(data.message);
+            if (data.level === "info") this.logger.info(data.message);
+            else if (data.level === "warn") this.logger.warn(data.message);
+            else this.logger.error(data.message);
             return;
           }
           if (data.type === "error") {
@@ -2834,6 +2961,7 @@ var WebWorkers = class {
       }
     });
   }
+  /** Terminate all worker threads and free resources. */
   destroy() {
     for (const worker of this.workers) {
       worker.terminate();
@@ -2889,10 +3017,11 @@ var WebWorkers = class {
       });
     });
     await Promise.all(initJobs);
-    this.Logger.info(`Initialized ${this.workers.length} web workers.`);
+    this.logger.info(`Initialized ${this.workers.length} web workers.`);
   }
+  /** Create worker threads from an inline Blob script. */
   createWorkers(numWorkers) {
-    this.Logger.info(`Creating ${numWorkers} web workers.`);
+    this.logger.info(`Creating ${numWorkers} web workers.`);
     const scriptUrl = URL.createObjectURL(new Blob([WorkerScript], { type: "application/javascript" }));
     const workers = [];
     for (let i = 0; i < numWorkers; i++) {
@@ -2905,13 +3034,27 @@ var webWorkers_default = WebWorkers;
 
 // src/helpers/gpu.ts
 var _GPU = class _GPU {
+  /**
+   * Create a new GPU helper instance.
+   *
+   * @param scope - Logger context name for this instance.
+   */
   constructor(scope = "GPU") {
     this.adapter = null;
     this.device = null;
     this.context = null;
     this.format = null;
-    this.Logger = new Logger(scope);
+    this.logger = new Logger(scope);
   }
+  /**
+   * Obtain a WebGPU device, reusing the shared singleton if available.
+   *
+   * On first call, requests an adapter and device from the browser's
+   * WebGPU API. Subsequent calls return the cached device.
+   *
+   * @returns The shared GPU device.
+   * @throws {Error} If WebGPU is not supported or the adapter cannot be obtained.
+   */
   async getDevice() {
     if (this.device) return this.device;
     if (_GPU.sharedDevice) {
@@ -2920,7 +3063,7 @@ var _GPU = class _GPU {
     }
     if (!navigator.gpu) {
       const message = "WebGPU not supported by this browser.";
-      this.Logger.error(message);
+      this.logger.error(message);
       throw new Error(message);
     }
     if (!_GPU.sharedAdapter) {
@@ -2929,7 +3072,7 @@ var _GPU = class _GPU {
     this.adapter = _GPU.sharedAdapter;
     if (!this.adapter) {
       const message = "Failed to request WebGPU adapter.";
-      this.Logger.error(message);
+      this.logger.error(message);
       throw new Error(message);
     }
     _GPU.sharedDevice = await this.adapter.requestDevice();
@@ -2941,24 +3084,40 @@ var _GPU = class _GPU {
     });
     return this.device;
   }
+  /**
+   * Acquire and cache the WebGPU canvas context for the given canvas element.
+   *
+   * @param canvas - The HTML canvas element to bind to.
+   * @returns The WebGPU canvas context.
+   * @throws {Error} If the canvas context cannot be obtained (e.g. already bound to `'2d'`).
+   */
   configureCanvas(canvas) {
     if (this.context) return this.context;
     const ctx = canvas.getContext("webgpu");
     if (!ctx) {
-      this.Logger.error(
+      this.logger.error(
         "Failed to acquire WebGPU canvas context. The canvas may have been used with a different context type (e.g., '2d')."
       );
       throw new Error("Failed to acquire WebGPU canvas context.");
     }
     this.context = ctx;
     this.format = navigator.gpu.getPreferredCanvasFormat();
-    this.Logger.log("WebGPU canvas context acquired successfully");
+    this.logger.log("WebGPU canvas context acquired successfully");
     return ctx;
   }
+  /**
+   * Configure the cached canvas context with a device and alpha mode.
+   *
+   * Must be called after {@link configureCanvas}.
+   *
+   * @param device - The GPU device to bind to the context.
+   * @param alphaMode - Canvas alpha compositing mode.
+   * @throws {Error} If {@link configureCanvas} has not been called.
+   */
   setupCanvasConfig(device, alphaMode = "opaque") {
     if (!this.context || !this.format) {
       const message = "GPU canvas not configured before setup.";
-      this.Logger.error(message);
+      this.logger.error(message);
       throw new Error(message);
     }
     this.context.configure({
@@ -2968,8 +3127,16 @@ var _GPU = class _GPU {
     });
   }
   /**
-   * Creates a GPU buffer optionally initialized with data.
-   * Automatically aligns size to 4 bytes and optionally to 256 bytes for uniform buffers.
+   * Create a GPU buffer, optionally initialised with data.
+   *
+   * Automatically aligns to 4 bytes, and to 256 bytes for uniform buffers.
+   *
+   * @param device - The GPU device.
+   * @param data - Initial data to write, or `null` for an uninitialised buffer.
+   * @param usage - GPU buffer usage flags.
+   * @param sizeOverride - Optional minimum byte size (overrides data length).
+   * @param label - Optional debug label.
+   * @returns The created GPU buffer.
    */
   createBuffer(device, data, usage, sizeOverride, label) {
     const byteLength = data?.byteLength ?? 0;
@@ -2991,7 +3158,13 @@ var _GPU = class _GPU {
     return buffer;
   }
   /**
-   * Creates an empty (unmapped) GPU buffer of a given size and usage.
+   * Create an empty (unmapped) GPU buffer of a given size.
+   *
+   * @param device - The GPU device.
+   * @param size - Desired byte size (will be aligned to 4 bytes).
+   * @param usage - GPU buffer usage flags.
+   * @param label - Optional debug label.
+   * @returns The created GPU buffer.
    */
   createEmptyBuffer(device, size, usage, label) {
     const aligned = Math.ceil(size / 4) * 4;
@@ -3001,18 +3174,37 @@ var _GPU = class _GPU {
       usage
     });
   }
+  /**
+   * Write data to an existing GPU buffer via the device queue.
+   *
+   * @param device - The GPU device.
+   * @param buffer - Target GPU buffer.
+   * @param data - Float32Array data to write.
+   */
   writeBuffer(device, buffer, data) {
     if (!data.byteLength) return;
     device.queue.writeBuffer(buffer, 0, data.buffer, data.byteOffset, data.byteLength);
   }
+  /**
+   * Get the preferred texture format for the configured canvas.
+   *
+   * @returns The GPU texture format, or `null` if not yet configured.
+   */
   getFormat() {
     return this.format;
   }
+  /**
+   * Get the cached WebGPU canvas context.
+   *
+   * @returns The canvas context, or `null` if not yet configured.
+   */
   getContext() {
     return this.context;
   }
 };
+/** @internal Shared GPU device singleton. */
 _GPU.sharedDevice = null;
+/** @internal Shared GPU adapter singleton. */
 _GPU.sharedAdapter = null;
 var GPU = _GPU;
 
@@ -3021,7 +3213,7 @@ var FLOAT_SIZE = 4;
 var COMPONENTS_PER_AGENT = 6;
 var WebGPU = class {
   constructor(wgslCode, inputsExpected, agentCount) {
-    this.Logger = new Logger("WebGPUCompute");
+    this.logger = new Logger("WebGPUCompute");
     this.gpuHelper = new GPU("WebGPUComputeHelper");
     this.device = null;
     this.computePipeline = null;
@@ -3075,17 +3267,24 @@ var WebGPU = class {
     this.inputsExpected = inputsExpected;
     this.agentCount = agentCount;
   }
+  /**
+   * Initialise the compute pipeline, bind-group layout, and preallocate
+   * worst-case GPU buffers for the given agent count.
+   *
+   * @param device - An initialised `GPUDevice`.
+   * @param agentCount - Maximum number of agents to allocate for.
+   */
   async init(device, agentCount) {
     const AGENT_BUFFER_SIZE = agentCount * COMPONENTS_PER_AGENT * FLOAT_SIZE;
     this.agentCount = agentCount;
-    this.Logger.log("Initializing WebGPU with device:", device);
+    this.logger.log("Initializing WebGPU with device:", device);
     device.pushErrorScope("validation");
     const module = device.createShaderModule({ code: this.wgslCode });
-    this.Logger.log("Generated WGSL shader for WebGPU");
+    this.logger.log("Generated WGSL shader for WebGPU");
     module.getCompilationInfo().then((info) => {
       for (const message of info.messages) {
         const type = message.type === "error" ? "error" : "warning";
-        this.Logger[type === "error" ? "error" : "warn"](
+        this.logger[type === "error" ? "error" : "warn"](
           `WGSL ${message.type}: ${message.message} at line ${message.lineNum}, col ${message.linePos}`
         );
       }
@@ -3141,8 +3340,8 @@ var WebGPU = class {
     });
     device.popErrorScope().then((error) => {
       if (error) {
-        this.Logger.error("WebGPU Validation Error during initialization:", error.message);
-        this.Logger.error("WGSL Code that failed:\n", this.wgslCode);
+        this.logger.error("WebGPU Validation Error during initialization:", error.message);
+        this.logger.error("WGSL Code that failed:\n", this.wgslCode);
       }
     });
     this.maxWorkgroupsPerDimension = device.limits?.maxComputeWorkgroupsPerDimension ?? this.maxWorkgroupsPerDimension;
@@ -3187,7 +3386,7 @@ var WebGPU = class {
       "StagingLogReadback"
     );
     this.device = device;
-    this.Logger.info(
+    this.logger.info(
       `Initialized. Preallocated for ${agentCount.toLocaleString()} agents (~${Math.round(
         AGENT_BUFFER_SIZE / (1024 * 1024)
       )} MB per buffer).`
@@ -3275,7 +3474,7 @@ var WebGPU = class {
       layout: device.createPipelineLayout({ bindGroupLayouts: [this.diffuseDecayBindGroupLayout] }),
       compute: { module: diffuseModule, entryPoint: "main" }
     });
-    this.Logger.info("Diffuse/decay GPU compute pipeline initialized.");
+    this.logger.info("Diffuse/decay GPU compute pipeline initialized.");
   }
   /**
    * Encode the diffuse+decay pass in the current command encoder and ping-pong the trail buffers.
@@ -3311,9 +3510,23 @@ var WebGPU = class {
     encoder.clearBuffer(this.trailMapDeposits, 0, trailMapSize);
     [this.trailMapBuffer, this.trailMapBuffer2] = [this.trailMapBuffer2, this.trailMapBuffer];
   }
+  /**
+   * Run the compute shader with results kept on GPU (for GPU rendering).
+   *
+   * @param agents - Current agent array (used for initial GPU upload).
+   * @param inputs - Per-frame input values.
+   * @returns Render resources referencing GPU-side vertex buffer.
+   */
   async runGPU(agents, inputs) {
     return this._compute(agents, inputs, false);
   }
+  /**
+   * Run the compute shader and read agent data back to CPU.
+   *
+   * @param agents - Current agent array.
+   * @param inputs - Per-frame input values.
+   * @returns Updated agent array copied from GPU staging buffer.
+   */
   async runGPUReadback(agents, inputs) {
     return this._compute(agents, inputs, true);
   }
@@ -3323,7 +3536,7 @@ var WebGPU = class {
    *  - Copy storage -> staging -> CPU only for the active agent range.
    */
   async _compute(agents, inputs, readback) {
-    this.Logger.log(`Starting WebGPU compute for ${agents.length} agents (readback: ${readback})`);
+    this.logger.log(`Starting WebGPU compute for ${agents.length} agents (readback: ${readback})`);
     if (!this.device || !this.computePipeline) throw new Error("WebGPU not initialized");
     const setupStart = performance.now();
     const device = this.device;
@@ -3432,7 +3645,7 @@ var WebGPU = class {
           updatedAgents[i].species = data[base + 5];
         }
         if (updatedAgents.length > 0) {
-          this.Logger.log(`Readback complete: Agent[0] updated to x=${updatedAgents[0].x.toFixed(2)}, y=${updatedAgents[0].y.toFixed(2)}`);
+          this.logger.log(`Readback complete: Agent[0] updated to x=${updatedAgents[0].x.toFixed(2)}, y=${updatedAgents[0].y.toFixed(2)}`);
         }
       } finally {
         this.stagingReadbackBuffer.unmap();
@@ -3455,7 +3668,7 @@ var WebGPU = class {
           const isEnabled = logData[i * 2];
           const value = logData[i * 2 + 1];
           if (isEnabled > 0.5) {
-            this.Logger.info(`AGENT[${agents[i].id}] PRINT:`, value);
+            this.logger.info(`AGENT[${agents[i].id}] PRINT:`, value);
           }
         }
       } finally {
@@ -3556,7 +3769,7 @@ var WebGPU = class {
         device.queue.writeBuffer(this.trailMapBuffer2, 0, zeros);
         device.queue.writeBuffer(this.trailMapDeposits, 0, zeros);
         this.trailMapGPUSeeded = true;
-        this.Logger.info("Trail map seeded to GPU (first frame only)");
+        this.logger.info("Trail map seeded to GPU (first frame only)");
       }
     }
     if (inputs.randomValues) {
@@ -3621,7 +3834,7 @@ var WebGPU = class {
         "AgentVertex"
       );
       this.agentVertexCapacity = requiredSize;
-      this.Logger.info(
+      this.logger.info(
         `Allocated GPU vertex buffer for up to ${this.agentCount.toLocaleString()} agents.`
       );
     }
@@ -3728,12 +3941,13 @@ var WebAssemblyCompute = class {
     this.f32 = void 0;
     this.exports = void 0;
     this.stepAll = void 0;
-    this.Logger = new Logger("WebAssemblyCompute");
+    this.logger = new Logger("WebAssemblyCompute");
     this.agentCount = agentCount;
     this.watCode = watCode;
   }
+  /** Compile WAT, create WASM instance, and bind the `step_all` export. */
   async init() {
-    const wasmModule = await compileWATtoWASM(this.watCode, this.Logger);
+    const wasmModule = await compileWATtoWASM(this.watCode, this.logger);
     const bytesNeeded = this.agentCount * bytesPerAgent;
     const initialPages = Math.ceil(bytesNeeded / wasmPageSize) + 1;
     this.memory = new WebAssembly.Memory({ initial: initialPages });
@@ -3744,8 +3958,8 @@ var WebAssemblyCompute = class {
         cos: Math.cos,
         atan2: Math.atan2,
         random: Math.random,
-        print: (id, val) => this.Logger.info(`AGENT[${id}] PRINT:`, val),
-        log: (id, val) => this.Logger.info(`WASM Log[${id}]:`, val)
+        print: (id, val) => this.logger.info(`AGENT[${id}] PRINT:`, val),
+        log: (id, val) => this.logger.info(`WASM Log[${id}]:`, val)
       }
     });
     this.exports = instance.exports;
@@ -3756,6 +3970,13 @@ var WebAssemblyCompute = class {
     this.stepAll = stepAll;
     this.f32 = new Float32Array(this.memory.buffer);
   }
+  /**
+   * Run a single compute step across all agents.
+   *
+   * @param agents - Current agent array.
+   * @param inputs - Per-frame input values.
+   * @returns Updated agents and timing metrics.
+   */
   compute(agents, inputs) {
     if (!this.exports || !this.memory || !this.stepAll) {
       throw new Error("WebAssemblyCompute not initialized");
@@ -3824,6 +4045,7 @@ var WebAssemblyCompute = class {
       }
     };
   }
+  /** Release all WASM resources. */
   destroy() {
     this.stepAll = void 0;
     this.exports = void 0;
@@ -3935,8 +4157,8 @@ var ComputeEngine = class {
     this.workerCount = workerCount;
     this.agentFunction = this.buildAgentFunction();
     this.agentCount = agentCount;
-    this.Logger = new Logger("ComputeEngine", "purple");
-    this.Logger.log("ComputeEngine initialized");
+    this.logger = new Logger("ComputeEngine", "purple");
+    this.logger.log("ComputeEngine initialized");
   }
   /**
    * Ensure double-buffer trail maps are allocated for the given dimensions.
@@ -4012,7 +4234,7 @@ var ComputeEngine = class {
     }
     if (method !== "WebWorkers") {
       inputs.print = (id, val) => {
-        this.Logger.info(`AGENT[${id}] PRINT:`, val);
+        this.logger.info(`AGENT[${id}] PRINT:`, val);
       };
     }
     return {
@@ -4067,8 +4289,16 @@ var ComputeEngine = class {
     }
     return this._WebAssembly;
   }
+  /**
+   * Provide a GPU device for the WebGPU backend.
+   *
+   * If the WebGPU instance already exists, initialises it immediately;
+   * otherwise the device is stored for deferred initialisation.
+   *
+   * @param device - The WebGPU device obtained from the Renderer.
+   */
   initGPU(device) {
-    this.Logger.log("Initializing ComputeEngine with GPU device:", device, "and agent count:", this.agentCount);
+    this.logger.log("Initializing ComputeEngine with GPU device:", device, "and agent count:", this.agentCount);
     this.gpuDevice = device;
     if (this._WebGPU && !this._WebGPUInitPromise) {
       const start = performance.now();
@@ -4077,8 +4307,17 @@ var ComputeEngine = class {
       });
     }
   }
+  /**
+   * Execute a single simulation frame on the specified compute backend.
+   *
+   * @param method - Compute backend to use.
+   * @param agents - Current agent state array.
+   * @param inputValues - Per-frame input values (width, height, trailMap, etc.).
+   * @param renderMode - Determines whether GPU results are read back to CPU.
+   * @returns Updated agent array after one step.
+   */
   async runFrame(method, agents, inputValues, renderMode) {
-    this.Logger.log("Running Compute:", method);
+    this.logger.log("Running Compute:", method);
     this.agentCount = agents.length;
     const prepared = this.prepareFrameInputs(method, inputValues);
     const inputs = prepared.inputs;
@@ -4191,6 +4430,7 @@ var ComputeEngine = class {
       specificStats: details.specificStats
     });
   }
+  /** Release all backend instances and buffers. */
   destroy() {
     this._WebWorkers?.destroy();
     this._WebWorkers = void 0;
@@ -4207,11 +4447,12 @@ var ComputeEngine = class {
     this.gpuDevice = null;
     this.compileTimes = {};
   }
+  /** Build the agent update function from compiled JavaScript source. */
   buildAgentFunction() {
     try {
       return new Function(`return ${this.compilationResult.jsCode}`)();
     } catch (err) {
-      this.Logger?.error("Failed to build agent function from compiled JS:", err);
+      this.logger?.error("Failed to build agent function from compiled JS:", err);
       throw new Error(`Failed to compile agent function: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
@@ -4221,23 +4462,44 @@ var ComputeEngine = class {
 var PerformanceMonitor = class {
   constructor() {
     this._frames = [];
-    this.Logger = new Logger("PerformanceMonitor", "green");
+    this.logger = new Logger("PerformanceMonitor", "green");
   }
+  /**
+   * Record a completed frame's performance data.
+   *
+   * @param performance - The frame's timing and metric data.
+   */
   logFrame(performance2) {
     this._frames.push(performance2);
   }
+  /**
+   * All recorded frame performance entries.
+   */
   get frames() {
     return this._frames;
   }
+  /**
+   * Log a warning when a frame is skipped because the previous frame
+   * was still in progress.
+   */
   logMissingFrame() {
-    this.Logger.warn("Frame skipped - performance data not recorded.");
+    this.logger.warn("Frame skipped - performance data not recorded.");
   }
+  /**
+   * Clear all recorded frame data.
+   */
   reset() {
     this._frames.length = 0;
   }
+  /**
+   * Print a human-readable performance summary to the console.
+   *
+   * Outputs average total, setup, compute, render, and readback times
+   * as well as any backend-specific statistics.
+   */
   printSummary() {
     if (this._frames.length === 0) {
-      this.Logger.info("No performance data to report.");
+      this.logger.info("No performance data to report.");
       return;
     }
     const method = this._frames[0].method;
@@ -4248,19 +4510,19 @@ var PerformanceMonitor = class {
     const avgCompute = this._frames.reduce((sum, f) => sum + (f.computeTime || 0), 0) / count;
     const avgRender = this._frames.reduce((sum, f) => sum + (f.renderTime || 0), 0) / count;
     const avgReadback = this._frames.reduce((sum, f) => sum + (f.readbackTime || 0), 0) / count;
-    this.Logger.info(`Performance Summary for ${method}:`);
-    this.Logger.info(`  Frames: ${count}`);
-    this.Logger.info(`  Avg Total Time: ${avgTime.toFixed(2)} ms`);
-    if (avgSetup > 0) this.Logger.info(`  Avg Setup Time: ${avgSetup.toFixed(2)} ms`);
-    if (avgCompute > 0) this.Logger.info(`  Avg Compute Time: ${avgCompute.toFixed(2)} ms`);
-    if (avgRender > 0) this.Logger.info(`  Avg Render Time: ${avgRender.toFixed(2)} ms`);
-    if (avgReadback > 0) this.Logger.info(`  Avg Readback Time: ${avgReadback.toFixed(2)} ms`);
+    this.logger.info(`Performance Summary for ${method}:`);
+    this.logger.info(`  Frames: ${count}`);
+    this.logger.info(`  Avg Total Time: ${avgTime.toFixed(2)} ms`);
+    if (avgSetup > 0) this.logger.info(`  Avg Setup Time: ${avgSetup.toFixed(2)} ms`);
+    if (avgCompute > 0) this.logger.info(`  Avg Compute Time: ${avgCompute.toFixed(2)} ms`);
+    if (avgRender > 0) this.logger.info(`  Avg Render Time: ${avgRender.toFixed(2)} ms`);
+    if (avgReadback > 0) this.logger.info(`  Avg Readback Time: ${avgReadback.toFixed(2)} ms`);
     const firstFrameStats = this._frames[0].specificStats;
     if (firstFrameStats) {
-      this.Logger.info(`  Specific Stats (Avg):`);
+      this.logger.info(`  Specific Stats (Avg):`);
       for (const key of Object.keys(firstFrameStats)) {
         const avgStat = this._frames.reduce((sum, f) => sum + (f.specificStats?.[key] || 0), 0) / count;
-        this.Logger.info(`    ${key}: ${avgStat.toFixed(2)} ms`);
+        this.logger.info(`    ${key}: ${avgStat.toFixed(2)} ms`);
       }
     }
   }
@@ -4286,7 +4548,7 @@ var GPU_QUAD_VERTICES = new Float32Array([
 ]);
 var SPECIES_PALETTE = [
   "#00FFFF",
-  // Cyan (species 0 - default)
+  // Cyan (species 0 — default)
   "#FF4466",
   // Red-pink
   "#44FF66",
@@ -4309,7 +4571,13 @@ function hexToRgb(hex) {
   return { r, g, b, a: 1 };
 }
 var Renderer = class {
-  // private Logger: Logger;
+  /**
+   * Create a new renderer.
+   *
+   * @param canvas - The primary canvas element for 2D/CPU rendering.
+   * @param gpuCanvas - Optional separate canvas element for WebGPU rendering.
+   * @param appearance - Initial visual appearance configuration.
+   */
   constructor(canvas, gpuCanvas, appearance) {
     this.ctx = null;
     this.gpuCanvas = null;
@@ -4322,7 +4590,6 @@ var Renderer = class {
     this.gpuAgentBuffer = null;
     this.gpuAgentBufferSize = 0;
     this.gpuPipelineDevice = null;
-    // For manual upload of trails (CPU compute -> GPU render)
     this.gpuManualTrailBuffer = null;
     this.gpuManualTrailBufferSize = 0;
     this.gpuTrailPipeline = null;
@@ -4332,20 +4599,48 @@ var Renderer = class {
     this.appearance = appearance;
     this.gpuHelper = new GPU("RendererGPU");
   }
+  /**
+   * Provide a GPU device for WebGPU rendering operations.
+   *
+   * @param device - The WebGPU device obtained via {@link GPU.getDevice}.
+   */
   initGPU(device) {
     this.gpuDevice = device;
   }
+  /**
+   * Get the current appearance configuration.
+   *
+   * @returns The active {@link SimulationAppearance}.
+   */
   getAppearance() {
     return this.appearance;
   }
+  /**
+   * Replace the appearance configuration.
+   *
+   * @param appearance - New appearance settings.
+   */
   setAppearance(appearance) {
     this.appearance = appearance;
   }
+  /**
+   * Clear the canvas and fill with the configured background colour.
+   */
   renderBackground() {
     const ctx = this.ensureContext();
     ctx.fillStyle = this.appearance.backgroundColor;
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
   }
+  /**
+   * Render the trail map to the 2D canvas using pixel-level blending.
+   *
+   * Each pixel is linearly interpolated between the background colour and
+   * the trail colour based on the trail intensity at that position.
+   *
+   * @param trailMap - Trail intensity buffer (width × height).
+   * @param width - Canvas width in pixels.
+   * @param height - Canvas height in pixels.
+   */
   renderTrails(trailMap, width, height) {
     const ctx = this.ensureContext();
     const imageData = ctx.getImageData(0, 0, width, height);
@@ -4369,6 +4664,11 @@ var Renderer = class {
     }
     ctx.putImageData(imageData, 0, 0);
   }
+  /**
+   * Render agents to the 2D canvas using the configured shape and species colours.
+   *
+   * @param agents - Array of agent positions to render.
+   */
   renderAgents(agents) {
     const ctx = this.ensureContext();
     const radius = this.appearance.agentSize;
@@ -4386,6 +4686,16 @@ var Renderer = class {
       ctx.fill();
     });
   }
+  /**
+   * Render agents using WebGPU instanced draw calls.
+   *
+   * Falls back to uploading agent data from CPU buffers if GPU-resident
+   * render resources are not provided.
+   *
+   * @param agents - Agent array (used for CPU fallback buffer upload).
+   * @param resources - Optional GPU-resident render resources from the compute engine.
+   * @param trailMap - Optional CPU-side trail map for manual GPU upload.
+   */
   async renderAgentsGPU(agents, resources, trailMap) {
     if (!this.gpuCanvas || !this.gpuDevice) return;
     this.gpuHelper.configureCanvas(this.gpuCanvas);
@@ -4399,6 +4709,12 @@ var Renderer = class {
     }
     this.executeRender(this.gpuDevice, renderResources, trailBuffer);
   }
+  /**
+   * Create or reuse the agent-rendering GPU pipeline (WGSL shaders + layout).
+   *
+   * @param device - The WebGPU device.
+   * @internal
+   */
   configurePipeline(device) {
     if (this.gpuPipeline && this.gpuPipelineDevice === device) return;
     if (this.gpuPipeline && this.gpuPipelineDevice !== device) {
@@ -4411,51 +4727,50 @@ var Renderer = class {
       ]
     });
     const shaderCode = `
-            struct RenderUniforms {
-                width: f32, 
-                height: f32, 
-                radius: f32, 
-                shape: f32, // 0 = square, 1 = circle
-                colorR: f32,
-                colorG: f32,
-                colorB: f32,
-                speciesCount: f32,
-            };
-            struct SpeciesColors {
-                colors: array<vec4<f32>, 8>,
-            };
-            struct VertexOutput { 
-                @builtin(position) position: vec4<f32>, 
-                @location(0) uv: vec2<f32>,
-                @location(1) @interpolate(flat) speciesIdx: u32 
-            };
-            @group(0) @binding(0) var<uniform> uniforms: RenderUniforms;
-            @group(0) @binding(1) var<uniform> speciesColors: SpeciesColors;
+      struct RenderUniforms {
+        width: f32,
+        height: f32,
+        radius: f32,
+        shape: f32,
+        colorR: f32,
+        colorG: f32,
+        colorB: f32,
+        speciesCount: f32,
+      };
+      struct SpeciesColors {
+        colors: array<vec4<f32>, 8>,
+      };
+      struct VertexOutput {
+        @builtin(position) position: vec4<f32>,
+        @location(0) uv: vec2<f32>,
+        @location(1) @interpolate(flat) speciesIdx: u32
+      };
+      @group(0) @binding(0) var<uniform> uniforms: RenderUniforms;
+      @group(0) @binding(1) var<uniform> speciesColors: SpeciesColors;
 
-            @vertex fn vs_main(@location(0) quadPos: vec2<f32>, @location(1) agentPos: vec2<f32>, @location(2) agentSpecies: f32) -> VertexOutput {
-                var out: VertexOutput;
-                let scaled = quadPos * uniforms.radius;
-                let world = agentPos + scaled;
-                let clipX = (world.x / uniforms.width) * 2.0 - 1.0;
-                let clipY = 1.0 - (world.y / uniforms.height) * 2.0;
-                out.position = vec4<f32>(clipX, clipY, 0.0, 1.0);
-                out.uv = quadPos; // -1 to 1
-                out.speciesIdx = u32(agentSpecies);
-                return out;
-            }
+      @vertex fn vs_main(@location(0) quadPos: vec2<f32>, @location(1) agentPos: vec2<f32>, @location(2) agentSpecies: f32) -> VertexOutput {
+        var out: VertexOutput;
+        let scaled = quadPos * uniforms.radius;
+        let world = agentPos + scaled;
+        let clipX = (world.x / uniforms.width) * 2.0 - 1.0;
+        let clipY = 1.0 - (world.y / uniforms.height) * 2.0;
+        out.position = vec4<f32>(clipX, clipY, 0.0, 1.0);
+        out.uv = quadPos;
+        out.speciesIdx = u32(agentSpecies);
+        return out;
+      }
 
-            @fragment fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
-                if (uniforms.shape > 0.5) {
-                    // Circle: discard if outside unit circle
-                    if (length(input.uv) > 1.0) {
-                        discard;
-                    }
-                }
-                let idx = input.speciesIdx % 8u;
-                let col = speciesColors.colors[idx];
-                return vec4<f32>(col.r, col.g, col.b, 1.0);
-            }
-        `;
+      @fragment fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
+        if (uniforms.shape > 0.5) {
+          if (length(input.uv) > 1.0) {
+            discard;
+          }
+        }
+        let idx = input.speciesIdx % 8u;
+        let col = speciesColors.colors[idx];
+        return vec4<f32>(col.r, col.g, col.b, 1.0);
+      }
+    `;
     const shaderModule = device.createShaderModule({ code: shaderCode });
     this.gpuPipeline = device.createRenderPipeline({
       layout: device.createPipelineLayout({ bindGroupLayouts: [this.gpuBindGroupLayout] }),
@@ -4469,9 +4784,7 @@ var Renderer = class {
             stepMode: "instance",
             attributes: [
               { shaderLocation: 1, format: "float32x2", offset: GPU_FLOAT_SIZE },
-              // x, y (skip id)
               { shaderLocation: 2, format: "float32", offset: 5 * GPU_FLOAT_SIZE }
-              // species
             ]
           }
         ]
@@ -4482,6 +4795,12 @@ var Renderer = class {
     this.gpuQuadBuffer = this.gpuHelper.createBuffer(device, GPU_QUAD_VERTICES, GPUBufferUsage.VERTEX);
     this.gpuPipelineDevice = device;
   }
+  /**
+   * Create or reuse the trail-map rendering GPU pipeline.
+   *
+   * @param device - The WebGPU device.
+   * @internal
+   */
   configureTrailPipeline(device) {
     if (this.gpuTrailPipeline && this.gpuPipelineDevice === device) return;
     this.gpuTrailBindGroupLayout = device.createBindGroupLayout({
@@ -4491,46 +4810,43 @@ var Renderer = class {
       ]
     });
     const shaderCode = `
-            struct TrailUniforms {
-                width: f32,
-                height: f32,
-                colorR: f32,
-                colorG: f32,
-                colorB: f32,
-                opacity: f32,
-            }
-            @group(0) @binding(0) var<storage, read> trailMap: array<f32>;
-            @group(0) @binding(1) var<uniform> uniforms: TrailUniforms;
+      struct TrailUniforms {
+        width: f32,
+        height: f32,
+        colorR: f32,
+        colorG: f32,
+        colorB: f32,
+        opacity: f32,
+      }
+      @group(0) @binding(0) var<storage, read> trailMap: array<f32>;
+      @group(0) @binding(1) var<uniform> uniforms: TrailUniforms;
 
-            struct VertexOutput {
-                @builtin(position) position: vec4<f32>,
-                @location(0) uv: vec2<f32>,
-            }
+      struct VertexOutput {
+        @builtin(position) position: vec4<f32>,
+        @location(0) uv: vec2<f32>,
+      }
 
-            @vertex fn vs_main(@location(0) pos: vec2<f32>) -> VertexOutput {
-                var out: VertexOutput;
-                out.position = vec4<f32>(pos, 0.0, 1.0);
-                out.uv = pos * 0.5 + 0.5; // 0 to 1
-                return out;
-            }
+      @vertex fn vs_main(@location(0) pos: vec2<f32>) -> VertexOutput {
+        var out: VertexOutput;
+        out.position = vec4<f32>(pos, 0.0, 1.0);
+        out.uv = pos * 0.5 + 0.5;
+        return out;
+      }
 
-            @fragment fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-                let x = u32(in.uv.x * uniforms.width);
-                let y = u32((1.0 - in.uv.y) * uniforms.height); // Flip Y match
-                let idx = y * u32(uniforms.width) + x;
-                
-                // Safety check
-                let total = u32(uniforms.width * uniforms.height);
-                if (idx >= total) { discard; }
+      @fragment fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+        let x = u32(in.uv.x * uniforms.width);
+        let y = u32((1.0 - in.uv.y) * uniforms.height);
+        let idx = y * u32(uniforms.width) + x;
 
-                let val = trailMap[idx];
-                if (val < 0.01) { discard; }
+        let total = u32(uniforms.width * uniforms.height);
+        if (idx >= total) { discard; }
 
-                // Using pre-multiplied alpha or just alpha?
-                // Visual preference: use color with alpha = intensity
-                return vec4<f32>(uniforms.colorR, uniforms.colorG, uniforms.colorB, val * uniforms.opacity);
-            }
-        `;
+        let val = trailMap[idx];
+        if (val < 0.01) { discard; }
+
+        return vec4<f32>(uniforms.colorR, uniforms.colorG, uniforms.colorB, val * uniforms.opacity);
+      }
+    `;
     const shaderModule = device.createShaderModule({ code: shaderCode });
     this.gpuTrailPipeline = device.createRenderPipeline({
       layout: device.createPipelineLayout({ bindGroupLayouts: [this.gpuTrailBindGroupLayout] }),
@@ -4555,6 +4871,14 @@ var Renderer = class {
       primitive: { topology: "triangle-list" }
     });
   }
+  /**
+   * Upload agent data from CPU to a GPU vertex buffer.
+   *
+   * @param device - The WebGPU device.
+   * @param agents - Agent array to upload.
+   * @returns Render resources referencing the GPU-side agent buffer.
+   * @internal
+   */
   prepareAgentBuffer(device, agents) {
     const data = new Float32Array(agents.length * GPU_AGENT_COMPONENTS);
     for (let i = 0; i < agents.length; i++) {
@@ -4568,6 +4892,16 @@ var Renderer = class {
     }
     return { device, agentVertexBuffer: this.gpuAgentBuffer, agentCount: agents.length, agentStride: GPU_AGENT_STRIDE };
   }
+  /**
+   * Upload a CPU-side trail map to a GPU storage buffer for rendering.
+   *
+   * Used when the compute engine runs on CPU but rendering is GPU-based.
+   *
+   * @param device - The WebGPU device.
+   * @param trailMap - CPU-side trail intensity buffer.
+   * @returns The GPU storage buffer containing the trail data.
+   * @internal
+   */
   prepareManualTrailBuffer(device, trailMap) {
     const byteSize = trailMap.byteLength;
     if (!this.gpuManualTrailBuffer || this.gpuManualTrailBufferSize < byteSize) {
@@ -4582,6 +4916,14 @@ var Renderer = class {
     }
     return this.gpuManualTrailBuffer;
   }
+  /**
+   * Execute the actual GPU render pass: trail overlay followed by instanced agents.
+   *
+   * @param device - The WebGPU device.
+   * @param resources - Agent vertex buffer and count.
+   * @param trailBuffer - Optional trail-map storage buffer.
+   * @internal
+   */
   executeRender(device, resources, trailBuffer) {
     const ctx = this.gpuHelper.getContext();
     if (!ctx || !this.gpuPipeline || !this.gpuBindGroupLayout) return;
@@ -4673,12 +5015,22 @@ var Renderer = class {
     pass.end();
     device.queue.submit([encoder.finish()]);
   }
+  /**
+   * Lazily obtain the 2D rendering context for the primary canvas.
+   *
+   * @returns The 2D canvas rendering context.
+   * @internal
+   */
   ensureContext() {
     if (!this.ctx) {
       this.ctx = this.canvas.getContext("2d");
     }
     return this.ctx;
   }
+  /**
+   * Reset all cached GPU state. Called when the GPU device changes.
+   * @internal
+   */
   resetGPUState() {
     this.gpuPipeline = null;
     this.gpuPipelineDevice = null;
@@ -4848,6 +5200,11 @@ var sanitizeInputValue = (value) => {
   return String(value);
 };
 var SimulationTracker = class {
+  /**
+   * Create a new tracker for a simulation run.
+   *
+   * @param params - Initial run configuration used to populate metadata.
+   */
   constructor(params) {
     this.logger = new Logger("SimulationTracker", "teal");
     this.frames = [];
@@ -4886,6 +5243,12 @@ var SimulationTracker = class {
       Logger.addListener(this.logListener);
     }
   }
+  /**
+   * Asynchronously collect runtime device, browser, and GPU metrics.
+   *
+   * The results are stored in `run.environment` for inclusion in
+   * tracking reports.
+   */
   async collectEnvironmentMetrics() {
     if (!this.options.enabled || !this.options.captureDeviceMetrics) {
       return;
@@ -4897,6 +5260,11 @@ var SimulationTracker = class {
       this.logger.warn(`Failed to collect runtime metrics: ${message}`);
     }
   }
+  /**
+   * Record data for a completed simulation frame.
+   *
+   * @param params - Frame data including agents, inputs, and performance.
+   */
   recordFrame(params) {
     if (!this.options.enabled) {
       return;
@@ -4913,6 +5281,11 @@ var SimulationTracker = class {
       performance: params.performance ? { ...params.performance } : void 0
     });
   }
+  /**
+   * Record an error that occurred during frame execution.
+   *
+   * @param error - The caught error or unknown thrown value.
+   */
   recordError(error) {
     if (!this.options.enabled) {
       return;
@@ -4930,12 +5303,22 @@ var SimulationTracker = class {
       message: String(error)
     });
   }
+  /**
+   * Mark the simulation run as complete by recording the end timestamp.
+   */
   complete() {
     if (!this.options.enabled) {
       return;
     }
     this.run.endedAt = Date.now();
   }
+  /**
+   * Generate a deep-cloned tracking report, optionally filtered by
+   * frame range and content inclusions.
+   *
+   * @param filter - Optional filter constraints.
+   * @returns A self-contained tracking report.
+   */
   getReport(filter) {
     const fromFrame = filter?.fromFrame;
     const toFrame = filter?.toFrame;
@@ -4987,11 +5370,21 @@ var SimulationTracker = class {
       }
     };
   }
+  /**
+   * Remove the global log listener registered by this tracker.
+   *
+   * Should be called during simulation teardown to prevent memory leaks.
+   */
   dispose() {
     if (this.logListener) {
       Logger.removeListener(this.logListener);
     }
   }
+  /**
+   * Whether this tracker is configured to capture per-frame agent states.
+   *
+   * @returns `true` if tracking is enabled and agent state capture is on.
+   */
   capturesAgentStates() {
     return this.options.enabled && this.options.captureAgentStates;
   }
@@ -5064,6 +5457,16 @@ var methodRequiresCode = (method, compilationResult) => {
   return { available: true };
 };
 var Simulation = class {
+  /**
+   * Create a new simulation instance.
+   *
+   * Compiles the provided DSL or custom code, initialises agents with random
+   * (or seeded) positions, and sets up the compute engine, renderer, and
+   * tracker.
+   *
+   * @param config - Full simulation configuration.
+   * @throws {Error} If `options.agents` is not a positive integer or exceeds {@link MAX_AGENTS}.
+   */
   constructor(config) {
     this.logger = new Logger("Simulation", "blue");
     this.renderer = null;
@@ -5071,9 +5474,13 @@ var Simulation = class {
     this.frameNumber = 0;
     this.frameInputs = {};
     this.obstacles = [];
+    /** Current agent state array. Updated after each successful frame. */
     this.agents = [];
+    /** Compilation output from the DSL compiler or custom source. */
     this.compilationResult = null;
+    /** Trail intensity map (width × height `Float32Array`), or `null` if trails are not active. */
     this.trailMap = null;
+    /** Pre-generated random values buffer for the current frame, or `null` if not needed. */
     this.randomValues = null;
     const { options } = config;
     if (!Number.isFinite(options.agents) || options.agents < 1) {
@@ -5112,6 +5519,14 @@ var Simulation = class {
     });
     void this.tracker.collectEnvironmentMetrics();
   }
+  /**
+   * Generate the initial agent population with random or seeded positions.
+   *
+   * @param count - Number of agents to create.
+   * @param speciesCount - Number of distinct species (for round-robin assignment).
+   * @param seed - Optional PRNG seed for reproducible placement.
+   * @returns Array of initialised agents.
+   */
   createInitialAgents(count, speciesCount, seed) {
     const random = typeof seed === "number" ? createSeededRandom(seed) : Math.random;
     return Array.from({ length: count }, (_, index) => ({
@@ -5123,12 +5538,23 @@ var Simulation = class {
       species: index % Math.max(speciesCount, 1)
     }));
   }
+  /**
+   * Allocate or resize the trail-map buffer to match the given dimensions.
+   *
+   * @param width - Canvas width in pixels.
+   * @param height - Canvas height in pixels.
+   */
   ensureTrailMap(width, height) {
     const expectedLength = width * height;
     if (!this.trailMap || this.trailMap.length !== expectedLength) {
       this.trailMap = new Float32Array(expectedLength);
     }
   }
+  /**
+   * Fill the random values buffer with fresh random numbers for this frame.
+   *
+   * @param requiredCalls - Number of random values needed per agent.
+   */
   populateRandomValues(requiredCalls) {
     if (requiredCalls <= 0) {
       return;
@@ -5141,6 +5567,12 @@ var Simulation = class {
       this.randomValues[i] = Math.random();
     }
   }
+  /**
+   * Resolve the current simulation dimensions from the renderer canvas
+   * or the manually set width/height.
+   *
+   * @returns Current width and height.
+   */
   resolveDimensions() {
     if (this.renderer) {
       this.width = this.renderer.canvas.width;
@@ -5148,6 +5580,15 @@ var Simulation = class {
     }
     return { width: this.width, height: this.height };
   }
+  /**
+   * Merge user-supplied frame inputs with system inputs (dimensions, agents,
+   * trail map, random values, obstacles, and defined input defaults) to produce
+   * the final input map for the compute engine.
+   *
+   * @param frameInputValues - Per-frame input overrides from the caller.
+   * @returns Fully resolved input values map.
+   * @throws {Error} If any required input is missing.
+   */
   buildInputs(frameInputValues) {
     if (!this.compilationResult) {
       throw new Error("Simulation compilation result is unavailable.");
@@ -5196,6 +5637,15 @@ var Simulation = class {
     }
     return mergedInputs;
   }
+  /**
+   * Initialise the WebGPU device and configure both the compute engine
+   * and the renderer for GPU operation.
+   *
+   * Must be called before using `'WebGPU'` as a compute method or `'gpu'`
+   * as a render mode.
+   *
+   * @throws {Error} If WebGPU is not available or the adapter cannot be obtained.
+   */
   async initGPU() {
     const gpuHelper = new GPU("SimulationGPU");
     const gpuDevice = await gpuHelper.getDevice();
@@ -5204,6 +5654,13 @@ var Simulation = class {
       this.renderer.initGPU(gpuDevice);
     }
   }
+  /**
+   * Update the visual appearance at runtime.
+   *
+   * Only the provided properties are changed; all others remain as-is.
+   *
+   * @param nextAppearance - Partial appearance overrides.
+   */
   updateAppearance(nextAppearance) {
     this.appearance = {
       ...this.appearance,
@@ -5213,16 +5670,38 @@ var Simulation = class {
       this.renderer.setAppearance(this.appearance);
     }
   }
+  /**
+   * Merge dynamic input values that persist across frames.
+   *
+   * Values set here are included in every subsequent `runFrame` call
+   * unless overridden by the per-frame `inputValues` argument.
+   *
+   * @param nextInputs - Input key-value pairs to merge.
+   */
   setInputs(nextInputs) {
     this.frameInputs = {
       ...this.frameInputs,
       ...nextInputs
     };
   }
+  /**
+   * Replace the obstacle list used for `avoidObstacles` commands.
+   *
+   * @param obstacles - Array of rectangular obstacles.
+   */
   setObstacles(obstacles) {
     this.obstacles = [...obstacles];
     this.frameInputs.obstacles = this.obstacles;
   }
+  /**
+   * Manually set the simulation world dimensions when no canvas is attached.
+   *
+   * If a trail map exists and its size no longer matches the new dimensions,
+   * it is reallocated.
+   *
+   * @param width - New width in pixels.
+   * @param height - New height in pixels.
+   */
   setCanvasDimensions(width, height) {
     this.width = width;
     this.height = height;
@@ -5230,6 +5709,20 @@ var Simulation = class {
       this.trailMap = new Float32Array(width * height);
     }
   }
+  /**
+   * Run a single simulation frame: compute agent updates, render, and record
+   * tracking data.
+   *
+   * If a previous frame is still in progress, the call returns immediately
+   * with `skipped: true`.
+   *
+   * @param method - Compute backend to use (e.g. `'JavaScript'`, `'WebGPU'`).
+   * @param inputValues - Per-frame input overrides (merged with persistent inputs).
+   * @param renderMode - Rendering strategy: `'cpu'`, `'gpu'`, or `'none'`.
+   * @returns The frame result including updated agent positions.
+   * @throws {Error} If the required compiled code is unavailable, or the render mode
+   *   requires a canvas that was not provided.
+   */
   async runFrame(method, inputValues = {}, renderMode = "cpu") {
     if (!this.compilationResult) {
       throw new Error("Simulation cannot run without compilation results.");
@@ -5307,15 +5800,38 @@ var Simulation = class {
       this.frameInProgress = false;
     }
   }
+  /**
+   * Access the internal performance monitor for detailed frame-level metrics.
+   *
+   * @returns The shared {@link PerformanceMonitor} instance.
+   */
   getPerformanceMonitor() {
     return this.performanceMonitor;
   }
+  /**
+   * Generate a structured tracking report covering the simulation run.
+   *
+   * @param filter - Optional filter to restrict the frame range and inclusions.
+   * @returns A deep-cloned tracking report.
+   */
   getTrackingReport(filter) {
     return this.tracker.getReport(filter);
   }
+  /**
+   * Export the tracking report as a formatted JSON string.
+   *
+   * @param filter - Optional filter to restrict the frame range and inclusions.
+   * @returns Pretty-printed JSON string of the tracking report.
+   */
   exportTrackingReport(filter) {
     return JSON.stringify(this.getTrackingReport(filter), null, 2);
   }
+  /**
+   * Tear down the simulation, releasing all resources.
+   *
+   * Completes the tracking session, disposes the log listener, destroys
+   * the compute engine, and clears all buffers.
+   */
   destroy() {
     this.tracker.complete();
     this.tracker.dispose();
