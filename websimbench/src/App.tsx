@@ -14,7 +14,14 @@ function App() {
 
   const { options, updateOption, resetOptions } = useSimulationOptions();
 
-  const { reports, updateReportName, clearReports } = useBenchmarkHistory();
+  const {
+    reports,
+    isLoading: isReportsLoading,
+    error: reportsError,
+    addReport,
+    updateReportName,
+    clearReports,
+  } = useBenchmarkHistory();
 
   // TODO: Implement theme
   // const { theme, currentTheme, setCurrentTheme } = useTheme();
@@ -27,6 +34,8 @@ function App() {
         return (
           <ReportsView
             reports={reports}
+            isLoading={isReportsLoading}
+            loadError={reportsError}
             onClear={clearReports}
             onRename={updateReportName}
           />
@@ -42,7 +51,7 @@ function App() {
       case 'home':
       default:
         return (
-          <Home />
+          <Home options={options} onBenchmarkComplete={addReport} />
         );
     }
   };

@@ -1,7 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Compiler } from '../simulation/compiler/compiler';
-import { InputDefinition } from '../simulation/types';
-import Logger from '../simulation/helpers/logger';
+import { Compiler, InputDefinition, Logger } from '@websimbench/agentyx';
 import { formatCode } from '../helpers/codeFormatter';
 import { useLocalStorageString } from './useLocalStorage';
 
@@ -132,4 +130,3 @@ export function useCodeCompiler() {
     handleLoadCode
   };
 }
-

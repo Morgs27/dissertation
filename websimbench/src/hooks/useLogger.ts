@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import Logger, { LogLevel } from '../simulation/helpers/logger';
+import { Logger, LogLevel } from '@websimbench/agentyx';
 
 export type LogMessage = {
   level: string;
@@ -27,4 +27,3 @@ export function useLogger() {
 
   return { logs, clearLogs };
 }
-

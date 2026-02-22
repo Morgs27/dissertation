@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Trash, Terminal } from "@phosphor-icons/react";
 import { LogMessage } from '../hooks/useLogger';
 import { useState, useRef, useEffect } from 'react';
-import { LogLevel } from '../simulation/helpers/logger';
+import { LogLevel } from '@websimbench/agentyx';
 import {
   Select,
   SelectContent,

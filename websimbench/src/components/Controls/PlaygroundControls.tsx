@@ -1,4 +1,4 @@
-import { Method, RenderMode, InputDefinition } from '../../simulation/types';
+import { Method, RenderMode, InputDefinition } from '@websimbench/agentyx';
 import { Combobox, ComboboxContent, ComboboxItem, ComboboxTrigger, ComboboxValue, ComboboxList } from "@/components/ui/combobox";
 import { Speedometer } from "@phosphor-icons/react";
 import { ScrubbableInput } from "@/components/ui/scrubbable-input";
