@@ -1,27 +1,63 @@
-import { useLocalStorage } from './useLocalStorage';
-import { BenchmarkResult, BenchmarkReport, DeviceInfo, BenchmarkConfiguration } from '../simulation/helpers/grapher';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  clearBenchmarkReports,
+  listBenchmarkReports,
+  renameBenchmarkReport,
+  saveBenchmarkReport,
+} from '@/lib/benchmarkDb';
+import type { BenchmarkReport } from '@/types/benchmark';
 
 export function useBenchmarkHistory() {
-  const [reports, setReports] = useLocalStorage<BenchmarkReport[]>('websimbench_reports', []);
+  const [reports, setReports] = useState<BenchmarkReport[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const addReport = (results: BenchmarkResult[], deviceInfo?: DeviceInfo, configuration?: BenchmarkConfiguration) => {
-    const newReport: BenchmarkReport = {
-      id: crypto.randomUUID(),
-      timestamp: Date.now(),
-      results,
-      deviceInfo,
-      configuration
-    };
-    setReports(prev => [newReport, ...prev]);
-  };
+  const refreshReports = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
 
-  const updateReportName = (id: string, name: string) => {
-    setReports(prev => prev.map(r => r.id === id ? { ...r, name } : r));
-  };
+    try {
+      const nextReports = await listBenchmarkReports();
+      setReports(nextReports);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
-  const clearReports = () => {
+  useEffect(() => {
+    void refreshReports();
+  }, [refreshReports]);
+
+  const addReport = useCallback(async (report: BenchmarkReport) => {
+    await saveBenchmarkReport(report);
+    setReports((previous) => {
+      const remaining = previous.filter((entry) => entry.id !== report.id);
+      return [report, ...remaining].sort((a, b) => b.timestamp - a.timestamp);
+    });
+  }, []);
+
+  const updateReportName = useCallback(async (id: string, name: string) => {
+    await renameBenchmarkReport(id, name);
+    setReports((previous) =>
+      previous.map((report) => (report.id === id ? { ...report, name } : report))
+    );
+  }, []);
+
+  const clearReports = useCallback(async () => {
+    await clearBenchmarkReports();
     setReports([]);
-  };
+  }, []);
 
-  return { reports, addReport, updateReportName, clearReports };
+  return {
+    reports,
+    isLoading,
+    error,
+    addReport,
+    updateReportName,
+    clearReports,
+    refreshReports,
+  };
 }

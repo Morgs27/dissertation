@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 
-import { Obstacle, SimulationAppearance } from '../simulation/types';
+import { Obstacle, SimulationAppearance } from '@websimbench/agentyx';
 import { ObstacleToolbar } from './ObstacleToolbar';
 
 interface CanvasAreaProps {

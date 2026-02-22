@@ -1,10 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Simulation } from '../simulation/simulation';
-import Logger from '../simulation/helpers/logger';
-import { Method, RenderMode } from '../simulation/types';
+import { Logger, Method, Obstacle, RenderMode, Simulation } from '@websimbench/agentyx';
 import { SimulationAppearanceOptions } from './useSimulationOptions';
-
-import { Obstacle } from '../simulation/types';
 
 export function useSimulationRunner(
   code: string,
@@ -65,7 +61,14 @@ export function useSimulationRunner(
         gpuCanvas: gpuCanvasRef.current,
         options: { agents: inputs.agentCount },
         agentScript: code as any,
-        appearance
+        appearance,
+        tracking: {
+          enabled: false,
+          captureAgentStates: false,
+          captureFrameInputs: false,
+          captureLogs: false,
+          captureDeviceMetrics: false,
+        },
       });
 
       await simulationRef.current.initGPU();
@@ -117,7 +120,7 @@ export function useSimulationRunner(
       isRunningRef.current = false;
       setIsRunning(false);
     }
-  }, [code, inputs, method, renderMode, inputs.agentCount, obstacles]); // Remove full 'options' dependency to prevent restart on appearance change
+  }, [code, inputs.agentCount, method, renderMode, obstacles, options]);
 
   // Update appearance in real-time without restarting
   useEffect(() => {

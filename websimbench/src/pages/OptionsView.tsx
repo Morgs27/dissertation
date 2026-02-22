@@ -10,7 +10,7 @@ import {
   Label,
 } from '@/components/ui';
 import { SimulationAppearanceOptions, UpdateOptionFn } from '../hooks/useSimulationOptions';
-import { LogLevel } from '../simulation/helpers/logger';
+import { LogLevel } from '@websimbench/agentyx';
 import { Gear, Palette, Monitor, ShootingStar, Info, Circle, Square, Cube } from "@phosphor-icons/react";
 
 interface OptionsViewProps {

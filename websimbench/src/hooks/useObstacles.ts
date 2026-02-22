@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Obstacle } from '../simulation/types';
+import { Obstacle } from '@websimbench/agentyx';
 
 export interface UseObstaclesReturn {
     obstacles: Obstacle[];

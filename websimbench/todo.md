@@ -36,4 +36,8 @@ The code should be industry standard for deployment. I will tackle documentation
 
 # Current Codebase
 - Somewhat seperates the simulation module from the frontend. This should be properly seperated. 
-- 
+- The NPM module should be ready to be published. 
+- Move all tests to the NPM module area, and standardise a proper set for each stage of the pipeline. 
+- Remove the frontend compare tab, I will compare error by downloading the simulation json data. 
+- Rework the frontend benchmark tab to allow for more customisation and complete control over stepping over things for runs.
+- Make sure the NPM module logs well and provides useful erros. 

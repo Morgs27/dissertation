@@ -1,0 +1,36 @@
+{
+  "name": "@websimbench/agentyx",
+  "version": "0.1.0",
+  "description": "Agent-based 2D simulation engine with DSL compiler and multi-backend compute execution",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "npm run clean && tsup src/index.ts --format esm --dts --sourcemap --target es2020 --clean",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "prettier": "^3.7.3",
+    "wabt": "^1.0.39"
+  },
+  "devDependencies": {
+    "@vitest/browser": "^4.0.15",
+    "@vitest/browser-playwright": "^4.0.15",
+    "@webgpu/types": "^0.1.66",
+    "playwright": "^1.57.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.2.2",
+    "vitest": "^4.0.15"
+  }
+}
