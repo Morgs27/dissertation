@@ -1,7 +1,9 @@
 import React from 'react';
 
-import { Obstacle, SimulationAppearance } from '@websimbench/agentyx';
+import { Obstacle, SimulationAppearance, InputDefinition } from '@websimbench/agentyx';
 import { ObstacleToolbar } from './ObstacleToolbar';
+import { PerformanceWidget } from './Controls/PerformanceWidget';
+import { CanvasInputs } from './Controls/CanvasInputs';
 
 interface CanvasAreaProps {
     canvasRef: React.RefObject<HTMLCanvasElement>;
@@ -14,6 +16,11 @@ interface CanvasAreaProps {
     onClearObstacles?: () => void;
     obstacles?: Obstacle[];
     options?: SimulationAppearance;
+    fps?: number;
+    hideObstaclesUI?: boolean;
+    inputs?: Record<string, number>;
+    definedInputs?: InputDefinition[];
+    handleInputChange?: (key: string, value: number) => void;
 }
 
 export const CanvasArea = ({
@@ -26,8 +33,20 @@ export const CanvasArea = ({
     onPlaceObstacle,
     onClearObstacles,
     obstacles,
-    options
+    options,
+    fps,
+    hideObstaclesUI,
+    inputs,
+    definedInputs,
+    handleInputChange
 }: CanvasAreaProps) => {
+
+    console.log("CanvasArea Props Check:", {
+        inputs,
+        definedInputs,
+        hasHandleInputChange: !!handleInputChange,
+        hideObstaclesUI
+    });
 
     const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
         if (!isPlacing || !onPlaceObstacle || !canvasRef.current) return;
@@ -64,6 +83,20 @@ export const CanvasArea = ({
                 className={`absolute inset-0 w-full h-full object-contain ${renderMode === 'gpu' ? 'block' : 'hidden'}`}
             />
 
+            {/* Performance Overlay */}
+            {fps !== undefined && !hideObstaclesUI && (
+                <PerformanceWidget fps={fps} />
+            )}
+
+            {/* Inputs Overlay */}
+            {!hideObstaclesUI && inputs && definedInputs && handleInputChange && (
+                <CanvasInputs
+                    inputs={inputs}
+                    definedInputs={definedInputs}
+                    handleInputChange={handleInputChange}
+                />
+            )}
+
             {/* Obstacles Overlay */}
             <div className="absolute inset-0 w-full h-full pointer-events-none">
                 {obstacles?.map((ob, i) => (
@@ -86,8 +119,8 @@ export const CanvasArea = ({
             </div>
 
             {/* Floating Toolbar */}
-            {setIsPlacing && onClearObstacles && (
-                <div className="absolute bottom-0 w-full flex justify-center pb-6 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+            {setIsPlacing && onClearObstacles && !hideObstaclesUI && (
+                <div className="absolute top-4 left-4 z-10 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
                     <ObstacleToolbar
                         isPlacing={!!isPlacing}
                         setIsPlacing={setIsPlacing}

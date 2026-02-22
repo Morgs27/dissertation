@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { RunnableExample } from '@/docs/types';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Play, ArrowClockwise } from '@phosphor-icons/react';
 
 interface ExamplesRunnerProps {
@@ -22,13 +21,14 @@ const composeSrcDoc = (html: string, javascript: string): string => {
 export const ExamplesRunner = ({ examples }: ExamplesRunnerProps) => {
   const initialExample = examples[0];
   const [selectedExampleId, setSelectedExampleId] = useState(initialExample?.id ?? '');
+  const [activeFile, setActiveFile] = useState<'js' | 'html'>('js');
   const [htmlCode, setHtmlCode] = useState(initialExample?.html ?? '');
   const [jsCode, setJsCode] = useState(initialExample?.javascript ?? '');
   const [srcDoc, setSrcDoc] = useState('');
 
   const selectedExample = useMemo(
     () => examples.find((example) => example.id === selectedExampleId) ?? examples[0],
-    [examples, selectedExampleId]
+    [examples, selectedExampleId],
   );
 
   const runCode = useCallback(() => {
@@ -36,106 +36,123 @@ export const ExamplesRunner = ({ examples }: ExamplesRunnerProps) => {
   }, [htmlCode, jsCode]);
 
   const restorePreset = useCallback(() => {
-    if (!selectedExample) {
-      return;
-    }
-
+    if (!selectedExample) return;
     setHtmlCode(selectedExample.html);
     setJsCode(selectedExample.javascript);
     setSrcDoc(composeSrcDoc(selectedExample.html, selectedExample.javascript));
   }, [selectedExample]);
 
   useEffect(() => {
-    if (!selectedExample) {
-      return;
-    }
-
+    if (!selectedExample) return;
     setHtmlCode(selectedExample.html);
     setJsCode(selectedExample.javascript);
     setSrcDoc(composeSrcDoc(selectedExample.html, selectedExample.javascript));
+    setActiveFile('js');
   }, [selectedExample]);
 
-  if (!selectedExample) {
-    return null;
-  }
+  if (!selectedExample) return null;
+
+  const currentCode = activeFile === 'js' ? jsCode : htmlCode;
+  const setCurrentCode = activeFile === 'js' ? setJsCode : setHtmlCode;
 
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-white/10 bg-black/20 p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <h3 className="text-sm font-semibold text-white">{selectedExample.title}</h3>
-          <p className="text-xs text-gray-300 max-w-3xl">{selectedExample.description}</p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <label className="text-xs uppercase tracking-wide text-gray-500" htmlFor="docs-example-select">
-            Preset
-          </label>
-          <select
-            id="docs-example-select"
-            className="h-9 rounded-md border border-white/15 bg-black/40 px-2 text-xs text-white"
-            value={selectedExample.id}
-            onChange={(event) => setSelectedExampleId(event.target.value)}
-          >
-            {examples.map((example) => (
-              <option key={example.id} value={example.id}>
-                {example.title}
-              </option>
-            ))}
-          </select>
-        </div>
+    <div className="space-y-5">
+      {/* ---- Example tabs ---- */}
+      <div className="flex flex-wrap gap-1.5">
+        {examples.map((ex) => {
+          const isSelected = ex.id === selectedExampleId;
+          return (
+            <button
+              key={ex.id}
+              onClick={() => setSelectedExampleId(ex.id)}
+              className={`px-3.5 py-2 rounded-lg text-xs font-medium transition-all ${
+                isSelected
+                  ? 'bg-tropicalTeal/[0.12] text-tropicalTeal border border-tropicalTeal/30'
+                  : 'text-gray-500 border border-white/[0.06] hover:text-gray-300 hover:border-white/[0.12] hover:bg-white/[0.02]'
+              }`}
+            >
+              {ex.title}
+            </button>
+          );
+        })}
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <button
-          onClick={runCode}
-          className="inline-flex items-center gap-2 h-9 rounded-md bg-tropicalTeal text-jetBlack px-3 text-xs font-bold hover:brightness-110 transition"
-          type="button"
-        >
-          <Play size={14} weight="fill" /> Run
-        </button>
+      {/* ---- Description ---- */}
+      <p className="text-sm text-gray-400">{selectedExample.description}</p>
 
-        <button
-          onClick={restorePreset}
-          className="inline-flex items-center gap-2 h-9 rounded-md border border-white/15 bg-black/30 text-white px-3 text-xs font-semibold hover:bg-black/50 transition"
-          type="button"
-        >
-          <ArrowClockwise size={14} /> Reset Preset
-        </button>
+      {/* ---- Sandbox editor ---- */}
+      <div className="rounded-xl border border-white/[0.08] overflow-hidden bg-[#0c1317]">
+        {/* Toolbar: file tabs + actions */}
+        <div className="flex items-center justify-between border-b border-white/[0.07] bg-white/[0.02]">
+          <div className="flex">
+            <button
+              onClick={() => setActiveFile('js')}
+              className={`px-4 py-2.5 text-xs font-mono transition-all border-b-2 ${
+                activeFile === 'js'
+                  ? 'text-white border-tropicalTeal bg-white/[0.03]'
+                  : 'text-gray-500 border-transparent hover:text-gray-300'
+              }`}
+            >
+              index.js
+            </button>
+            <button
+              onClick={() => setActiveFile('html')}
+              className={`px-4 py-2.5 text-xs font-mono transition-all border-b-2 ${
+                activeFile === 'html'
+                  ? 'text-white border-tropicalTeal bg-white/[0.03]'
+                  : 'text-gray-500 border-transparent hover:text-gray-300'
+              }`}
+            >
+              index.html
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1.5 pr-2">
+            <button
+              onClick={runCode}
+              className="inline-flex items-center gap-1.5 h-7 rounded-md bg-tropicalTeal text-jetBlack px-3 text-[11px] font-bold hover:brightness-110 transition"
+              type="button"
+            >
+              <Play size={12} weight="fill" />
+              Run
+            </button>
+            <button
+              onClick={restorePreset}
+              className="inline-flex items-center gap-1.5 h-7 rounded-md border border-white/[0.1] bg-white/[0.03] text-gray-400 px-2.5 text-[11px] font-medium hover:text-white hover:bg-white/[0.06] transition"
+              type="button"
+            >
+              <ArrowClockwise size={12} />
+              Reset
+            </button>
+          </div>
+        </div>
+
+        {/* Code area */}
+        <textarea
+          value={currentCode}
+          onChange={(e) => setCurrentCode(e.target.value)}
+          spellCheck={false}
+          className="w-full min-h-[300px] p-4 font-mono text-[13px] leading-[1.7] text-[#c9d8e0] bg-transparent border-none resize-y focus:outline-none focus:ring-0 selection:bg-tropicalTeal/20"
+        />
       </div>
 
-      <Tabs defaultValue="javascript" className="gap-3">
-        <TabsList className="bg-black/30 border border-white/10">
-          <TabsTrigger value="javascript" className="data-active:bg-white/10 data-active:text-white">JavaScript</TabsTrigger>
-          <TabsTrigger value="html" className="data-active:bg-white/10 data-active:text-white">HTML</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="javascript" className="m-0">
-          <textarea
-            value={jsCode}
-            onChange={(event) => setJsCode(event.target.value)}
-            className="w-full min-h-[260px] rounded-lg border border-white/10 bg-black/45 p-3 font-mono text-xs text-teaGreen focus:outline-none focus:ring-1 focus:ring-tropicalTeal/50"
-          />
-        </TabsContent>
-
-        <TabsContent value="html" className="m-0">
-          <textarea
-            value={htmlCode}
-            onChange={(event) => setHtmlCode(event.target.value)}
-            className="w-full min-h-[260px] rounded-lg border border-white/10 bg-black/45 p-3 font-mono text-xs text-teaGreen focus:outline-none focus:ring-1 focus:ring-tropicalTeal/50"
-          />
-        </TabsContent>
-      </Tabs>
-
-      <div className="rounded-lg border border-white/10 overflow-hidden bg-black/40">
-        <div className="px-3 py-2 border-b border-white/10 text-[11px] uppercase tracking-wide text-gray-400">
-          Preview
+      {/* ---- Preview panel ---- */}
+      <div className="rounded-xl border border-white/[0.08] overflow-hidden">
+        {/* Window chrome */}
+        <div className="flex items-center gap-3 px-3.5 py-2 border-b border-white/[0.07] bg-[#0c1317]">
+          <div className="flex gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]/60" />
+            <div className="w-2.5 h-2.5 rounded-full bg-[#febc2e]/60" />
+            <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]/60" />
+          </div>
+          <span className="text-[11px] text-gray-500 font-mono">Output</span>
         </div>
+
         <iframe
-          title="Agentyx docs example preview"
+          title="Agentyx sandbox preview"
           srcDoc={srcDoc}
           sandbox="allow-scripts allow-same-origin"
-          className="w-full h-[460px] bg-black"
+          className="w-full h-[480px] bg-black"
         />
       </div>
     </div>

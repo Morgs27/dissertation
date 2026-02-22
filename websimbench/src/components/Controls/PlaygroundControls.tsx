@@ -1,7 +1,6 @@
 import { Method, RenderMode, InputDefinition } from '@websimbench/agentyx';
 import { Combobox, ComboboxContent, ComboboxItem, ComboboxTrigger, ComboboxValue, ComboboxList } from "@/components/ui/combobox";
-import { Speedometer } from "@phosphor-icons/react";
-import { ScrubbableInput } from "@/components/ui/scrubbable-input";
+import { Input } from "@/components/ui/input";
 import { RunControl } from "./RunControl";
 
 interface PlaygroundControlsProps {
@@ -11,7 +10,6 @@ interface PlaygroundControlsProps {
     setRenderMode: (r: RenderMode) => void;
     isRunning: boolean;
     handleRun: () => void;
-    fps: number;
     inputs: Record<string, number>;
     definedInputs: InputDefinition[];
     handleInputChange: (key: string, value: number) => void;
@@ -24,12 +22,9 @@ interface ControlsProps {
     setRenderMode: (r: RenderMode) => void;
     isRunning: boolean;
     handleRun: () => void;
-}
-
-interface InputsProps {
-    inputs: Record<string, number>;
-    definedInputs: InputDefinition[];
-    handleInputChange: (key: string, value: number) => void;
+    agentCount: number;
+    setAgentCount: (count: number) => void;
+    isAgentCountDefined: boolean;
 }
 
 export const Controls = ({
@@ -38,7 +33,10 @@ export const Controls = ({
     renderMode,
     setRenderMode,
     isRunning,
-    handleRun
+    handleRun,
+    agentCount,
+    setAgentCount,
+    isAgentCountDefined
 }: ControlsProps) => {
     return (
         <RunControl isRunning={isRunning} onRun={handleRun}>
@@ -78,89 +76,26 @@ export const Controls = ({
                         </ComboboxContent>
                     </Combobox>
                 </div>
+
+                {!isAgentCountDefined && (
+                    <div className="flex-1 min-w-0">
+                        <div className="w-full h-9 bg-black/40 border-none flex items-center justify-between rounded-md px-2 focus-within:ring-1 focus-within:ring-tropicalTeal/50">
+                            <span className="text-[10px] uppercase font-bold text-gray-400 mr-2 shrink-0">Agents</span>
+                            <Input
+                                type="number"
+                                value={agentCount}
+                                onChange={(e) => setAgentCount(Number.parseInt(e.target.value, 10) || 1)}
+                                min={1}
+                                step={1}
+                                className="bg-transparent border-none p-0 h-full text-xs font-mono text-tropicalTeal w-full text-right focus:ring-0"
+                            />
+                        </div>
+                    </div>
+                )}
             </div>
         </RunControl>
     );
 };
-
-const formatInputName = (name: string) => {
-    return name
-        .replace(/([A-Z])/g, ' $1') // insert space before capital letters
-        .replace(/^./, (str) => str.toUpperCase()); // uppercase the first character
-};
-
-export const PerformanceCard = ({ fps }: { fps: number }) => {
-    return (
-        <div className="flex items-center justify-between bg-[#1a2e33] p-3 rounded-xl border border-white/5">
-            <div className="flex items-center gap-2">
-                <Speedometer className="text-tropicalTeal" size={20} weight="fill" />
-                <span className="text-xs font-bold text-gray-300 uppercase tracking-wider">Performance</span>
-            </div>
-            <div className="flex items-center gap-2">
-                <span className="text-xl font-mono font-bold text-white tracking-tight">
-                    {fps}
-                </span>
-                <span className="text-[10px] font-bold text-gray-500 uppercase">FPS</span>
-            </div>
-        </div>
-    );
-};
-
-export const Inputs = ({ inputs, definedInputs, handleInputChange }: InputsProps) => {
-    return (
-        <div className="space-y-4">
-            <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">Parameters</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
-                {/* Show default agent count slider only if not defined in DSL */}
-                {!definedInputs.some(d => d.name === 'agentCount') && (
-                    <div className="flex flex-col gap-2">
-                        <span className="text-xs font-bold text-gray-400">Agent Count</span>
-                        <ScrubbableInput
-                            value={inputs.agentCount || 1000}
-                            onChange={(val) => handleInputChange('agentCount', val)}
-                            min={1}
-                            step={1}
-                            className="bg-black/40 border-white/10 h-9 text-xs font-mono text-tropicalTeal focus:ring-1 focus:ring-tropicalTeal/50"
-                        />
-                    </div>
-                )}
-
-                {/* Dynamic sliders from defined inputs */}
-                {definedInputs.map((def) => (
-                    <div key={def.name} className="flex flex-col gap-2">
-                        <span className="text-xs font-bold text-gray-400">{formatInputName(def.name)}</span>
-                        <ScrubbableInput
-                            value={inputs[def.name] ?? def.defaultValue}
-                            onChange={(val) => handleInputChange(def.name, val)}
-                            min={def.min}
-                            max={def.max}
-                            step={def.defaultValue % 1 !== 0 ? 0.01 : 1}
-                            className="bg-black/40 border-white/10 h-9 text-xs font-mono text-tropicalTeal focus:ring-1 focus:ring-tropicalTeal/50"
-                        />
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-};
-
-
-
-
-interface PlaygroundControlsProps {
-    method: Method;
-    setMethod: (m: Method) => void;
-    renderMode: RenderMode;
-    setRenderMode: (r: RenderMode) => void;
-    isRunning: boolean;
-    handleRun: () => void;
-    fps: number;
-    inputs: Record<string, number>;
-    definedInputs: InputDefinition[];
-    handleInputChange: (key: string, value: number) => void;
-}
-
-// ... (keep Controls and Inputs components same, maybe add obstacle controls to Controls or new component)
 
 export const PlaygroundControls = ({
     method,
@@ -169,7 +104,6 @@ export const PlaygroundControls = ({
     setRenderMode,
     isRunning,
     handleRun,
-    fps,
     inputs,
     definedInputs,
     handleInputChange,
@@ -183,12 +117,9 @@ export const PlaygroundControls = ({
                 setRenderMode={setRenderMode}
                 isRunning={isRunning}
                 handleRun={handleRun}
-            />
-            <PerformanceCard fps={fps} />
-            <Inputs
-                inputs={inputs}
-                definedInputs={definedInputs}
-                handleInputChange={handleInputChange}
+                agentCount={inputs.agentCount || 1000}
+                setAgentCount={(val) => handleInputChange('agentCount', val)}
+                isAgentCountDefined={definedInputs.some(d => d.name === 'agentCount')}
             />
         </div>
     );

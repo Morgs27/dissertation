@@ -6,11 +6,34 @@ export type DocsCodeSnippet = {
   code: string;
 };
 
+export type DocsCalloutVariant = 'tip' | 'note' | 'warning' | 'info';
+
+export type DocsLinkCard = {
+  page: string;
+  title: string;
+  description: string;
+  icon: string;
+};
+
+export type DocsContentBlock =
+  | { kind: 'paragraph'; text: string }
+  | { kind: 'bullets'; items: string[] }
+  | { kind: 'ordered-list'; items: string[] }
+  | { kind: 'code'; snippet: DocsCodeSnippet }
+  | { kind: 'callout'; variant: DocsCalloutVariant; title?: string; text: string }
+  | { kind: 'table'; headers: string[]; rows: string[][] }
+  | { kind: 'heading'; text: string }
+  | { kind: 'link-cards'; cards: DocsLinkCard[] };
+
 export type DocsContentSection = {
   id: string;
   title: string;
+  content?: DocsContentBlock[];
+  /** @deprecated Use `content` blocks instead. */
   paragraphs?: string[];
+  /** @deprecated Use `content` blocks instead. */
   bullets?: string[];
+  /** @deprecated Use `content` blocks instead. */
   snippets?: DocsCodeSnippet[];
 };
 

@@ -10,9 +10,6 @@ export const Navbar = ({ currentPage, onNavigatePage }: NavbarProps) => (
   <nav className="h-[60px] flex items-center justify-between px-6 border-b border-white/10 bg-black/60 backdrop-blur-md z-50">
     <div className="flex items-center gap-8">
       <div className="flex items-center gap-3">
-        <div className="bg-tropicalTeal p-1.5 rounded-lg shadow-lg shadow-tropicalTeal/20">
-          <ChartLine size={24} weight="bold" className="text-jetBlack" />
-        </div>
         <h1 className="text-xl font-bold text-white tracking-tight">
           WebSim<span className="text-tropicalTeal">Bench</span>
         </h1>

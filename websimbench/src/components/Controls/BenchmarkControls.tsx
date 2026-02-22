@@ -187,13 +187,13 @@ export const BenchmarkControls: React.FC<BenchmarkControlsProps> = ({
     const agentCounts = agentRangeMode === 'manual'
       ? parsePositiveIntegerList(agentCountsInput)
       : (() => {
-          if (agentStart >= agentEnd || agentStep <= 0) return [];
-          const values: number[] = [];
-          for (let value = agentStart; value <= agentEnd; value += agentStep) {
-            values.push(value);
-          }
-          return values;
-        })();
+        if (agentStart >= agentEnd || agentStep <= 0) return [];
+        const values: number[] = [];
+        for (let value = agentStart; value <= agentEnd; value += agentStep) {
+          values.push(value);
+        }
+        return values;
+      })();
 
     const renderModes = selectedRenderModes.length > 0 ? selectedRenderModes : [];
     const methods = selectedMethods.length > 0 ? selectedMethods : [];
@@ -270,13 +270,13 @@ export const BenchmarkControls: React.FC<BenchmarkControlsProps> = ({
       agentRangeMode === 'manual'
         ? parsePositiveIntegerList(agentCountsInput)
         : (() => {
-            if (agentStart >= agentEnd || agentStep <= 0) return [];
-            const values: number[] = [];
-            for (let value = agentStart; value <= agentEnd; value += agentStep) {
-              values.push(value);
-            }
-            return values;
-          })();
+          if (agentStart >= agentEnd || agentStep <= 0) return [];
+          const values: number[] = [];
+          for (let value = agentStart; value <= agentEnd; value += agentStep) {
+            values.push(value);
+          }
+          return values;
+        })();
 
     if (agentCounts.length === 0) {
       toast.error('Provide a valid agent sweep configuration.');
@@ -515,63 +515,75 @@ export const BenchmarkControls: React.FC<BenchmarkControlsProps> = ({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label className="text-xs uppercase font-bold text-gray-400">Agent Sweep</Label>
-            <div className="flex flex-col gap-2">
+          <div className="space-y-3 bg-black/20 p-4 rounded-xl border border-white/5">
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">Agent Sweep</h3>
+            <div className="flex flex-col gap-3">
               <Select value={agentRangeMode} onValueChange={(value: 'manual' | 'range') => setAgentRangeMode(value)}>
-                <SelectTrigger className="h-9 bg-black/40 border-white/5">
+                <SelectTrigger className="h-9 bg-black/40 border-white/5 text-xs text-tropicalTeal focus:ring-1 focus:ring-tropicalTeal/50">
                   <SelectValue placeholder="Select mode" />
                 </SelectTrigger>
                 <SelectContent position="popper" sideOffset={5} className="bg-[#1a2e33] border-white/10 text-white">
-                  <SelectItem value="manual">Manual list</SelectItem>
-                  <SelectItem value="range">Range stepper</SelectItem>
+                  <SelectItem value="manual" className="text-xs">Manual list</SelectItem>
+                  <SelectItem value="range" className="text-xs">Range stepper</SelectItem>
                 </SelectContent>
               </Select>
 
               {agentRangeMode === 'manual' ? (
-                <Input
-                  value={agentCountsInput}
-                  onChange={(event) => setAgentCountsInput(event.target.value)}
-                  placeholder="100, 500, 1000"
-                  className="h-9 bg-black/40 border-white/10 text-tropicalTeal font-mono text-xs"
-                />
+                <div className="space-y-1.5 flex flex-col">
+                  <span className="text-[11px] font-bold text-gray-400">Values</span>
+                  <Input
+                    value={agentCountsInput}
+                    onChange={(event) => setAgentCountsInput(event.target.value)}
+                    placeholder="100, 500, 1000"
+                    className="h-9 bg-black/40 border-white/5 text-tropicalTeal font-mono text-xs focus:ring-1 focus:ring-tropicalTeal/50"
+                  />
+                </div>
               ) : (
                 <div className="grid grid-cols-3 gap-2">
-                  <Input
-                    type="number"
-                    value={agentStart}
-                    onChange={(event) => setAgentStart(Number.parseInt(event.target.value, 10))}
-                    className="h-9 bg-black/40 border-white/10 text-tropicalTeal font-mono text-xs"
-                    placeholder="Start"
-                  />
-                  <Input
-                    type="number"
-                    value={agentEnd}
-                    onChange={(event) => setAgentEnd(Number.parseInt(event.target.value, 10))}
-                    className="h-9 bg-black/40 border-white/10 text-tropicalTeal font-mono text-xs"
-                    placeholder="End"
-                  />
-                  <Input
-                    type="number"
-                    value={agentStep}
-                    onChange={(event) => setAgentStep(Number.parseInt(event.target.value, 10))}
-                    className="h-9 bg-black/40 border-white/10 text-tropicalTeal font-mono text-xs"
-                    placeholder="Step"
-                  />
+                  <div className="space-y-1.5 flex flex-col">
+                    <span className="text-[11px] font-bold text-gray-400">Start</span>
+                    <Input
+                      type="number"
+                      value={agentStart}
+                      onChange={(event) => setAgentStart(Number.parseInt(event.target.value, 10))}
+                      className="h-9 bg-black/40 border-white/5 text-tropicalTeal font-mono text-xs focus:ring-1 focus:ring-tropicalTeal/50"
+                      placeholder="Start"
+                    />
+                  </div>
+                  <div className="space-y-1.5 flex flex-col">
+                    <span className="text-[11px] font-bold text-gray-400">End</span>
+                    <Input
+                      type="number"
+                      value={agentEnd}
+                      onChange={(event) => setAgentEnd(Number.parseInt(event.target.value, 10))}
+                      className="h-9 bg-black/40 border-white/5 text-tropicalTeal font-mono text-xs focus:ring-1 focus:ring-tropicalTeal/50"
+                      placeholder="End"
+                    />
+                  </div>
+                  <div className="space-y-1.5 flex flex-col">
+                    <span className="text-[11px] font-bold text-gray-400">Step</span>
+                    <Input
+                      type="number"
+                      value={agentStep}
+                      onChange={(event) => setAgentStep(Number.parseInt(event.target.value, 10))}
+                      className="h-9 bg-black/40 border-white/5 text-tropicalTeal font-mono text-xs focus:ring-1 focus:ring-tropicalTeal/50"
+                      placeholder="Step"
+                    />
+                  </div>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-xs uppercase font-bold text-gray-400">Methods</Label>
-            <div className="bg-black/20 p-3 rounded-md border border-white/5 grid grid-cols-2 gap-2">
+          <div className="space-y-3 bg-black/20 p-4 rounded-xl border border-white/5">
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">Methods</h3>
+            <div className="grid grid-cols-2 gap-2">
               {METHOD_OPTIONS.map((method) => (
-                <label key={method} className="flex items-center gap-2 text-xs text-gray-200">
+                <label key={method} className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer hover:text-white transition-colors">
                   <Checkbox
                     checked={selectedMethods.includes(method)}
                     onCheckedChange={() => toggleMethod(method)}
-                    className="border-white/20 data-checked:bg-tropicalTeal data-checked:text-black"
+                    className="border-white/20 data-[state=checked]:bg-tropicalTeal data-[state=checked]:text-black"
                   />
                   {method}
                 </label>
@@ -583,11 +595,11 @@ export const BenchmarkControls: React.FC<BenchmarkControlsProps> = ({
             <Label className="text-xs uppercase font-bold text-gray-400">Render Modes</Label>
             <div className="bg-black/20 p-3 rounded-md border border-white/5 grid grid-cols-2 gap-2">
               {RENDER_MODE_OPTIONS.map((mode) => (
-                <label key={mode} className="flex items-center gap-2 text-xs text-gray-200 uppercase">
+                <label key={mode} className="flex items-center gap-2 text-xs text-gray-300 uppercase cursor-pointer hover:text-white transition-colors">
                   <Checkbox
                     checked={selectedRenderModes.includes(mode)}
                     onCheckedChange={() => toggleRenderMode(mode)}
-                    className="border-white/20 data-checked:bg-tropicalTeal data-checked:text-black"
+                    className="border-white/20 data-[state=checked]:bg-tropicalTeal data-[state=checked]:text-black"
                   />
                   {mode}
                 </label>
@@ -597,61 +609,61 @@ export const BenchmarkControls: React.FC<BenchmarkControlsProps> = ({
         </div>
 
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label className="text-xs uppercase font-bold text-gray-400">Configuration Sweep</Label>
-            <div className="bg-black/20 p-3 rounded-md border border-white/5 space-y-3">
-              <div className="space-y-1">
-                <Label className="text-[10px] text-gray-500 font-bold uppercase">Worker Counts (WebWorkers)</Label>
+          <div className="space-y-3 bg-black/20 p-4 rounded-xl border border-white/5">
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">Configuration Sweep</h3>
+            <div className="space-y-4">
+              <div className="space-y-1.5 flex flex-col">
+                <span className="text-[11px] font-bold text-gray-400">Worker Counts (WebWorkers)</span>
                 <Input
                   value={workerCountsInput}
                   onChange={(event) => setWorkerCountsInput(event.target.value)}
-                  className="h-8 bg-black/40 border-white/10 text-xs font-mono text-tropicalTeal"
+                  className="h-9 bg-black/40 border-white/5 text-xs font-mono text-tropicalTeal focus:ring-1 focus:ring-tropicalTeal/50"
                   placeholder="1, 2, 4"
                 />
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-[10px] text-gray-500 font-bold uppercase">Canvas Sizes</Label>
+              <div className="space-y-1.5 flex flex-col">
+                <span className="text-[11px] font-bold text-gray-400">Canvas Sizes</span>
                 <Input
                   value={canvasSizesInput}
                   onChange={(event) => setCanvasSizesInput(event.target.value)}
-                  className="h-8 bg-black/40 border-white/10 text-xs font-mono text-tropicalTeal"
+                  className="h-9 bg-black/40 border-white/5 text-xs font-mono text-tropicalTeal focus:ring-1 focus:ring-tropicalTeal/50"
                   placeholder="800x600, 1280x720"
                 />
               </div>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-xs uppercase font-bold text-gray-400">Run Controls</Label>
-            <div className="grid grid-cols-3 gap-2 bg-black/20 p-3 rounded-md border border-white/5">
-              <div className="space-y-1">
-                <Label className="text-[10px] text-gray-500 font-bold uppercase">Frames</Label>
+          <div className="space-y-3 bg-black/20 p-4 rounded-xl border border-white/5">
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">Run Controls</h3>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1.5 flex flex-col">
+                <span className="text-[11px] font-bold text-gray-400">Frames</span>
                 <Input
                   type="number"
                   value={framesPerRun}
                   onChange={(event) => setFramesPerRun(Number.parseInt(event.target.value, 10))}
-                  className="h-8 bg-black/40 border-white/10 text-xs text-center"
+                  className="h-9 bg-black/40 border-white/5 text-xs text-center focus:ring-1 focus:ring-tropicalTeal/50 text-tropicalTeal font-mono"
                 />
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-[10px] text-gray-500 font-bold uppercase">Warmup</Label>
+              <div className="space-y-1.5 flex flex-col">
+                <span className="text-[11px] font-bold text-gray-400">Warmup</span>
                 <Input
                   type="number"
                   value={warmupFrames}
                   onChange={(event) => setWarmupFrames(Number.parseInt(event.target.value, 10))}
-                  className="h-8 bg-black/40 border-white/10 text-xs text-center"
+                  className="h-9 bg-black/40 border-white/5 text-xs text-center focus:ring-1 focus:ring-tropicalTeal/50 text-tropicalTeal font-mono"
                 />
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-[10px] text-gray-500 font-bold uppercase">Repeats</Label>
+              <div className="space-y-1.5 flex flex-col">
+                <span className="text-[11px] font-bold text-gray-400">Repeats</span>
                 <Input
                   type="number"
                   value={runsPerConfig}
                   onChange={(event) => setRunsPerConfig(Number.parseInt(event.target.value, 10))}
-                  className="h-8 bg-black/40 border-white/10 text-xs text-center"
+                  className="h-9 bg-black/40 border-white/5 text-xs text-center focus:ring-1 focus:ring-tropicalTeal/50 text-tropicalTeal font-mono"
                 />
               </div>
             </div>
