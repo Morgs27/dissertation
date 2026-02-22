@@ -421,7 +421,10 @@ type TrackingOptions = {
  * Constructor configuration for the {@link Simulation} class.
  *
  * @property canvas - Optional 2D canvas element for CPU rendering.
- * @property gpuCanvas - Optional canvas element for WebGPU rendering.
+ * @property gpuCanvas - Optional dedicated canvas element for WebGPU rendering.
+ *   If omitted, Agentyx reuses `canvas` for GPU output. Supplying a dedicated
+ *   canvas is recommended when switching between `'cpu'` and `'gpu'` render
+ *   modes at runtime.
  * @property options - Core simulation options (agent count, dimensions, etc.).
  * @property appearance - Visual appearance overrides.
  * @property source - Simulation source (DSL or custom code). Mutually exclusive with `agentScript`.

@@ -42,9 +42,12 @@ export function useSimulationRunner(
       return;
     }
 
-    if (!canvasRef.current || !gpuCanvasRef.current) return;
+    if (!canvasRef.current) return;
 
     try {
+      const primaryCanvas = canvasRef.current;
+      const dedicatedGpuCanvas = gpuCanvasRef.current ?? primaryCanvas;
+
       // Construct appearance from options
       const appearance = {
         agentColor: options.agentColor,
@@ -57,8 +60,8 @@ export function useSimulationRunner(
       };
 
       simulationRef.current = new Simulation({
-        canvas: canvasRef.current,
-        gpuCanvas: gpuCanvasRef.current,
+        canvas: primaryCanvas,
+        gpuCanvas: dedicatedGpuCanvas,
         options: { agents: inputs.agentCount },
         agentScript: code as any,
         appearance,

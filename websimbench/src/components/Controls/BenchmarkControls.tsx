@@ -39,7 +39,7 @@ interface BenchmarkControlsProps {
   onComplete: (report: BenchmarkReport) => Promise<void> | void;
   options: SimulationAppearanceOptions;
   canvasRef: React.RefObject<HTMLCanvasElement>;
-  gpuCanvasRef: React.RefObject<HTMLCanvasElement>;
+  gpuCanvasRef?: React.RefObject<HTMLCanvasElement>;
   onRenderModeChange: (mode: RenderMode) => void;
   onRunningChange?: (isRunning: boolean) => void;
 }
@@ -246,8 +246,8 @@ export const BenchmarkControls: React.FC<BenchmarkControlsProps> = ({
   };
 
   const runBenchmark = async () => {
-    if (!canvasRef.current || !gpuCanvasRef.current) {
-      toast.error('Canvas is not ready yet.');
+    if (!canvasRef.current) {
+      toast.error('Primary canvas is not ready yet.');
       return;
     }
 
@@ -358,12 +358,14 @@ export const BenchmarkControls: React.FC<BenchmarkControlsProps> = ({
         onRenderModeChange(runConfig.renderMode);
 
         const cpuCanvas = canvasRef.current;
-        const gpuCanvas = gpuCanvasRef.current;
+        const gpuCanvas = gpuCanvasRef?.current ?? cpuCanvas;
 
         cpuCanvas.width = runConfig.canvas.width;
         cpuCanvas.height = runConfig.canvas.height;
-        gpuCanvas.width = runConfig.canvas.width;
-        gpuCanvas.height = runConfig.canvas.height;
+        if (gpuCanvas !== cpuCanvas) {
+          gpuCanvas.width = runConfig.canvas.width;
+          gpuCanvas.height = runConfig.canvas.height;
+        }
 
         const simulation = new Simulation({
           canvas: cpuCanvas,

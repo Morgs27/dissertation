@@ -100,6 +100,7 @@ export class Renderer {
 
     private ctx: CanvasRenderingContext2D | null = null;
     private gpuCanvas: HTMLCanvasElement | null = null;
+    private readonly usesSharedGpuCanvas: boolean;
     private appearance: SimulationAppearance;
 
     private gpuHelper: GPU;
@@ -124,11 +125,13 @@ export class Renderer {
      *
      * @param canvas - The primary canvas element for 2D/CPU rendering.
      * @param gpuCanvas - Optional separate canvas element for WebGPU rendering.
+     * If omitted, the primary canvas is reused for GPU output.
      * @param appearance - Initial visual appearance configuration.
      */
     constructor(canvas: HTMLCanvasElement, gpuCanvas: HTMLCanvasElement | null, appearance: SimulationAppearance) {
         this.canvas = canvas;
-        this.gpuCanvas = gpuCanvas;
+        this.gpuCanvas = gpuCanvas ?? canvas;
+        this.usesSharedGpuCanvas = !gpuCanvas;
         this.appearance = appearance;
         this.gpuHelper = new GPU('RendererGPU');
     }
@@ -249,7 +252,19 @@ export class Renderer {
     public async renderAgentsGPU(agents: Agent[], resources?: WebGPURenderResources, trailMap?: Float32Array): Promise<void> {
         if (!this.gpuCanvas || !this.gpuDevice) return;
 
-        this.gpuHelper.configureCanvas(this.gpuCanvas);
+        try {
+            this.gpuHelper.configureCanvas(this.gpuCanvas);
+        } catch (error) {
+            if (this.usesSharedGpuCanvas) {
+                throw new Error(
+                    'Failed to acquire WebGPU context on the primary canvas. ' +
+                    'Provide a dedicated gpuCanvas when switching between CPU and GPU rendering at runtime.'
+                );
+            }
+
+            throw error;
+        }
+
         this.gpuHelper.setupCanvasConfig(this.gpuDevice);
 
         this.configurePipeline(this.gpuDevice);
@@ -607,7 +622,14 @@ export class Renderer {
      */
     private ensureContext(): CanvasRenderingContext2D {
         if (!this.ctx) {
-            this.ctx = this.canvas.getContext('2d');
+            const context = this.canvas.getContext('2d');
+            if (!context) {
+                throw new Error(
+                    'Failed to acquire a 2D context for CPU rendering. ' +
+                    'Use a dedicated gpuCanvas if this canvas has already been configured for WebGPU rendering.'
+                );
+            }
+            this.ctx = context;
         }
         return this.ctx!;
     }
