@@ -23,7 +23,8 @@ export type DocsContentBlock =
   | { kind: 'callout'; variant: DocsCalloutVariant; title?: string; text: string }
   | { kind: 'table'; headers: string[]; rows: string[][] }
   | { kind: 'heading'; text: string }
-  | { kind: 'link-cards'; cards: DocsLinkCard[] };
+  | { kind: 'link-cards'; cards: DocsLinkCard[] }
+  | { kind: 'example-runner'; exampleId: string };
 
 export type DocsContentSection = {
   id: string;

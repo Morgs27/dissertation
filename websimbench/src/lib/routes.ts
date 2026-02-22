@@ -1,17 +1,16 @@
 import { DOCS_DEFAULT_PAGE, DOCS_LATEST_VERSION } from '@/config/version';
 
-export type PageId = 'home' | 'reports' | 'options' | 'docs';
+export type PageId = 'home' | 'reports' | 'docs';
 
 export type AppRoute =
   | { page: 'home' }
   | { page: 'reports' }
-  | { page: 'options' }
   | { page: 'docs'; version: string; docsPage: string };
 
 const DEFAULT_ROUTE: AppRoute = { page: 'home' };
 
 const isTopLevelPage = (value: string): value is PageId => {
-  return value === 'home' || value === 'reports' || value === 'options' || value === 'docs';
+  return value === 'home' || value === 'reports' || value === 'docs';
 };
 
 export const parseHashRoute = (hashValue: string): AppRoute => {

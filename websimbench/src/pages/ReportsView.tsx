@@ -283,12 +283,12 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   };
 
   return (
-    <div className="flex h-full w-full bg-[#16262b]">
-      <div className="flex flex-col w-[320px] border-r border-white/10 bg-black/40">
-        <div className="h-16 flex px-6 items-center justify-between border-b border-white/10 shrink-0">
+    <div className="flex h-full w-full bg-[#0a1a1f]">
+      <div className="flex flex-col w-[320px] border-r border-white/[0.06] bg-white/[0.02]">
+        <div className="h-12 flex px-6 items-center justify-between border-b border-white/[0.06] shrink-0">
           <div className="flex items-center gap-2">
             <ChartBar className="text-tropicalTeal" size={20} weight="bold" />
-            <h2 className="text-sm font-bold uppercase tracking-widest text-white">Reports</h2>
+            <h2 className="text-2xl md:text-[1.0rem] font-bold text-white leading-tight tracking-tight">Reports</h2>
           </div>
 
           <AlertDialog>
@@ -302,7 +302,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 <Trash size={16} />
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent className="bg-[#1a2e33] border-white/10 text-white">
+            <AlertDialogContent className="bg-[#0c1317] border-white/[0.08] text-white">
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete all reports?</AlertDialogTitle>
                 <AlertDialogDescription className="text-gray-400">
@@ -310,7 +310,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel className="bg-transparent border-white/10 text-white hover:bg-white/5 hover:text-white">
+                <AlertDialogCancel className="bg-transparent border-white/[0.08] text-white hover:bg-white/[0.04] hover:text-white">
                   Cancel
                 </AlertDialogCancel>
                 <AlertDialogAction
@@ -346,11 +346,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             {reports.map((report) => (
               <div
                 key={report.id}
-                className={`group p-3 cursor-pointer rounded-xl transition-all duration-200 border ${
-                  selectedReportId === report.id
-                    ? 'bg-tropicalTeal/10 border-tropicalTeal/30 text-white shadow-lg shadow-black/20'
-                    : 'bg-transparent border-transparent hover:bg-white/5 text-gray-400 hover:text-gray-200'
-                }`}
+                className={`group p-3 cursor-pointer rounded-xl transition-all duration-200 border ${selectedReportId === report.id
+                  ? 'bg-tropicalTeal/10 border-tropicalTeal/30 text-white shadow-lg shadow-black/20'
+                  : 'bg-transparent border-transparent hover:bg-white/5 text-gray-400 hover:text-gray-200'
+                  }`}
                 onClick={() => setSelectedReportId(report.id)}
               >
                 {editingId === report.id ? (
@@ -388,9 +387,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                     <Button
                       size="icon"
                       variant="ghost"
-                      className={`h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/10 ${
-                        selectedReportId === report.id ? 'text-white' : 'text-gray-500'
-                      }`}
+                      className={`h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/10 ${selectedReportId === report.id ? 'text-white' : 'text-gray-500'
+                        }`}
                       onClick={(event) => {
                         event.stopPropagation();
                         handleStartEdit(report.id, report.name || '');
@@ -406,7 +404,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-black/5">
+      <div className="flex-1 overflow-y-auto bg-[#0a1a1f]">
         {!selectedReport && (
           <div className="flex-1 mt-10 flex flex-col items-center justify-center">
             <ChartBar size={48} className="text-gray-600 mb-4" />
@@ -416,7 +414,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
         {selectedReport && (
           <div className="p-8 max-w-7xl mx-auto space-y-6">
-            <div className="p-4 border-b border-cerulean">
+            <div className="p-4 border-b border-white/[0.06]">
               <div className="flex flex-wrap justify-between items-center gap-3 mb-2">
                 <h2 className="text-lg font-bold text-tropicalTeal">
                   {selectedReport.name || 'Benchmark Report'}
@@ -438,7 +436,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               </p>
             </div>
 
-            <div className="bg-black/30 rounded-md border border-white/10 p-4">
+            <div className="bg-[#0c1317] rounded-md border border-white/[0.08] p-4">
               <h3 className="text-sm font-bold mb-3">Summary</h3>
               <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                 <div>
@@ -468,7 +466,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               </div>
             </div>
 
-            <div className="bg-black/30 rounded-md border border-white/10 p-4 space-y-3">
+            <div className="bg-[#0c1317] rounded-md border border-white/[0.08] p-4 space-y-3">
               <h3 className="text-sm font-bold">Filters</h3>
               <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                 <Select value={methodFilter} onValueChange={setMethodFilter}>
@@ -531,7 +529,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             <div className="overflow-x-auto bg-black/30 rounded-md border border-white/10">
               <Table className="text-xs">
                 <TableHeader>
-                  <TableRow className="bg-white/5 hover:bg-white/5 border-white/10">
+                  <TableRow className="bg-white/[0.02] hover:bg-white/[0.02] border-white/[0.06]">
                     <TableHead className="text-gray-300">Status</TableHead>
                     <TableHead className="text-gray-300">Method</TableHead>
                     <TableHead className="text-gray-300">Render</TableHead>
@@ -549,7 +547,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                     const metrics = getRunExecutionMetrics(run);
 
                     return (
-                      <TableRow key={run.id} className="hover:bg-teal-500/5 border-white/5">
+                      <TableRow key={run.id} className="hover:bg-teal-500/5 border-white/[0.04]">
                         <TableCell>
                           <Badge className={run.status === 'completed' ? 'bg-emerald-600/80' : 'bg-red-600/80'}>
                             {run.status}

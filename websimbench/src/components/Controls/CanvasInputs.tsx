@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { InputDefinition } from '@websimbench/agentyx';
 import { ScrubbableInput } from '@/components/ui/scrubbable-input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { SlidersHorizontal, Check } from 'lucide-react';
+import { SlidersHorizontal } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 
 interface CanvasInputsProps {

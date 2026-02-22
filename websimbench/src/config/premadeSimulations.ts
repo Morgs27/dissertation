@@ -1,6 +1,6 @@
 
 export const PREMADE_SIMULATIONS: Record<string, string> = {
-    'Slime Mold': `
+    'Slime Mold': `// Slime Mold Simulation
 input sensorAngle = 0.6;
 input sensorDist = 15;
 input turnAngle = 0.6;
@@ -36,7 +36,7 @@ moveForward(inputs.speed);
 borderWrapping();
 deposit(inputs.depositAmount);
 `,
-    'Boids': `
+    'Boids': `// Boids Simulation
 input perceptionRadius = 40 [0, 100];
 input alignmentFactor = 0.01 [0, 0.1];
 input separationDist = 40 [0, 100];
@@ -93,7 +93,7 @@ borderWrapping()
 updatePosition(inputs.dt);
 `,
 
-    'Fire': `
+    'Fire': `// Fire Simulation
 species(3); 
 // 0 = Fuel/Base
 // 1 = Active Fire
@@ -152,7 +152,7 @@ else {
 borderWrapping();
 `,
 
-    'Fluid Dispersal': `
+    'Fluid Dispersal': `// Fluid Dispersal Simulation
 input gravity = 0.1;
 input repulsionRadius = 15;
 input repulsionForce = 0.5;
@@ -193,7 +193,7 @@ if (x <= 0 || x >= inputs.width) {
 updatePosition(1.0);
 `,
 
-    'Predator-Prey': `
+    'Predator-Prey': `// Predator-Prey Simulation
 species(2); 
 // 0 = Prey
 // 1 = Predator
@@ -297,7 +297,7 @@ borderWrapping();
 updatePosition(1.0);
 `,
 
-    'Rain': `
+    'Rain': `// Rain Simulation
 input gravity = 0.5;
 input wind = 0.1;
 input terminalVelocity = 10;
@@ -320,7 +320,7 @@ updatePosition(1.0);
 borderWrapping();
 `,
 
-    'Multi-Species Boids': `
+    'Multi-Species Boids': `// Multi-Species Boids Simulation
 species(3); 
 // 0: Aggressive/Fast
 // 1: Balanced/Social
@@ -394,7 +394,7 @@ borderWrapping();
 updatePosition(1.0);
 `,
 
-    'Traffic': `
+    'Traffic': `// Traffic Simulation
 input vision = 60;
 input pspace = 15;
 input maxSpeed = 3;
@@ -440,7 +440,7 @@ borderWrapping();
 updatePosition(1.0);
 `,
 
-    'Cosmic Web': `
+    'Cosmic Web': `// Cosmic Web Simulation
 species(5);
 
 // Cyclic Pursuit:

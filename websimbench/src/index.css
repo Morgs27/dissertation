@@ -40,6 +40,7 @@
     --sidebar-border: oklch(0.928 0.006 264.531);
     --sidebar-ring: oklch(0.707 0.022 261.325)
   }
+
   .dark {
     --background: oklch(0.13 0.028 261.692);
     --foreground: oklch(0.985 0.002 247.839);
@@ -73,15 +74,47 @@
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.551 0.027 264.364)
   }
+
   .theme {
     --font-sans: 'Nunito Sans Variable', sans-serif
   }
+
   * {
     @apply border-border outline-ring/50;
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
   }
+
+  *:hover {
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 4px;
+  }
+
+  *:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
+  *:hover::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+
   body {
     @apply font-sans bg-background text-foreground;
   }
+
   html {
     @apply font-sans;
   }
@@ -92,6 +125,7 @@
   color: #c9d8e0;
   font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
 }
+
 .agentyx-code .token.comment,
 .agentyx-code .token.prolog,
 .agentyx-code .token.doctype,
@@ -99,50 +133,63 @@
   color: #546a7b;
   font-style: italic;
 }
+
 .agentyx-code .token.punctuation {
   color: #7e97a7;
 }
+
 .agentyx-code .token.keyword,
 .agentyx-code .token.tag {
   color: #6be5c8;
 }
+
 .agentyx-code .token.boolean,
 .agentyx-code .token.number,
 .agentyx-code .token.constant {
   color: #f0b86e;
 }
+
 .agentyx-code .token.string,
 .agentyx-code .token.char,
 .agentyx-code .token.attr-value {
   color: #a8d8a0;
 }
+
 .agentyx-code .token.function {
   color: #82c4f0;
 }
+
 .agentyx-code .token.class-name {
   color: #e0c497;
 }
+
 .agentyx-code .token.operator {
   color: #9bb8c9;
 }
+
 .agentyx-code .token.property {
   color: #c9d8e0;
 }
+
 .agentyx-code .token.attr-name {
   color: #6be5c8;
 }
+
 .agentyx-code .token.selector,
 .agentyx-code .token.important,
 .agentyx-code .token.atrule {
   color: #6be5c8;
 }
+
 .agentyx-code .token.regex,
 .agentyx-code .token.variable {
   color: #f0b86e;
 }
+
 .agentyx-code .token.inserted {
   color: #a8d8a0;
 }
+
 .agentyx-code .token.deleted {
   color: #f08080;
 }
