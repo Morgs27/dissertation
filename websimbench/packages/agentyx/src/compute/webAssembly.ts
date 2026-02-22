@@ -1,7 +1,17 @@
+/**
+ * @module webAssembly
+ * WebAssembly (WASM) compute backend.
+ *
+ * Compiles WAT source into a WASM module via `wabt`, manages linear memory
+ * layout for agents, trail maps, random values, and obstacles, and executes
+ * the compiled `step_all` export for each simulation frame.
+ */
+
 import type { Agent, InputValues } from "../types.js";
 import Logger from "../helpers/logger.js";
 import wabt from "wabt";
 
+/** Cached `wabt` module promise (singleton). */
 let wabtModulePromise: ReturnType<typeof wabt> | null = null;
 
 const getWabtModule = async () => {
@@ -11,6 +21,13 @@ const getWabtModule = async () => {
   return wabtModulePromise;
 };
 
+/**
+ * Compile a WAT text module into a WebAssembly binary module.
+ *
+ * @param watCode - WAT source string.
+ * @param logger - Logger for error diagnostics.
+ * @returns Compiled `WebAssembly.Module`.
+ */
 export const compileWATtoWASM = async (watCode: string, logger: Logger): Promise<WebAssembly.Module> => {
   try {
     const wabtModule = await getWabtModule();
@@ -36,6 +53,7 @@ const basePtr = 0;
 const baseF32 = basePtr >>> 2;
 const wasmPageSize = 64 * 1024;
 
+/** @internal WASM linear-memory layout for a single frame. */
 type MemoryLayout = {
   agentsReadPtr: number;
   trailMapReadPtr: number;
@@ -48,6 +66,7 @@ type MemoryLayout = {
   totalBytesNeeded: number;
 };
 
+/** Result of a single WASM compute step with timing breakdown. */
 export type WASMComputeResult = {
   agents: Agent[];
   performance: {
@@ -57,8 +76,15 @@ export type WASMComputeResult = {
   };
 };
 
+/**
+ * WebAssembly compute backend.
+ *
+ * Manages a WASM instance compiled from DSL-generated WAT code. Handles
+ * memory layout, agent packing/unpacking, and the per-frame `step_all`
+ * dispatch.
+ */
 export class WebAssemblyCompute {
-  private readonly Logger: Logger;
+  private readonly logger: Logger;
   private memory: WebAssembly.Memory | undefined = undefined;
   private f32: Float32Array | undefined = undefined;
   private exports: Record<string, unknown> | undefined = undefined;
@@ -67,13 +93,14 @@ export class WebAssemblyCompute {
   private readonly watCode: string;
 
   constructor(watCode: string, agentCount: number) {
-    this.Logger = new Logger("WebAssemblyCompute");
+    this.logger = new Logger("WebAssemblyCompute");
     this.agentCount = agentCount;
     this.watCode = watCode;
   }
 
+  /** Compile WAT, create WASM instance, and bind the `step_all` export. */
   async init() {
-    const wasmModule = await compileWATtoWASM(this.watCode, this.Logger);
+    const wasmModule = await compileWATtoWASM(this.watCode, this.logger);
 
     const bytesNeeded = this.agentCount * bytesPerAgent;
     const initialPages = Math.ceil(bytesNeeded / wasmPageSize) + 1;
@@ -87,8 +114,8 @@ export class WebAssemblyCompute {
         cos: Math.cos,
         atan2: Math.atan2,
         random: Math.random,
-        print: (id: number, val: number) => this.Logger.info(`AGENT[${id}] PRINT:`, val),
-        log: (id: number, val: number) => this.Logger.info(`WASM Log[${id}]:`, val)
+        print: (id: number, val: number) => this.logger.info(`AGENT[${id}] PRINT:`, val),
+        log: (id: number, val: number) => this.logger.info(`WASM Log[${id}]:`, val)
       }
     });
 
@@ -103,6 +130,13 @@ export class WebAssemblyCompute {
     this.f32 = new Float32Array(this.memory.buffer);
   }
 
+  /**
+   * Run a single compute step across all agents.
+   *
+   * @param agents - Current agent array.
+   * @param inputs - Per-frame input values.
+   * @returns Updated agents and timing metrics.
+   */
   compute(agents: Agent[], inputs: InputValues): WASMComputeResult {
     if (!this.exports || !this.memory || !this.stepAll) {
       throw new Error("WebAssemblyCompute not initialized");
@@ -191,6 +225,7 @@ export class WebAssemblyCompute {
     };
   }
 
+  /** Release all WASM resources. */
   destroy() {
     this.stepAll = undefined;
     this.exports = undefined;

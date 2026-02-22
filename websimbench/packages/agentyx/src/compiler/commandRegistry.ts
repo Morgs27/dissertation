@@ -1,9 +1,10 @@
 /**
- * CommandRegistry — centralized DSL command handling
- * 
+ * @module commandRegistry
+ * Centralised DSL command handling.
+ *
  * Each DSL command is registered here with per-target code generation,
- * mirroring the FunctionRegistry pattern. This replaces the per-compiler
- * CommandMap string templates and WAT's structured command objects.
+ * mirroring the {@link functionRegistry} pattern. This replaces the
+ * per-compiler `CommandMap` string templates.
  */
 
 import type { CompilerTarget, CompilationContext } from './compilerTarget';

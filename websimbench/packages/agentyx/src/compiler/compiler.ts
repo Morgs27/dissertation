@@ -1,3 +1,14 @@
+/**
+ * @module compiler
+ * DSL-to-multi-target compiler orchestrator.
+ *
+ * The {@link Compiler} class takes Agentyx DSL source code and produces
+ * compiled output for all three supported compute backends (JavaScript,
+ * WGSL, and WAT) in a single pass. It handles preprocessing (input
+ * extraction, trail configuration, species detection) before delegating
+ * to the individual backend compilers.
+ */
+
 import Logger from "../helpers/logger";
 import type { CompilationResult } from "../types";
 import { compileDSLtoJS } from "./JScompiler";
@@ -5,6 +16,7 @@ import { compileDSLtoWAT } from "./WATcompiler";
 import { compileDSLtoWGSL } from "./WGSLcompiler";
 import { DSLParser, LineInfo } from "./parser";
 
+/** @internal Metadata for a user-defined input declaration. */
 interface DefinedInput {
     name: string;
     defaultValue: number;
@@ -12,11 +24,13 @@ interface DefinedInput {
     max: number;
 }
 
+/** @internal Trail environment configuration extracted from DSL. */
 interface TrailEnvironmentConfig {
     depositAmountInput?: string;
     decayFactorInput?: string;
 }
 
+/** @internal Result of the DSL preprocessing phase. */
 interface PreprocessResult {
     lines: LineInfo[];
     inputs: string[];
@@ -24,10 +38,11 @@ interface PreprocessResult {
     trailEnvironmentConfig?: TrailEnvironmentConfig;
     randomInputs: string[];
     speciesCount?: number;
-    /** Total random values needed per agent per frame */
+    /** Total random values needed per agent per frame. */
     numRandomCalls: number;
 }
 
+/** @internal Map of DSL commands to the runtime inputs they implicitly require. */
 const COMMAND_INPUT_DEPENDENCIES: Record<string, string[]> = {
     borderWrapping: ['width', 'height'],
     borderBounce: ['width', 'height'],
@@ -36,6 +51,18 @@ const COMMAND_INPUT_DEPENDENCIES: Record<string, string[]> = {
     avoidObstacles: ['obstacles', 'obstacleCount'],
 };
 
+/**
+ * Compiles Agentyx DSL source code into JavaScript, WGSL, and WAT output.
+ *
+ * @example
+ * ```ts
+ * import { Compiler } from '@websimbench/agentyx';
+ *
+ * const compiler = new Compiler();
+ * const result = compiler.compileAgentCode('moveForward 1\nborderWrapping');
+ * console.log(result.jsCode);
+ * ```
+ */
 export class Compiler {
     private logger: Logger;
 
@@ -43,6 +70,15 @@ export class Compiler {
         this.logger = new Logger('Compiler', 'orange');
     }
 
+    /**
+     * Compile DSL source code into a multi-target {@link CompilationResult}.
+     *
+     * Preprocesses the DSL to extract inputs, trail config, and species
+     * declarations, then delegates to each backend compiler.
+     *
+     * @param agentCode - Raw Agentyx DSL source code.
+     * @returns Compilation output with JS, WGSL, and WAT code.
+     */
     compileAgentCode(agentCode?: string): CompilationResult {
         const script = agentCode?.trim() ?? '';
         this.logger.info('Compiling agent code');
@@ -55,6 +91,13 @@ export class Compiler {
         return this.buildCompilationResult(preprocessed, compiled);
     }
 
+    /**
+     * Preprocess DSL source: parse lines, extract inputs, trail config,
+     * species count, and random value requirements.
+     *
+     * @param dsl - Raw DSL source code.
+     * @returns Preprocessed data for the compilation pipeline.
+     */
     private preprocessDSL(dsl: string): PreprocessResult {
         const { lines, definedInputs, randomInputs } = this.parseLines(dsl);
         const inputs = this.extractInputs(dsl, lines, definedInputs, randomInputs);
@@ -69,6 +112,7 @@ export class Compiler {
         return { lines, inputs, definedInputs, trailEnvironmentConfig, randomInputs, speciesCount, numRandomCalls };
     }
 
+    /** Count `random()` call sites across all DSL lines. */
     private countInlineRandomCalls(lines: LineInfo[]): number {
         let count = 0;
         for (const line of lines) {
@@ -78,6 +122,7 @@ export class Compiler {
         return count;
     }
 
+    /** Parse raw DSL source into structured lines, extracting input and random declarations. */
     private parseLines(dsl: string): {
         lines: LineInfo[];
         definedInputs: DefinedInput[];
@@ -108,10 +153,12 @@ export class Compiler {
         return { lines, definedInputs, randomInputs };
     }
 
+    /** Remove `//` and `#` comments from a source line. */
     private stripComments(line: string): string {
         return line.split('//')[0].split('#')[0].trim();
     }
 
+    /** Parse an `input name = value` declaration, returning metadata or `null`. */
     private parseInputDeclaration(line: string): {
         name: string;
         isRandom: boolean;
@@ -139,6 +186,7 @@ export class Compiler {
         };
     }
 
+    /** Extract the numeric value and optional `[min, max]` range from a value part. */
     private parseValueWithRange(valuePart: string): { value: string; min: number; max: number } {
         const rangeMatch = valuePart.match(/^(.+?)\s*\[\s*([0-9.]+)\s*,\s*([0-9.]+)\s*\]\s*$/);
         if (rangeMatch) {
@@ -151,6 +199,7 @@ export class Compiler {
         return { value: valuePart, min: 0, max: 100 };
     }
 
+    /** Split a line at `;` boundaries, expanding braceless `if` into block form. */
     private splitStatements(line: string): string[] {
         const parts = line.split(';').map(s => s.trim()).filter(s => s.length > 0);
         const result: string[] = [];
@@ -176,6 +225,7 @@ export class Compiler {
         return result;
     }
 
+    /** Collect all required input names from explicit references and command dependencies. */
     private extractInputs(
         dsl: string,
         lines: LineInfo[],
@@ -194,6 +244,7 @@ export class Compiler {
         return Array.from(inputs);
     }
 
+    /** Add implicit input dependencies required by DSL commands. */
     private addCommandDependencies(lines: LineInfo[], inputs: Set<string>): void {
         for (const line of lines) {
             const parsed = DSLParser.parseCommandLine(line.content.trim());
@@ -203,6 +254,7 @@ export class Compiler {
         }
     }
 
+    /** Extract trail environment configuration from `enableTrails` commands. */
     private extractTrailConfig(lines: LineInfo[], inputs: string[]): TrailEnvironmentConfig | undefined {
         for (const line of lines) {
             const parsed = DSLParser.parseCommandLine(line.content.trim());
@@ -226,6 +278,7 @@ export class Compiler {
         return undefined;
     }
 
+    /** Extract the species count from a `species` command declaration. */
     private extractSpeciesCount(lines: LineInfo[]): number | undefined {
         for (const line of lines) {
             const parsed = DSLParser.parseCommandLine(line.content.trim());
@@ -237,6 +290,7 @@ export class Compiler {
         return undefined;
     }
 
+    /** Ensure `randomValues` is listed as a required input when random is used. */
     private ensureRandomValuesDependency(inputs: string[], randomInputs: string[], lines: LineInfo[]): void {
         // Check for input-declared random values or explicit inputs.random references
         let needsRandomValues = inputs.includes('random') || randomInputs.length > 0;
@@ -256,6 +310,7 @@ export class Compiler {
         }
     }
 
+    /** Compile preprocessed DSL to all three backends (JS, WGSL, WAT). */
     private compileToAllTargets(
         preprocessed: PreprocessResult,
         script: string
@@ -269,6 +324,7 @@ export class Compiler {
         };
     }
 
+    /** Log all compiled output and extracted inputs to the console. */
     private logCompilationResults(
         compiled: { jsCode: string; wgslCode: string; watCode: string },
         preprocessed: PreprocessResult
@@ -280,6 +336,7 @@ export class Compiler {
         this.logger.log('Defined Inputs', preprocessed.definedInputs);
     }
 
+    /** Assemble the final {@link CompilationResult} from preprocessed and compiled data. */
     private buildCompilationResult(
         preprocessed: PreprocessResult,
         compiled: { jsCode: string; wgslCode: string; watCode: string }

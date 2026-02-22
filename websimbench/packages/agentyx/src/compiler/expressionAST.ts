@@ -1,9 +1,11 @@
 /**
- * Expression AST for Float32 precision wrapping
- * 
- * This module provides proper parsing and transformation of DSL expressions
- * to ensure all arithmetic operations are wrapped with Math.fround() for
- * Float32 precision parity with WebAssembly/WebGPU.
+ * @module expressionAST
+ * Expression parser and Float32-wrapping code generator.
+ *
+ * Provides proper tokenisation, recursive-descent parsing, and AST-based
+ * transformation of DSL expressions to ensure all arithmetic operations
+ * are wrapped with `Math.fround()` for Float32 precision parity with
+ * WebAssembly and WebGPU.
  */
 
 export type ExprNode =

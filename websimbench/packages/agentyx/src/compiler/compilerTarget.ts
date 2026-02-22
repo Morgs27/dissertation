@@ -1,8 +1,10 @@
 /**
- * CompilerTarget interface and CompilationContext
- * 
- * Defines the contract each backend (JS, WGSL, WAT) must implement
- * to participate in the shared transpilation pipeline.
+ * @module compilerTarget
+ * Shared interface and context for all DSL compiler backends.
+ *
+ * Defines the {@link CompilerTarget} contract each backend (JS, WGSL, WAT)
+ * must implement, and the {@link CompilationContext} state threaded through
+ * the transpilation pipeline.
  */
 
 // No imports needed — types defined here are self-contained

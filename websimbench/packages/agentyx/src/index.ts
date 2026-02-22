@@ -1,3 +1,28 @@
+/**
+ * @module agentyx
+ *
+ * **Agentyx** — A browser-native 2D agent-based simulation engine.
+ *
+ * Provides a DSL compiler, multi-backend compute engine (JavaScript, Web Workers,
+ * WebAssembly, WebGPU), CPU/GPU renderer, and built-in tracking & performance
+ * monitoring.
+ *
+ * @example
+ * ```ts
+ * import { Simulation } from '@websimbench/agentyx';
+ *
+ * const sim = new Simulation({
+ *   agentScript: 'moveForward 1\nborderWrapping',
+ *   options: { agents: 1000 },
+ *   canvas: document.getElementById('canvas') as HTMLCanvasElement,
+ * });
+ *
+ * const result = await sim.runFrame('JavaScript');
+ * ```
+ *
+ * @packageDocumentation
+ */
+
 export { Simulation as AgentyxSimulation, Simulation, MAX_AGENTS } from './simulation';
 export { Compiler } from './compiler/compiler';
 export { ComputeEngine } from './compute/compute';
