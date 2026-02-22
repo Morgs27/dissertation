@@ -16,7 +16,7 @@ export const ObstacleToolbar = ({
     obstacleCount
 }: ObstacleToolbarProps) => {
     return (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-black/60 backdrop-blur-md border border-white/10 p-2 rounded-2xl shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-300 z-10">
+        <div className="flex items-center gap-4 bg-black/60 backdrop-blur-md border border-white/10 p-2 rounded-2xl shadow-lg animate-in fade-in slide-in-from-left-4 duration-300 z-10">
 
             <div className="flex items-center gap-3 px-2 border-r border-white/10">
                 <div className="w-8 h-8 rounded-full bg-tropicalTeal/20 flex items-center justify-center text-tropicalTeal">
@@ -68,7 +68,7 @@ export const ObstacleToolbar = ({
             </div>
 
             {isPlacing && (
-                <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] font-bold px-3 py-1.5 rounded-full border border-white/10 pointer-events-none whitespace-nowrap">
+                <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] font-bold px-3 py-1.5 rounded-full border border-white/10 pointer-events-none whitespace-nowrap">
                     Click to place obstacle
                 </div>
             )}

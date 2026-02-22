@@ -123,7 +123,6 @@ export const Home = ({ options, onBenchmarkComplete }: HomeProps) => {
                       setRenderMode={setRenderMode}
                       isRunning={isRunning}
                       handleRun={handleRun}
-                      fps={fps}
                       inputs={inputs}
                       definedInputs={definedInputs}
                       handleInputChange={handleInputChange}
@@ -160,6 +159,11 @@ export const Home = ({ options, onBenchmarkComplete }: HomeProps) => {
                     onClearObstacles={clearObstacles}
                     obstacles={obstacles}
                     options={options}
+                    fps={activeHomeTab === 'benchmark' ? undefined : fps}
+                    hideObstaclesUI={activeHomeTab === 'benchmark'}
+                    inputs={inputs}
+                    definedInputs={definedInputs}
+                    handleInputChange={handleInputChange}
                   />
                 </div>
               </Panel>
