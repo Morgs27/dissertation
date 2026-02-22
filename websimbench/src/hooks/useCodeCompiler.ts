@@ -46,6 +46,7 @@ export function useCodeCompiler() {
   const [inputs, setInputs] = useState<Record<string, number>>({ agentCount: 1000 });
   const [definedInputs, setDefinedInputs] = useState<InputDefinition[]>([]);
   const [isCompiling, setIsCompiling] = useState(false);
+  const [compileErrors, setCompileErrors] = useState<{ message: string; lineIndex: number }[]>([]);
 
   const compilerRef = useRef(new Compiler());
   const compileTimeoutRef = useRef<NodeJS.Timeout>();
@@ -64,6 +65,8 @@ export function useCodeCompiler() {
           wasm: result.WASMCode,
           wgsl: result.wgslCode
         });
+
+        setCompileErrors(result.errors || []);
 
         if (result.definedInputs) {
           setDefinedInputs(result.definedInputs);
@@ -125,6 +128,7 @@ export function useCodeCompiler() {
     inputs,
     definedInputs,
     isCompiling,
+    compileErrors,
     handleInputChange,
     handleSaveCode,
     handleLoadCode

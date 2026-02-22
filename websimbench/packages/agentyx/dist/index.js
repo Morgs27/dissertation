@@ -481,9 +481,66 @@ function transformExpression(expr, randomInputs = /* @__PURE__ */ new Set()) {
   let result = generateJS(ast, true, randomInputs);
   return result;
 }
+function validateExpressionAST(node, ctx) {
+  const builtinVariables = /* @__PURE__ */ new Set(["x", "y", "vx", "vy", "id", "species"]);
+  switch (node.type) {
+    case "identifier": {
+      const name = node.name;
+      if (name === "") return;
+      if (builtinVariables.has(name)) return;
+      if (name === "inputs" || name === "Math") return;
+      if (ctx.currentLoopVar && name === ctx.currentLoopVar) return;
+      if (ctx.variables.has(name) || ctx.localVars.has(name) || ctx.randomInputs.has(name)) return;
+      ctx.errors.push({
+        message: `Variable '${name}' is not defined.`,
+        lineIndex: ctx.currentLineIndex
+      });
+      break;
+    }
+    case "property": {
+      validateExpressionAST(node.object, ctx);
+      if (node.object.type === "identifier" && node.object.name === "inputs") {
+        const prop = node.property;
+        if (!ctx.inputs.has(prop) && !ctx.randomInputs.has(prop)) {
+          ctx.errors.push({
+            message: `Input '${prop}' is not declared. Ensure it is included in the simulation inputs definition.`,
+            lineIndex: ctx.currentLineIndex
+          });
+        }
+      } else if (node.object.type === "identifier" && node.object.name === "nearbyAgents" && node.property === "length") {
+      } else if (node.object.type === "identifier" && ctx.variables.get(node.object.name)?.type === "neighbors" && node.property === "length") {
+      }
+      break;
+    }
+    case "index":
+      validateExpressionAST(node.object, ctx);
+      validateExpressionAST(node.index, ctx);
+      break;
+    case "call":
+      node.args.forEach((arg2) => validateExpressionAST(arg2, ctx));
+      break;
+    case "unary":
+      validateExpressionAST(node.operand, ctx);
+      break;
+    case "binary":
+      validateExpressionAST(node.left, ctx);
+      validateExpressionAST(node.right, ctx);
+      break;
+    case "group":
+      validateExpressionAST(node.expr, ctx);
+      break;
+  }
+}
+function validateExpressionString(expr, ctx) {
+  const tokens = tokenize(expr.trim());
+  if (tokens.length === 0) return;
+  const parser = new Parser(tokens);
+  const ast = parser.parse();
+  validateExpressionAST(ast, ctx);
+}
 
 // src/compiler/compilerTarget.ts
-function createContext(randomInputs, numRandomCalls = 0) {
+function createContext(inputs, randomInputs, numRandomCalls = 0) {
   return {
     variables: /* @__PURE__ */ new Map(),
     loopDepth: 0,
@@ -492,7 +549,10 @@ function createContext(randomInputs, numRandomCalls = 0) {
     localVars: /* @__PURE__ */ new Set(),
     blockStack: [],
     randomCallCount: 0,
-    numRandomCalls
+    numRandomCalls,
+    errors: [],
+    inputs: new Set(inputs),
+    currentLineIndex: 0
   };
 }
 
@@ -1186,11 +1246,12 @@ registerCommand({
 });
 
 // src/compiler/transpiler.ts
-function transpileDSL(lines, target, logger, rawScript, ctx) {
+function transpileDSL(lines, target, ctx) {
   const statements = [];
   for (const line of lines) {
     const trimmed = line.content.trim();
     if (!trimmed) continue;
+    ctx.currentLineIndex = line.lineIndex;
     const parsed = DSLParser.parseDSLLine(trimmed);
     let emitted = [];
     const startsWithBrace = trimmed.startsWith("}") && parsed.type !== "brace";
@@ -1208,38 +1269,60 @@ function transpileDSL(lines, target, logger, rawScript, ctx) {
         emitted = target.emitCloseBrace(ctx);
         break;
       case "var": {
+        validateExpressionString(parsed.expression, ctx);
         const functionResult = tryEmitFunctionVar(parsed.name, parsed.expression, target, ctx);
         if (functionResult) {
           emitted = functionResult;
         } else {
           emitted = target.emitVar(parsed.name, parsed.expression, ctx);
         }
+        if (!ctx.variables.has(parsed.name)) {
+          ctx.variables.set(parsed.name, { type: "scalar" });
+        }
+        ctx.localVars.add(parsed.name);
         break;
       }
       case "if":
+        validateExpressionString(parsed.condition, ctx);
         emitted = target.emitIf(parsed.condition, ctx);
         break;
       case "elseif":
+        validateExpressionString(parsed.condition, ctx);
         emitted = target.emitElseIf(parsed.condition, ctx);
         break;
       case "else":
         emitted = target.emitElse(ctx);
         break;
-      case "for":
+      case "for": {
+        const initMatch = parsed.init.match(/^var\s+([a-zA-Z_]\w*)/);
+        if (initMatch) {
+          const loopVar = initMatch[1];
+          ctx.localVars.add(loopVar);
+          ctx.variables.set(loopVar, { type: "loop_index" });
+        }
+        validateExpressionString(parsed.condition, ctx);
         emitted = target.emitFor(parsed.init, parsed.condition, parsed.increment, ctx);
         break;
+      }
       case "foreach":
         emitted = target.emitForeach(parsed.collection, parsed.varName, parsed.itemAlias, ctx);
         break;
       case "assignment":
+        if (!parsed.target.includes("[") && !parsed.target.includes(".")) {
+          validateExpressionString(parsed.target, ctx);
+        }
+        validateExpressionString(parsed.expression, ctx);
         emitted = target.emitAssignment(parsed.target, parsed.expression, ctx);
         break;
       case "command":
+        if (parsed.argument) {
+          validateExpressionString(parsed.argument, ctx);
+        }
         emitted = emitCommand(parsed.command, parsed.argument, target, ctx) ?? [];
         break;
       case "unknown":
       default:
-        logger.codeError("Unknown syntax or command", rawScript, line.lineIndex);
+        ctx.errors.push({ message: "Unknown syntax or command", lineIndex: line.lineIndex });
         continue;
     }
     if (startsWithBrace && emitted.length > 0) {
@@ -1469,12 +1552,11 @@ ${helpers.join("\n")}
 }`;
   }
 };
-var compileDSLtoJS = (lines, inputs, logger, rawScript, randomInputs = [], numRandomCalls = 0) => {
-  const ctx = createContext(randomInputs, numRandomCalls);
-  const statements = transpileDSL(lines, JSTarget, logger, rawScript, ctx);
+var compileDSLtoJS = (lines, inputs, randomInputs = [], numRandomCalls = 0) => {
+  const ctx = createContext(inputs, randomInputs, numRandomCalls);
+  const statements = transpileDSL(lines, JSTarget, ctx);
   const result = JSTarget.emitProgram(statements, inputs, randomInputs, ctx);
-  logger.info("Generated JavaScript function");
-  return result;
+  return { code: result, errors: ctx.errors };
 };
 
 // src/compiler/WATcompiler.ts
@@ -1904,7 +1986,7 @@ function transpileLine(line, localVars, randomInputs, context) {
       return `(local.set $${parsed.target} ${normalizeWASMExpression(assignExpr, randomInputs, context)})`;
     }
     case "command": {
-      const ctx = createContext(Array.from(randomInputs));
+      const ctx = createContext(Array.from(context.inputs), Array.from(randomInputs), context.numRandomCalls);
       ctx.localVars = localVars;
       if (context.currentLoopVar) ctx.currentLoopVar = context.currentLoopVar;
       ctx.loopDepth = context.loopDepth;
@@ -1953,17 +2035,25 @@ var WATTarget = {
     return ";; WAT program generation uses compileDSLtoWAT directly";
   }
 };
-function compileDSLtoWAT(lines, inputs, logger, rawScript, randomInputs = [], numRandomCalls = 0) {
+var compileDSLtoWAT = (lines, inputs, randomInputs = [], numRandomCalls = 0) => {
   const statements = [];
   const localVars = /* @__PURE__ */ new Set();
   const randomInputsSet = new Set(randomInputs);
+  const errors = [];
   const context = {
     loopDepth: 0,
     neighborsInfo: /* @__PURE__ */ new Map(),
+    variables: /* @__PURE__ */ new Map(),
+    randomInputs: randomInputsSet,
+    usedFunctions: /* @__PURE__ */ new Set(),
+    localVars,
     blockStack: [],
     deferredPendingClose: 0,
     randomCallCount: 0,
     numRandomCalls,
+    errors,
+    inputs: new Set(inputs),
+    currentLineIndex: 0,
     numRandomInputs: randomInputs.length
   };
   for (let i = 0; i < lines.length; i++) {
@@ -1981,9 +2071,8 @@ function compileDSLtoWAT(lines, inputs, logger, rawScript, randomInputs = [], nu
     }
     let transpiled = transpileLine(trimmed, localVars, randomInputsSet, context);
     if (transpiled === null && trimmed !== "}") {
-      const parsed = DSLParser.parseDSLLine(trimmed);
-      if (parsed.type === "unknown") {
-        logger.codeError("Unknown syntax or command", rawScript, line.lineIndex);
+      if (context.blockStack.length > 0) {
+        errors.push({ message: "Missing closing brace", lineIndex: lines[lines.length - 1].lineIndex });
       }
     }
     if (trimmed === "}") {
@@ -2076,7 +2165,8 @@ function compileDSLtoWAT(lines, inputs, logger, rawScript, randomInputs = [], nu
   `;
   const stepFuncLocals = localVars.size > 0 ? `
       ${localVarDecls}` : "";
-  return `
+  return {
+    code: `
   (module
     (import "env" "memory" (memory 1))
     (import "env" "sin" (func $sin (param f32) (result f32)))
@@ -2163,8 +2253,10 @@ function compileDSLtoWAT(lines, inputs, logger, rawScript, randomInputs = [], nu
         )
       )
     )
-  )`;
-}
+  )`,
+    errors
+  };
+};
 
 // src/compiler/WGSLcompiler.ts
 var WORKGROUP_SIZE = 64;
@@ -2514,10 +2606,10 @@ fn main(
     return [agentStruct, inputStruct, trailMapReadBinding, randomValuesBinding, trailMapWriteBinding, obstaclesBinding, obstacleHelpers, helpers, computeFn].join("\n\n");
   }
 };
-function compileDSLtoWGSL(lines, inputs, logger, rawScript, randomInputs = [], numRandomCalls = 0) {
-  const ctx = createContext(randomInputs, numRandomCalls);
-  const statements = transpileDSL(lines, WGSLTarget, logger, rawScript, ctx);
-  return WGSLTarget.emitProgram(statements, inputs, randomInputs, ctx);
+function compileDSLtoWGSL(lines, inputs, randomInputs = [], numRandomCalls = 0) {
+  const ctx = createContext(inputs, randomInputs, numRandomCalls);
+  const statements = transpileDSL(lines, WGSLTarget, ctx);
+  return { code: WGSLTarget.emitProgram(statements, inputs, randomInputs, ctx), errors: ctx.errors };
 }
 
 // src/compiler/compiler.ts
@@ -2545,8 +2637,15 @@ var Compiler = class {
     const script = agentCode?.trim() ?? "";
     this.logger.info("Compiling agent code");
     const preprocessed = this.preprocessDSL(script);
-    const compiled = this.compileToAllTargets(preprocessed, script);
+    const compiled = this.compileToAllTargets(preprocessed);
     this.logCompilationResults(compiled, preprocessed);
+    const uniqueErrors = /* @__PURE__ */ new Map();
+    for (const err of compiled.errors) {
+      uniqueErrors.set(`${err.lineIndex}:${err.message}`, err);
+    }
+    for (const err of uniqueErrors.values()) {
+      this.logger.codeError(err.message, script, err.lineIndex);
+    }
     return this.buildCompilationResult(preprocessed, compiled);
   }
   /**
@@ -2719,12 +2818,16 @@ var Compiler = class {
     }
   }
   /** Compile preprocessed DSL to all three backends (JS, WGSL, WAT). */
-  compileToAllTargets(preprocessed, script) {
+  compileToAllTargets(preprocessed) {
     const { lines, inputs, randomInputs, numRandomCalls } = preprocessed;
+    const jsResult = compileDSLtoJS(lines, inputs, randomInputs, numRandomCalls);
+    const wgslResult = compileDSLtoWGSL(lines, inputs, randomInputs, numRandomCalls);
+    const watResult = compileDSLtoWAT(lines, inputs, randomInputs, numRandomCalls);
     return {
-      jsCode: compileDSLtoJS(lines, inputs, this.logger, script, randomInputs, numRandomCalls),
-      wgslCode: compileDSLtoWGSL(lines, inputs, this.logger, script, randomInputs, numRandomCalls),
-      watCode: compileDSLtoWAT(lines, inputs, this.logger, script, randomInputs, numRandomCalls)
+      jsCode: jsResult.code,
+      wgslCode: wgslResult.code,
+      watCode: watResult.code,
+      errors: jsResult.errors
     };
   }
   /** Log all compiled output and extracted inputs to the console. */
@@ -2745,7 +2848,8 @@ var Compiler = class {
       WASMCode: compiled.watCode,
       trailEnvironmentConfig: preprocessed.trailEnvironmentConfig,
       speciesCount: preprocessed.speciesCount,
-      numRandomCalls: preprocessed.numRandomCalls
+      numRandomCalls: preprocessed.numRandomCalls,
+      errors: compiled.errors
     };
   }
 };
@@ -3341,7 +3445,6 @@ var WebGPU = class {
     device.popErrorScope().then((error) => {
       if (error) {
         this.logger.error("WebGPU Validation Error during initialization:", error.message);
-        this.logger.error("WGSL Code that failed:\n", this.wgslCode);
       }
     });
     this.maxWorkgroupsPerDimension = device.limits?.maxComputeWorkgroupsPerDimension ?? this.maxWorkgroupsPerDimension;
@@ -3643,9 +3746,6 @@ var WebGPU = class {
           updatedAgents[i].vx = data[base + 3];
           updatedAgents[i].vy = data[base + 4];
           updatedAgents[i].species = data[base + 5];
-        }
-        if (updatedAgents.length > 0) {
-          this.logger.log(`Readback complete: Agent[0] updated to x=${updatedAgents[0].x.toFixed(2)}, y=${updatedAgents[0].y.toFixed(2)}`);
         }
       } finally {
         this.stagingReadbackBuffer.unmap();
@@ -4564,11 +4664,39 @@ var SPECIES_PALETTE = [
   "#66AAFF"
   // Light blue
 ];
-function hexToRgb(hex) {
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
-  return { r, g, b, a: 1 };
+function hexToRgb(color) {
+  if (Array.isArray(color)) {
+    return {
+      r: Math.max(0, Math.min(1, (color[0] ?? 0) / 255)),
+      g: Math.max(0, Math.min(1, (color[1] ?? 0) / 255)),
+      b: Math.max(0, Math.min(1, (color[2] ?? 0) / 255)),
+      a: Math.max(0, Math.min(1, color[3] ?? 1))
+    };
+  }
+  if (typeof color !== "string") {
+    return { r: 0, g: 0, b: 0, a: 1 };
+  }
+  let hex = color.trim();
+  if (hex.startsWith("#")) {
+    hex = hex.slice(1);
+  }
+  if (hex.length === 3 || hex.length === 4) {
+    hex = hex.split("").map((c) => c + c).join("");
+  }
+  if (hex.length >= 6) {
+    const r = parseInt(hex.slice(0, 2), 16) / 255;
+    const g = parseInt(hex.slice(2, 4), 16) / 255;
+    const b = parseInt(hex.slice(4, 6), 16) / 255;
+    const a = hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1;
+    if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
+      return { r, g, b, a };
+    }
+  }
+  return { r: 0, g: 0, b: 0, a: 1 };
+}
+function toCssColor(color) {
+  const { r, g, b, a } = hexToRgb(color);
+  return `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${a})`;
 }
 var Renderer = class {
   /**
@@ -4628,7 +4756,7 @@ var Renderer = class {
    */
   renderBackground() {
     const ctx = this.ensureContext();
-    ctx.fillStyle = this.appearance.backgroundColor;
+    ctx.fillStyle = toCssColor(this.appearance.backgroundColor);
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
   }
   /**
@@ -4676,7 +4804,7 @@ var Renderer = class {
     const palette = this.appearance.speciesColors && this.appearance.speciesColors.length > 0 ? this.appearance.speciesColors : SPECIES_PALETTE;
     agents.forEach((agent) => {
       const speciesIdx = agent.species || 0;
-      ctx.fillStyle = palette[speciesIdx % palette.length];
+      ctx.fillStyle = toCssColor(palette[speciesIdx % palette.length]);
       ctx.beginPath();
       if (isCircle) {
         ctx.arc(agent.x, agent.y, radius, 0, Math.PI * 2);
@@ -5504,9 +5632,13 @@ var Simulation = class {
     this.compilationResult = compilationResult;
     this.computeEngine = new ComputeEngine(compilationResult, this.performanceMonitor, options.agents, options.workers);
     if (config.canvas) {
+      config.canvas.width = this.width;
+      config.canvas.height = this.height;
+      if (config.gpuCanvas) {
+        config.gpuCanvas.width = this.width;
+        config.gpuCanvas.height = this.height;
+      }
       this.renderer = new Renderer(config.canvas, config.gpuCanvas ?? null, this.appearance);
-      this.width = config.canvas.width;
-      this.height = config.canvas.height;
     }
     this.agents = this.createInitialAgents(options.agents, compilationResult.speciesCount ?? 1, options.seed);
     this.tracker = new SimulationTracker({

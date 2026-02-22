@@ -7,7 +7,6 @@
  * atomic trail-map writes, and workgroup-sized dispatch.
  */
 
-import Logger from "../helpers/logger";
 import type { LineInfo } from "./parser";
 import type { CompilerTarget, CompilationContext } from './compilerTarget';
 import { createContext } from './compilerTarget';
@@ -461,13 +460,11 @@ fn main(
 export function compileDSLtoWGSL(
     lines: LineInfo[],
     inputs: string[],
-    logger: Logger,
-    rawScript: string,
     randomInputs: string[] = [],
     numRandomCalls: number = 0,
-): string {
-    const ctx = createContext(randomInputs, numRandomCalls);
-    const statements = transpileDSL(lines, WGSLTarget, logger, rawScript, ctx);
+): { code: string, errors: { message: string, lineIndex: number }[] } {
+    const ctx = createContext(inputs, randomInputs, numRandomCalls);
+    const statements = transpileDSL(lines, WGSLTarget, ctx);
 
-    return WGSLTarget.emitProgram(statements, inputs, randomInputs, ctx);
+    return { code: WGSLTarget.emitProgram(statements, inputs, randomInputs, ctx), errors: ctx.errors };
 }

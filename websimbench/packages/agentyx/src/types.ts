@@ -112,6 +112,7 @@ export type CompilationResult = {
   trailEnvironmentConfig?: TrailEnvironmentConfig;
   speciesCount?: number;
   numRandomCalls: number;
+  errors?: { message: string, lineIndex: number }[];
 };
 
 /**

@@ -40,9 +40,15 @@ export interface CompilationContext {
     randomCallCount: number;
     /** Total random values per agent (set after preprocessing: randomInputs.length + inlineRandomCount) */
     numRandomCalls: number;
+    /** Any compilation errors encountered */
+    errors: { message: string; lineIndex: number }[];
+    /** Names of general inputs */
+    inputs: Set<string>;
+    /** Current line index being compiled for error reporting */
+    currentLineIndex: number;
 }
 
-export function createContext(randomInputs: string[], numRandomCalls: number = 0): CompilationContext {
+export function createContext(inputs: string[], randomInputs: string[], numRandomCalls: number = 0): CompilationContext {
     return {
         variables: new Map(),
         loopDepth: 0,
@@ -52,6 +58,9 @@ export function createContext(randomInputs: string[], numRandomCalls: number = 0
         blockStack: [],
         randomCallCount: 0,
         numRandomCalls,
+        errors: [],
+        inputs: new Set(inputs),
+        currentLineIndex: 0,
     };
 }
 

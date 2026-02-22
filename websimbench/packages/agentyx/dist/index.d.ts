@@ -307,6 +307,10 @@ type CompilationResult = {
     trailEnvironmentConfig?: TrailEnvironmentConfig;
     speciesCount?: number;
     numRandomCalls: number;
+    errors?: {
+        message: string;
+        lineIndex: number;
+    }[];
 };
 /**
  * A single agent entity with position, velocity, and species index.

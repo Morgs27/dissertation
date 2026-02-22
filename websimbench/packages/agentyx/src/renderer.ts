@@ -41,11 +41,50 @@ const SPECIES_PALETTE = [
  * @returns Object with `r`, `g`, `b`, and `a` fields.
  * @internal
  */
-function hexToRgb(hex: string) {
-    const r = parseInt(hex.slice(1, 3), 16) / 255;
-    const g = parseInt(hex.slice(3, 5), 16) / 255;
-    const b = parseInt(hex.slice(5, 7), 16) / 255;
-    return { r, g, b, a: 1 };
+function hexToRgb(color: any) {
+    if (Array.isArray(color)) {
+        return {
+            r: Math.max(0, Math.min(1, (color[0] ?? 0) / 255)),
+            g: Math.max(0, Math.min(1, (color[1] ?? 0) / 255)),
+            b: Math.max(0, Math.min(1, (color[2] ?? 0) / 255)),
+            a: Math.max(0, Math.min(1, color[3] ?? 1.0))
+        };
+    }
+
+    if (typeof color !== 'string') {
+        return { r: 0, g: 0, b: 0, a: 1 };
+    }
+
+    let hex = color.trim();
+    if (hex.startsWith('#')) {
+        hex = hex.slice(1);
+    }
+
+    if (hex.length === 3 || hex.length === 4) {
+        hex = hex.split('').map(c => c + c).join('');
+    }
+
+    if (hex.length >= 6) {
+        const r = parseInt(hex.slice(0, 2), 16) / 255;
+        const g = parseInt(hex.slice(2, 4), 16) / 255;
+        const b = parseInt(hex.slice(4, 6), 16) / 255;
+        const a = hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1;
+
+        if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
+            return { r, g, b, a };
+        }
+    }
+
+    return { r: 0, g: 0, b: 0, a: 1 };
+}
+
+/**
+ * Converts any supported color format into a valid CSS `rgba()` string.
+ * @internal
+ */
+function toCssColor(color: any): string {
+    const { r, g, b, a } = hexToRgb(color);
+    return `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${a})`;
 }
 
 /**
@@ -126,7 +165,7 @@ export class Renderer {
      */
     public renderBackground(): void {
         const ctx = this.ensureContext();
-        ctx.fillStyle = this.appearance.backgroundColor;
+        ctx.fillStyle = toCssColor(this.appearance.backgroundColor);
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
@@ -186,7 +225,7 @@ export class Renderer {
 
         agents.forEach(agent => {
             const speciesIdx = agent.species || 0;
-            ctx.fillStyle = palette[speciesIdx % palette.length];
+            ctx.fillStyle = toCssColor(palette[speciesIdx % palette.length]);
             ctx.beginPath();
             if (isCircle) {
                 ctx.arc(agent.x, agent.y, radius, 0, Math.PI * 2);

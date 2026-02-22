@@ -35,6 +35,7 @@ export const Home = ({ options, onBenchmarkComplete }: HomeProps) => {
     inputs,
     definedInputs,
     isCompiling,
+    compileErrors,
     handleInputChange,
     handleSaveCode,
     handleLoadCode,
@@ -83,6 +84,7 @@ export const Home = ({ options, onBenchmarkComplete }: HomeProps) => {
               handleLoadCode={handleLoadCode}
               compiledCode={compiledCode}
               isCompiling={isCompiling}
+              compileErrors={compileErrors}
             />
           </Panel>
 
