@@ -316,14 +316,6 @@ limitSpeed(inputs.terminalVelocity);
 // Move
 updatePosition(1.0);
 
-// Reset if at bottom (rain recycling)
-if (y >= inputs.height) {
-    y = 0;
-    x = random() * inputs.width;
-    vy = 2; // Initial fall speed
-    vx = 0; // Reset horizontal
-}
-
 // Standard wrap for wind
 borderWrapping();
 `,
