@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        body {
+            margin: 0;
+            background: #111;
+            color: white;
+            font-family: sans-serif;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #fps {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="fps">FPS: 0</div>
+    <canvas id="c"></canvas>
+    <script type="module">
+        import { Simulation } from 'https://esm.sh/@websimbench/agentyx@0.1.1?bundle';
+
+        const canvas = document.getElementById('c');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const sim = new Simulation({
+            canvas,
+            agentScript: 'moveForward(2); turn(0.1); borderWrapping();',
+            options: { agents: 10000 }
+        });
+
+        await sim.initGPU();
+
+        const fpsEl = document.getElementById('fps');
+        let lastTime = performance.now();
+        let frames = 0;
+
+        (async function tick() {
+            await sim.runFrame('WebGPU');
+            frames++;
+            const now = performance.now();
+            if (now - lastTime >= 1000) {
+                fpsEl.textContent = `FPS: ${frames}`;
+                frames = 0;
+                lastTime = now;
+            }
+            requestAnimationFrame(tick);
+        })();
+    </script>
+</body>
+
+</html>

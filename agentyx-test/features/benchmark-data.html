@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        body {
+            margin: 0;
+            background: #111;
+            color: white;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        #controls {
+            padding: 20px;
+            background: #222;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            cursor: pointer;
+            background: #25b8a8;
+            color: #000;
+            border: none;
+            font-weight: bold;
+            border-radius: 4px;
+        }
+
+        pre {
+            background: #000;
+            padding: 20px;
+            overflow: auto;
+            flex: 1;
+            margin: 0;
+        }
+
+        canvas {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="controls">
+        <button id="run-bench">Run 100 Frames WebGPU Benchmark</button>
+        <button id="download-report" style="display: none; background: #555; color: white;">Download Full JSON</button>
+        <span id="status">Ready</span>
+    </div>
+    <canvas id="c" width="800" height="600"></canvas>
+    <pre id="output">Results will appear here...</pre>
+    <script type="module">
+        import { Simulation } from 'https://esm.sh/@websimbench/agentyx@0.1.1?bundle';
+
+        const btn = document.getElementById('run-bench');
+        const downloadBtn = document.getElementById('download-report');
+        const output = document.getElementById('output');
+        const status = document.getElementById('status');
+
+        let lastSim = null;
+
+        btn.addEventListener('click', async () => {
+            if (lastSim) {
+                lastSim.destroy();
+                lastSim = null;
+            }
+
+            btn.disabled = true;
+            downloadBtn.style.display = 'none';
+            status.textContent = 'Running...';
+
+            const sim = new Simulation({
+                canvas: document.getElementById('c'),
+                agentScript: 'moveForward(1.5); turn(0.05); borderWrapping();',
+                options: { agents: 100000 },
+                tracking: {
+                    enabled: true,
+                    captureLogs: true,
+                    captureDeviceMetrics: true,
+                    captureAgentStates: false,
+                }
+            });
+
+            await sim.initGPU();
+
+            const start = performance.now();
+            for (let i = 0; i < 100; i++) {
+                // headless mode for pure compute benchmarks
+                await sim.runFrame('WebGPU', {}, 'none');
+            }
+            const totalTime = performance.now() - start;
+
+            const report = sim.getTrackingReport();
+
+            // Render nice output summary
+            output.textContent = [
+                `Completed 100 frames in ${totalTime.toFixed(2)}ms`,
+                `Average frame time: ${(totalTime / 100).toFixed(2)}ms`,
+                `Agents: ${sim.agents.length.toLocaleString()}`,
+                `Method: WebGPU`,
+                `\nSummary:`,
+                JSON.stringify(report.summary, null, 2),
+                `\nDetailed metrics and environment info are available in the full report.`
+            ].join('\n');
+
+            lastSim = sim;
+            status.textContent = 'Finished';
+            btn.disabled = false;
+            downloadBtn.style.display = 'inline-block';
+        });
+
+        downloadBtn.addEventListener('click', () => {
+            if (!lastSim) return;
+
+            // We implement the Blob export locally because the CDN version 
+            // of the library doesn't have the new exportTrackingReportBlob method yet.
+            const report = lastSim.getTrackingReport();
+            const json = JSON.stringify(report, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `benchmark-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+    </script>
+</body>
+
+</html>

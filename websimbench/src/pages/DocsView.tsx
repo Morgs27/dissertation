@@ -1,13 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CodeBlock } from '@/components/docs/CodeBlock';
-import { ExamplesRunner } from '@/components/docs/ExamplesRunner';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CodeBlock } from "@/components/CodeBlock";
 import {
   findDocsPage,
   getAvailableDocsVersions,
   getDocsVersion,
   resolveDocsVersionLabel,
-} from '@/docs';
-import { PACKAGE_NAME } from '@/config/version';
+} from "@/docs";
+import { PACKAGE_NAME } from "@/config/version";
 import type {
   DocsCalloutVariant,
   DocsContentBlock,
@@ -15,8 +14,7 @@ import type {
   DocsLinkCard,
   DocsNavigationSection,
   DocsPage,
-  RunnableExample,
-} from '@/docs/types';
+} from "@/docs/types";
 import {
   Lightbulb,
   NotePencil,
@@ -43,16 +41,16 @@ import {
   Lightning,
   Play,
   Package,
-} from '@phosphor-icons/react';
-import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
-import { Dock } from 'lucide-react';
+} from "@phosphor-icons/react";
+import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
+import { Dock } from "lucide-react";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from "@/components/ui/select";
 
 interface DocsViewProps {
   requestedVersion: string;
@@ -67,29 +65,29 @@ interface DocsViewProps {
 const CARD_ICON_MAP: Record<string, PhosphorIcon> = {
   overview: BookOpenText,
   installation: Package,
-  'quick-start': RocketLaunch,
-  'integration-guide': Plugs,
-  'simulation-api': Cpu,
-  'constructor-reference': Wrench,
-  'run-frame-reference': Play,
-  'runtime-updates': ArrowsClockwise,
-  'backends-rendering': Gauge,
-  'tracking-benchmarking': ChartBar,
-  'custom-source': Code,
+  "quick-start": RocketLaunch,
+  "integration-guide": Plugs,
+  "simulation-api": Cpu,
+  "constructor-reference": Wrench,
+  "run-frame-reference": Play,
+  "runtime-updates": ArrowsClockwise,
+  "backends-rendering": Gauge,
+  "tracking-benchmarking": ChartBar,
+  "custom-source": Code,
   troubleshooting: Warning,
-  'dsl-basics': Terminal,
-  'dsl-commands': ListBullets,
-  'dsl-functions': FunctionIcon,
-  'dsl-patterns': CookingPot,
-  'preset-gallery': Images,
-  'dsl-performance': Lightning,
+  "dsl-basics": Terminal,
+  "dsl-commands": ListBullets,
+  "dsl-functions": FunctionIcon,
+  "dsl-patterns": CookingPot,
+  "preset-gallery": Images,
+  "dsl-performance": Lightning,
   examples: Play,
 };
 
 const SECTION_ICON_MAP: Record<string, PhosphorIcon> = {
-  'getting-started': RocketLaunch,
-  'core-api': Cpu,
-  'dsl-guide': Code,
+  "getting-started": RocketLaunch,
+  "core-api": Cpu,
+  "dsl-guide": Code,
   examples: Play,
 };
 
@@ -99,35 +97,41 @@ const SECTION_ICON_MAP: Record<string, PhosphorIcon> = {
 
 const CALLOUT_CONFIG: Record<
   DocsCalloutVariant,
-  { icon: PhosphorIcon; label: string; border: string; bg: string; text: string }
+  {
+    icon: PhosphorIcon;
+    label: string;
+    border: string;
+    bg: string;
+    text: string;
+  }
 > = {
   tip: {
     icon: Lightbulb,
-    label: 'Tip',
-    border: 'border-l-emerald-400',
-    bg: 'bg-emerald-500/[0.06]',
-    text: 'text-emerald-300',
+    label: "Tip",
+    border: "border-l-emerald-400",
+    bg: "bg-emerald-500/[0.06]",
+    text: "text-emerald-300",
   },
   note: {
     icon: NotePencil,
-    label: 'Note',
-    border: 'border-l-blue-400',
-    bg: 'bg-blue-500/[0.06]',
-    text: 'text-blue-300',
+    label: "Note",
+    border: "border-l-blue-400",
+    bg: "bg-blue-500/[0.06]",
+    text: "text-blue-300",
   },
   warning: {
     icon: Warning,
-    label: 'Warning',
-    border: 'border-l-amber-400',
-    bg: 'bg-amber-500/[0.06]',
-    text: 'text-amber-300',
+    label: "Warning",
+    border: "border-l-amber-400",
+    bg: "bg-amber-500/[0.06]",
+    text: "text-amber-300",
   },
   info: {
     icon: Info,
-    label: 'Info',
-    border: 'border-l-cyan-400',
-    bg: 'bg-cyan-500/[0.06]',
-    text: 'text-cyan-300',
+    label: "Info",
+    border: "border-l-cyan-400",
+    bg: "bg-cyan-500/[0.06]",
+    text: "text-cyan-300",
   },
 };
 
@@ -140,7 +144,7 @@ function InlineCode({ text }: { text: string }) {
   return (
     <>
       {segments.map((segment, i) => {
-        if (segment.startsWith('`') && segment.endsWith('`')) {
+        if (segment.startsWith("`") && segment.endsWith("`")) {
           return (
             <code
               key={i}
@@ -161,7 +165,7 @@ function InlineText({ text }: { text: string }) {
   return (
     <>
       {segments.map((segment, i) => {
-        if (segment.startsWith('**') && segment.endsWith('**')) {
+        if (segment.startsWith("**") && segment.endsWith("**")) {
           const inner = segment.slice(2, -2);
           return (
             <strong key={i} className="font-semibold text-white">
@@ -195,7 +199,9 @@ function CalloutBlock({
     <div
       className={`rounded-r-lg border-l-[3px] ${config.border} ${config.bg} px-4 py-3.5 my-1`}
     >
-      <div className={`flex items-center gap-2 ${config.text} text-sm font-semibold mb-1.5`}>
+      <div
+        className={`flex items-center gap-2 ${config.text} text-sm font-semibold mb-1.5`}
+      >
         <Icon size={16} weight="bold" />
         <span>{title ?? config.label}</span>
       </div>
@@ -206,7 +212,13 @@ function CalloutBlock({
   );
 }
 
-function TableBlock({ headers, rows }: { headers: string[]; rows: string[][] }) {
+function TableBlock({
+  headers,
+  rows,
+}: {
+  headers: string[];
+  rows: string[][];
+}) {
   return (
     <div className="overflow-x-auto rounded-lg border border-white/10 my-1">
       <table className="w-full text-sm">
@@ -226,7 +238,7 @@ function TableBlock({ headers, rows }: { headers: string[]; rows: string[][] }) 
           {rows.map((row, rowIndex) => (
             <tr
               key={rowIndex}
-              className={`border-b border-white/[0.05] last:border-0 ${rowIndex % 2 === 1 ? 'bg-white/[0.015]' : ''}`}
+              className={`border-b border-white/[0.05] last:border-0 ${rowIndex % 2 === 1 ? "bg-white/[0.015]" : ""}`}
             >
               {row.map((cell, cellIndex) => (
                 <td key={cellIndex} className="px-4 py-2.5 text-gray-300">
@@ -253,7 +265,8 @@ function LinkCards({
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 my-1">
       {cards.map((card) => {
-        const Icon = CARD_ICON_MAP[card.icon] ?? CARD_ICON_MAP[card.page] ?? CaretRight;
+        const Icon =
+          CARD_ICON_MAP[card.icon] ?? CARD_ICON_MAP[card.page] ?? CaretRight;
         return (
           <button
             key={card.page}
@@ -285,36 +298,37 @@ function ContentBlockRenderer({
   sectionId,
   index,
   version,
-  runnableExamples,
   onNavigate,
 }: {
   block: DocsContentBlock;
   sectionId: string;
   index: number;
   version: string;
-  runnableExamples: RunnableExample[];
   onNavigate: (next: { version: string; page: string }) => void;
 }) {
   const key = `${sectionId}-block-${index}`;
 
   switch (block.kind) {
-    case 'paragraph':
+    case "paragraph":
       return (
         <p key={key} className="text-[15px] text-gray-300 leading-[1.75]">
           <InlineText text={block.text} />
         </p>
       );
 
-    case 'heading':
+    case "heading":
       return (
         <h3 key={key} className="text-base font-semibold text-white mt-4 mb-1">
           <InlineText text={block.text} />
         </h3>
       );
 
-    case 'bullets':
+    case "bullets":
       return (
-        <ul key={key} className="space-y-1.5 list-disc pl-5 text-[15px] text-gray-300 leading-[1.75]">
+        <ul
+          key={key}
+          className="space-y-1.5 list-disc pl-5 text-[15px] text-gray-300 leading-[1.75]"
+        >
           {block.items.map((item, i) => (
             <li key={`${key}-${i}`}>
               <InlineText text={item} />
@@ -323,9 +337,12 @@ function ContentBlockRenderer({
         </ul>
       );
 
-    case 'ordered-list':
+    case "ordered-list":
       return (
-        <ol key={key} className="space-y-1.5 list-decimal pl-5 text-[15px] text-gray-300 leading-[1.75]">
+        <ol
+          key={key}
+          className="space-y-1.5 list-decimal pl-5 text-[15px] text-gray-300 leading-[1.75]"
+        >
           {block.items.map((item, i) => (
             <li key={`${key}-${i}`}>
               <InlineText text={item} />
@@ -334,10 +351,10 @@ function ContentBlockRenderer({
         </ol>
       );
 
-    case 'code':
+    case "code":
       return <CodeBlock key={key} snippet={block.snippet} />;
 
-    case 'callout':
+    case "callout":
       return (
         <CalloutBlock
           key={key}
@@ -347,10 +364,10 @@ function ContentBlockRenderer({
         />
       );
 
-    case 'table':
+    case "table":
       return <TableBlock key={key} headers={block.headers} rows={block.rows} />;
 
-    case 'link-cards':
+    case "link-cards":
       return (
         <LinkCards
           key={key}
@@ -359,16 +376,6 @@ function ContentBlockRenderer({
           onNavigate={onNavigate}
         />
       );
-
-    case 'example-runner': {
-      const example = runnableExamples.find((ex) => ex.id === block.exampleId);
-      if (!example) return null;
-      return (
-        <div key={key} className="mt-6 mb-8">
-          <ExamplesRunner examples={[example]} />
-        </div>
-      );
-    }
 
     default:
       return null;
@@ -382,12 +389,10 @@ function ContentBlockRenderer({
 function SectionContent({
   section,
   version,
-  runnableExamples,
   onNavigate,
 }: {
   section: DocsContentSection;
   version: string;
-  runnableExamples: RunnableExample[];
   onNavigate: (next: { version: string; page: string }) => void;
 }) {
   if (section.content && section.content.length > 0) {
@@ -401,7 +406,6 @@ function SectionContent({
             index={i}
             version={version}
             onNavigate={onNavigate}
-            runnableExamples={runnableExamples}
           />
         ))}
       </div>
@@ -411,7 +415,10 @@ function SectionContent({
   return (
     <div className="space-y-4">
       {section.paragraphs?.map((paragraph, index) => (
-        <p key={`${section.id}-p-${index}`} className="text-[15px] text-gray-300 leading-[1.75]">
+        <p
+          key={`${section.id}-p-${index}`}
+          className="text-[15px] text-gray-300 leading-[1.75]"
+        >
           <InlineText text={paragraph} />
         </p>
       ))}
@@ -450,8 +457,8 @@ function PageNavigation({
   version,
   onNavigate,
 }: {
-  prev: Pick<DocsPage, 'id' | 'title'> | null;
-  next: Pick<DocsPage, 'id' | 'title'> | null;
+  prev: Pick<DocsPage, "id" | "title"> | null;
+  next: Pick<DocsPage, "id" | "title"> | null;
   version: string;
   onNavigate: (next: { version: string; page: string }) => void;
 }) {
@@ -518,7 +525,9 @@ function OnThisPage({
   activeSectionId: string;
 }) {
   const handleClick = useCallback((sectionId: string) => {
-    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document
+      .getElementById(sectionId)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
   if (sections.length <= 1) return null;
@@ -535,10 +544,11 @@ function OnThisPage({
             <li key={section.id}>
               <button
                 onClick={() => handleClick(section.id)}
-                className={`block w-full text-left text-xs pl-3 py-1 -ml-px border-l-2 transition-colors ${isActive
-                  ? 'border-tropicalTeal text-tropicalTeal'
-                  : 'border-transparent text-gray-500 hover:text-gray-300 hover:border-gray-600'
-                  }`}
+                className={`block w-full text-left text-xs pl-3 py-1 -ml-px border-l-2 transition-colors ${
+                  isActive
+                    ? "border-tropicalTeal text-tropicalTeal"
+                    : "border-transparent text-gray-500 hover:text-gray-300 hover:border-gray-600"
+                }`}
               >
                 {section.title}
               </button>
@@ -580,7 +590,7 @@ function findPageSectionId(
 
 function getAllPagesOrdered(
   sections: DocsNavigationSection[],
-): Array<Pick<DocsPage, 'id' | 'title'>> {
+): Array<Pick<DocsPage, "id" | "title">> {
   return sections.flatMap((s) => s.pages);
 }
 
@@ -588,33 +598,54 @@ function getAllPagesOrdered(
 // Main component
 // ---------------------------------------------------------------------------
 
-export const DocsView = ({ requestedVersion, requestedPage, onNavigate }: DocsViewProps) => {
+export const DocsView = ({
+  requestedVersion,
+  requestedPage,
+  onNavigate,
+}: DocsViewProps) => {
   const docsVersion = getDocsVersion(requestedVersion);
   const resolvedVersion = resolveDocsVersionLabel(requestedVersion);
   const availableVersions = getAvailableDocsVersions();
   const activePage = findDocsPage(docsVersion, requestedPage);
 
   const mainRef = useRef<HTMLDivElement>(null);
-  const [activeSectionId, setActiveSectionId] = useState(activePage.sections[0]?.id ?? '');
+  const [activeSectionId, setActiveSectionId] = useState(
+    activePage.sections[0]?.id ?? "",
+  );
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const sectionTitle = findPageSection(docsVersion.sections, activePage.id);
   const sectionId = findPageSectionId(docsVersion.sections, activePage.id);
 
-  const allPages = useMemo(() => getAllPagesOrdered(docsVersion.sections), [docsVersion.sections]);
+  const allPages = useMemo(
+    () => getAllPagesOrdered(docsVersion.sections),
+    [docsVersion.sections],
+  );
   const currentPageIndex = allPages.findIndex((p) => p.id === activePage.id);
   const prevPage = currentPageIndex > 0 ? allPages[currentPageIndex - 1] : null;
-  const nextPage = currentPageIndex < allPages.length - 1 ? allPages[currentPageIndex + 1] : null;
+  const nextPage =
+    currentPageIndex < allPages.length - 1
+      ? allPages[currentPageIndex + 1]
+      : null;
 
   useEffect(() => {
-    if (requestedVersion !== resolvedVersion || requestedPage !== activePage.id) {
+    if (
+      requestedVersion !== resolvedVersion ||
+      requestedPage !== activePage.id
+    ) {
       onNavigate({ version: resolvedVersion, page: activePage.id });
     }
-  }, [activePage.id, onNavigate, requestedPage, requestedVersion, resolvedVersion]);
+  }, [
+    activePage.id,
+    onNavigate,
+    requestedPage,
+    requestedVersion,
+    resolvedVersion,
+  ]);
 
   useEffect(() => {
     mainRef.current?.scrollTo({ top: 0 });
-    setActiveSectionId(activePage.sections[0]?.id ?? '');
+    setActiveSectionId(activePage.sections[0]?.id ?? "");
   }, [activePage.id, activePage.sections]);
 
   useEffect(() => {
@@ -629,7 +660,7 @@ export const DocsView = ({ requestedVersion, requestedPage, onNavigate }: DocsVi
           }
         }
       },
-      { root: main, rootMargin: '-80px 0px -60% 0px', threshold: 0 },
+      { root: main, rootMargin: "-80px 0px -60% 0px", threshold: 0 },
     );
 
     activePage.sections.forEach((section) => {
@@ -653,15 +684,20 @@ export const DocsView = ({ requestedVersion, requestedPage, onNavigate }: DocsVi
           className="lg:hidden fixed bottom-4 right-4 z-50 w-12 h-12 rounded-full bg-tropicalTeal text-jetBlack flex items-center justify-center shadow-lg shadow-tropicalTeal/20"
           aria-label="Toggle navigation"
         >
-          {mobileNavOpen ? <X size={20} weight="bold" /> : <List size={20} weight="bold" />}
+          {mobileNavOpen ? (
+            <X size={20} weight="bold" />
+          ) : (
+            <List size={20} weight="bold" />
+          )}
         </button>
 
         {/* ---- Left sidebar ---- */}
         <aside
-          className={`${mobileNavOpen
-            ? 'fixed inset-0 z-40 bg-[#0a1a1f]/95 backdrop-blur-sm'
-            : 'hidden'
-            } lg:relative lg:block border-r border-white/[0.06] overflow-y-auto`}
+          className={`${
+            mobileNavOpen
+              ? "fixed inset-0 z-40 bg-[#0a1a1f]/95 backdrop-blur-sm"
+              : "hidden"
+          } lg:relative lg:block border-r border-white/[0.06] overflow-y-auto`}
         >
           {/* Sidebar header */}
           <div className="p-2 m-3 mb-1 rounded-xl bg-gradient-to-br  to-transparent ">
@@ -670,14 +706,20 @@ export const DocsView = ({ requestedVersion, requestedPage, onNavigate }: DocsVi
                 <Dock size={18} className="text-tropicalTeal" />
               </div>
               <div>
-                <div className="text-sm font-bold text-white tracking-tight leading-tight">{PACKAGE_NAME}</div>
-                <div className="text-[11px] text-gray-500 mt-0.5">Documentation</div>
+                <div className="text-sm font-bold text-white tracking-tight leading-tight">
+                  {PACKAGE_NAME}
+                </div>
+                <div className="text-[11px] text-gray-500 mt-0.5">
+                  Documentation
+                </div>
               </div>
             </div>
             <div className="mt-3">
               <Select
                 value={resolvedVersion}
-                onValueChange={(value) => onNavigate({ version: value, page: activePage.id })}
+                onValueChange={(value) =>
+                  onNavigate({ version: value, page: activePage.id })
+                }
               >
                 <SelectTrigger className="w-full h-7 rounded-md border border-white/[0.06] bg-black/20 hover:bg-black/40 px-2.5 text-[11px] font-medium text-gray-400 focus:outline-none focus:ring-0 focus:border-white/[0.12] focus-visible:ring-0 cursor-pointer data-[state=open]:bg-black/40 transition-colors shadow-none">
                   <SelectValue placeholder="Select version" />
@@ -703,7 +745,13 @@ export const DocsView = ({ requestedVersion, requestedPage, onNavigate }: DocsVi
               return (
                 <div key={section.id}>
                   <div className="px-2 mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-                    {SectionIcon && <SectionIcon size={13} weight="bold" className="opacity-70" />}
+                    {SectionIcon && (
+                      <SectionIcon
+                        size={13}
+                        weight="bold"
+                        className="opacity-70"
+                      />
+                    )}
                     {section.title}
                   </div>
                   <ul className="space-y-0.5">
@@ -713,12 +761,16 @@ export const DocsView = ({ requestedVersion, requestedPage, onNavigate }: DocsVi
                         <li key={page.id}>
                           <button
                             onClick={() =>
-                              onNavigate({ version: resolvedVersion, page: page.id })
+                              onNavigate({
+                                version: resolvedVersion,
+                                page: page.id,
+                              })
                             }
-                            className={`w-full text-left px-3 pt-1.5 pb-1 rounded-md text-[13px] transition-colors ${isActive
-                              ? 'bg-tropicalTeal/[0.12] text-tropicalTeal font-medium'
-                              : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04]'
-                              }`}
+                            className={`w-full text-left px-3 pt-1.5 pb-1 rounded-md text-[13px] transition-colors ${
+                              isActive
+                                ? "bg-tropicalTeal/[0.12] text-tropicalTeal font-medium"
+                                : "text-gray-400 hover:text-gray-200 hover:bg-white/[0.04]"
+                            }`}
                           >
                             {page.title}
                           </button>
@@ -739,10 +791,14 @@ export const DocsView = ({ requestedVersion, requestedPage, onNavigate }: DocsVi
             <header className="mb-10">
               {sectionTitle && (
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-tropicalTeal/80 uppercase tracking-widest mb-3">
-                  {sectionId && SECTION_ICON_MAP[sectionId] && (() => {
-                    const SIcon = SECTION_ICON_MAP[sectionId];
-                    return <SIcon size={13} weight="bold" className="opacity-70" />;
-                  })()}
+                  {sectionId &&
+                    SECTION_ICON_MAP[sectionId] &&
+                    (() => {
+                      const SIcon = SECTION_ICON_MAP[sectionId];
+                      return (
+                        <SIcon size={13} weight="bold" className="opacity-70" />
+                      );
+                    })()}
                   {sectionTitle}
                 </div>
               )}
@@ -759,7 +815,7 @@ export const DocsView = ({ requestedVersion, requestedPage, onNavigate }: DocsVi
               <section
                 key={section.id}
                 id={section.id}
-                className={`scroll-mt-8 ${sectionIndex > 0 ? 'pt-10 mt-10 border-t border-white/[0.05]' : ''}`}
+                className={`scroll-mt-8 ${sectionIndex > 0 ? "pt-10 mt-10 border-t border-white/[0.05]" : ""}`}
               >
                 <h2 className="text-lg font-semibold text-white mb-4 tracking-tight">
                   {section.title}
@@ -767,7 +823,6 @@ export const DocsView = ({ requestedVersion, requestedPage, onNavigate }: DocsVi
                 <SectionContent
                   section={section}
                   version={resolvedVersion}
-                  runnableExamples={docsVersion.runnableExamples}
                   onNavigate={onNavigate}
                 />
               </section>
@@ -785,7 +840,10 @@ export const DocsView = ({ requestedVersion, requestedPage, onNavigate }: DocsVi
 
         {/* ---- Right sidebar: on this page ---- */}
         <aside className="hidden xl:block overflow-y-auto py-12 pr-4">
-          <OnThisPage sections={activePage.sections} activeSectionId={activeSectionId} />
+          <OnThisPage
+            sections={activePage.sections}
+            activeSectionId={activeSectionId}
+          />
         </aside>
       </div>
     </div>

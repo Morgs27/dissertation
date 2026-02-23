@@ -1,0 +1,15 @@
+<canvas id="c"></canvas>
+<script type="module">
+    import { Simulation } from 'https://esm.sh/@websimbench/agentyx@0.1.1?bundle';
+
+    const sim = new Simulation({
+        canvas: document.getElementById('c'),
+        agentScript: 'moveForward(2); turn(0.1); borderWrapping();',
+        options: { agents: 1000 }
+    });
+
+    (async function tick() {
+        await sim.runFrame('JavaScript', {}, 'cpu');
+        requestAnimationFrame(tick);
+    })();
+</script>

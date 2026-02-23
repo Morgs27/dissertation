@@ -1,4 +1,6 @@
-set shell := ["bash", "-c"]
+# ----------- 
+# Websimbench
+# -----------
 
 # Run the development server
 dev:
@@ -8,9 +10,9 @@ dev:
 build:
 	npm run build
 
-# Run all tests
-test:
-	npm run test:app
+# -----------
+# Agentyx
+# -----------
 
 # Build and typecheck the agentyx package specifically
 build-agentyx:
@@ -23,3 +25,6 @@ test-agentyx:
 # Publish the agentyx package to NPM (requires auth)
 publish-agentyx: build-agentyx
 	cd packages/agentyx && npm publish --access public
+
+npm-auth: 
+  npm login

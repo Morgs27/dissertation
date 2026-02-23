@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        body {
+            margin: 0;
+            background: #111;
+            color: white;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        #controls {
+            padding: 20px;
+            background: #222;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        canvas {
+            flex: 1;
+            display: block;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="controls">
+        <div class="control-group">
+            <label>Agent Color</label>
+            <input type="color" id="agent-color" value="#00FFFF">
+        </div>
+        <div class="control-group">
+            <label>Agent Size</label>
+            <input type="range" id="agent-size" min="1" max="10" step="0.5" value="2">
+        </div>
+        <div class="control-group">
+            <label>Background Color</label>
+            <input type="color" id="bg-color" value="#000000">
+        </div>
+    </div>
+    <canvas id="c"></canvas>
+    <script type="module">
+        import { Simulation } from 'https://esm.sh/@websimbench/agentyx@0.1.1?bundle';
+
+        const canvas = document.getElementById('c');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight - document.getElementById('controls').offsetHeight;
+
+        const sim = new Simulation({
+            canvas,
+            agentScript: 'moveForward(2); turn(0.05); borderWrapping();',
+            options: { agents: 2000 },
+            appearance: {
+                agentColor: '#00FFFF',
+                backgroundColor: '#000000',
+                agentSize: 2,
+                showTrails: true,
+                trailColor: '#00FFFF'
+            }
+        });
+
+        document.getElementById('agent-color').addEventListener('input', (e) => {
+            sim.updateAppearance({
+                agentColor: e.target.value,
+                speciesColors: [e.target.value],
+                trailColor: e.target.value
+            });
+        });
+        document.getElementById('agent-size').addEventListener('input', (e) => {
+            sim.updateAppearance({ agentSize: parseFloat(e.target.value) });
+        });
+        document.getElementById('bg-color').addEventListener('input', (e) => {
+            sim.updateAppearance({ backgroundColor: e.target.value });
+        });
+
+        (async function tick() {
+            await sim.runFrame('JavaScript', {}, 'cpu');
+            requestAnimationFrame(tick);
+        })();
+    </script>
+</body>
+
+</html>

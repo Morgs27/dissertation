@@ -1,6 +1,6 @@
 {
   "name": "@websimbench/agentyx",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Agent-based 2D simulation engine with DSL compiler and multi-backend compute execution",
   "type": "module",
   "author": "Morgan Daniel",

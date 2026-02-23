@@ -7,12 +7,16 @@
  * simulations in the browser.
  */
 
-import { Compiler } from './compiler/compiler';
-import { ComputeEngine } from './compute/compute';
-import Logger from './helpers/logger';
-import { PerformanceMonitor } from './performance';
-import { Renderer } from './renderer';
-import { SimulationTracker, type SimulationTrackingFilter, type SimulationTrackingReport } from './tracking';
+import { Compiler } from "./compiler/compiler";
+import { ComputeEngine } from "./compute/compute";
+import Logger from "./helpers/logger";
+import { PerformanceMonitor } from "./performance";
+import { Renderer } from "./renderer";
+import {
+  SimulationTracker,
+  type SimulationTrackingFilter,
+  type SimulationTrackingReport,
+} from "./tracking";
 import type {
   Agent,
   CompilationResult,
@@ -25,8 +29,8 @@ import type {
   SimulationConstructor,
   SimulationFrameResult,
   SimulationSource,
-} from './types';
-import GPU from './helpers/gpu';
+} from "./types";
+import GPU from "./helpers/gpu";
 
 /** Maximum number of agents a single simulation instance may create. */
 export const MAX_AGENTS = 10_000_000;
@@ -38,16 +42,16 @@ const DEFAULT_CANVAS_HEIGHT = 600;
 
 /** @internal Default visual appearance applied when no overrides are supplied. */
 const DEFAULT_APPEARANCE: SimulationAppearance = {
-  agentColor: '#00FFFF',
-  backgroundColor: '#000000',
+  agentColor: "#00FFFF",
+  backgroundColor: "#000000",
   agentSize: 3,
-  agentShape: 'circle',
+  agentShape: "circle",
   showTrails: true,
   trailOpacity: 1,
-  trailColor: '#50FFFF',
-  speciesColors: ['#00FFFF'],
-  obstacleColor: '#FF0000',
-  obstacleBorderColor: '#FF0000',
+  trailColor: "#50FFFF",
+  speciesColors: ["#00FFFF"],
+  obstacleColor: "#FF0000",
+  obstacleBorderColor: "#FF0000",
   obstacleOpacity: 0.2,
 };
 
@@ -84,8 +88,8 @@ const normalizeSource = (config: SimulationConstructor): SimulationSource => {
   }
 
   return {
-    kind: 'dsl',
-    code: config.agentScript ?? '',
+    kind: "dsl",
+    code: config.agentScript ?? "",
   };
 };
 
@@ -96,18 +100,20 @@ const normalizeSource = (config: SimulationConstructor): SimulationSource => {
  * @returns A compilation result compatible with the compute engine.
  * @internal
  */
-const compileFromCustomSource = (source: CustomCodeSource): CompilationResult => {
+const compileFromCustomSource = (
+  source: CustomCodeSource,
+): CompilationResult => {
   const jsCode =
-    typeof source.js === 'function'
-      ? source.js.toString()
-      : source.js ?? '';
+    typeof source.js === "function" ? source.js.toString() : (source.js ?? "");
 
   return {
     requiredInputs: source.requiredInputs ? [...source.requiredInputs] : [],
-    definedInputs: source.definedInputs ? source.definedInputs.map((input) => ({ ...input })) : [],
-    wgslCode: source.wgsl ?? '',
+    definedInputs: source.definedInputs
+      ? source.definedInputs.map((input) => ({ ...input }))
+      : [],
+    wgslCode: source.wgsl ?? "",
     jsCode,
-    WASMCode: source.wasmWat ?? '',
+    WASMCode: source.wasmWat ?? "",
     speciesCount: source.speciesCount,
     numRandomCalls: source.numRandomCalls ?? 0,
   };
@@ -123,26 +129,31 @@ const compileFromCustomSource = (source: CustomCodeSource): CompilationResult =>
  */
 const methodRequiresCode = (
   method: Method,
-  compilationResult: CompilationResult
+  compilationResult: CompilationResult,
 ): { available: boolean; reason?: string } => {
-  if ((method === 'JavaScript' || method === 'WebWorkers') && !compilationResult.jsCode.trim()) {
+  if (
+    (method === "JavaScript" || method === "WebWorkers") &&
+    !compilationResult.jsCode.trim()
+  ) {
     return {
       available: false,
       reason: `Method ${method} requested but no JavaScript code is available for the simulation source.`,
     };
   }
 
-  if (method === 'WebAssembly' && !compilationResult.WASMCode.trim()) {
+  if (method === "WebAssembly" && !compilationResult.WASMCode.trim()) {
     return {
       available: false,
-      reason: 'Method WebAssembly requested but no WAT/WASM code is available for the simulation source.',
+      reason:
+        "Method WebAssembly requested but no WAT/WASM code is available for the simulation source.",
     };
   }
 
-  if (method === 'WebGPU' && !compilationResult.wgslCode.trim()) {
+  if (method === "WebGPU" && !compilationResult.wgslCode.trim()) {
     return {
       available: false,
-      reason: 'Method WebGPU requested but no WGSL code is available for the simulation source.',
+      reason:
+        "Method WebGPU requested but no WGSL code is available for the simulation source.",
     };
   }
 
@@ -175,7 +186,7 @@ const methodRequiresCode = (
  * ```
  */
 export class Simulation {
-  private readonly logger = new Logger('Simulation', 'blue');
+  private readonly logger = new Logger("Simulation", "blue");
   private readonly performanceMonitor: PerformanceMonitor;
   private readonly compiler: Compiler;
   private readonly computeEngine: ComputeEngine;
@@ -225,7 +236,8 @@ export class Simulation {
     }
 
     this.width = config.canvas?.width ?? options.width ?? DEFAULT_CANVAS_WIDTH;
-    this.height = config.canvas?.height ?? options.height ?? DEFAULT_CANVAS_HEIGHT;
+    this.height =
+      config.canvas?.height ?? options.height ?? DEFAULT_CANVAS_HEIGHT;
 
     this.appearance = {
       ...DEFAULT_APPEARANCE,
@@ -238,13 +250,18 @@ export class Simulation {
     this.source = normalizeSource(config);
 
     const compilationResult =
-      this.source.kind === 'dsl'
+      this.source.kind === "dsl"
         ? this.compiler.compileAgentCode(this.source.code)
         : compileFromCustomSource(this.source.code);
 
     this.compilationResult = compilationResult;
 
-    this.computeEngine = new ComputeEngine(compilationResult, this.performanceMonitor, options.agents, options.workers);
+    this.computeEngine = new ComputeEngine(
+      compilationResult,
+      this.performanceMonitor,
+      options.agents,
+      options.workers,
+    );
 
     if (config.canvas) {
       config.canvas.width = this.width;
@@ -253,10 +270,18 @@ export class Simulation {
         config.gpuCanvas.width = this.width;
         config.gpuCanvas.height = this.height;
       }
-      this.renderer = new Renderer(config.canvas, config.gpuCanvas ?? null, this.appearance);
+      this.renderer = new Renderer(
+        config.canvas,
+        config.gpuCanvas ?? null,
+        this.appearance,
+      );
     }
 
-    this.agents = this.createInitialAgents(options.agents, compilationResult.speciesCount ?? 1, options.seed);
+    this.agents = this.createInitialAgents(
+      options.agents,
+      compilationResult.speciesCount ?? 1,
+      options.seed,
+    );
 
     this.tracker = new SimulationTracker({
       source: this.source,
@@ -278,8 +303,13 @@ export class Simulation {
    * @param seed - Optional PRNG seed for reproducible placement.
    * @returns Array of initialised agents.
    */
-  private createInitialAgents(count: number, speciesCount: number, seed?: number): Agent[] {
-    const random = typeof seed === 'number' ? createSeededRandom(seed) : Math.random;
+  private createInitialAgents(
+    count: number,
+    speciesCount: number,
+    seed?: number,
+  ): Agent[] {
+    const random =
+      typeof seed === "number" ? createSeededRandom(seed) : Math.random;
 
     return Array.from({ length: count }, (_, index) => ({
       id: index,
@@ -351,12 +381,14 @@ export class Simulation {
    */
   private buildInputs(frameInputValues: InputValues): InputValues {
     if (!this.compilationResult) {
-      throw new Error('Simulation compilation result is unavailable.');
+      throw new Error("Simulation compilation result is unavailable.");
     }
 
     const { width, height } = this.resolveDimensions();
-    const needsTrailMap = this.compilationResult.requiredInputs.includes('trailMap');
-    const needsRandomValues = this.compilationResult.requiredInputs.includes('randomValues');
+    const needsTrailMap =
+      this.compilationResult.requiredInputs.includes("trailMap");
+    const needsRandomValues =
+      this.compilationResult.requiredInputs.includes("randomValues");
 
     if (needsTrailMap) {
       this.ensureTrailMap(width, height);
@@ -386,10 +418,14 @@ export class Simulation {
       mergedInputs.randomValues = this.randomValues;
     }
 
-    const needsObstacles = this.compilationResult.requiredInputs.includes('obstacles');
+    const needsObstacles =
+      this.compilationResult.requiredInputs.includes("obstacles");
     if (needsObstacles) {
-      mergedInputs.obstacles = (mergedInputs.obstacles as Obstacle[] | undefined) ?? this.obstacles;
-      mergedInputs.obstacleCount = (mergedInputs.obstacles as Obstacle[]).length;
+      mergedInputs.obstacles =
+        (mergedInputs.obstacles as Obstacle[] | undefined) ?? this.obstacles;
+      mergedInputs.obstacleCount = (
+        mergedInputs.obstacles as Obstacle[]
+      ).length;
     }
 
     this.compilationResult.definedInputs.forEach((input) => {
@@ -398,9 +434,11 @@ export class Simulation {
       }
     });
 
-    const missingInputs = this.compilationResult.requiredInputs.filter((name) => !(name in mergedInputs));
+    const missingInputs = this.compilationResult.requiredInputs.filter(
+      (name) => !(name in mergedInputs),
+    );
     if (missingInputs.length > 0) {
-      const message = `Missing required input values: ${missingInputs.join(', ')}`;
+      const message = `Missing required input values: ${missingInputs.join(", ")}`;
       this.logger.error(message);
       throw new Error(message);
     }
@@ -418,7 +456,7 @@ export class Simulation {
    * @throws {Error} If WebGPU is not available or the adapter cannot be obtained.
    */
   public async initGPU(): Promise<void> {
-    const gpuHelper = new GPU('SimulationGPU');
+    const gpuHelper = new GPU("SimulationGPU");
     const gpuDevice = (await gpuHelper.getDevice()) as GPUDevice;
 
     this.computeEngine.initGPU(gpuDevice);
@@ -506,10 +544,10 @@ export class Simulation {
   public async runFrame(
     method: Method,
     inputValues: InputValues = {},
-    renderMode: RenderMode = 'cpu'
+    renderMode: RenderMode = "cpu",
   ): Promise<SimulationFrameResult> {
     if (!this.compilationResult) {
-      throw new Error('Simulation cannot run without compilation results.');
+      throw new Error("Simulation cannot run without compilation results.");
     }
 
     if (this.frameInProgress) {
@@ -526,15 +564,18 @@ export class Simulation {
       throw new Error(availability.reason);
     }
 
-    if ((renderMode === 'cpu' || renderMode === 'gpu') && !this.renderer) {
+    if ((renderMode === "cpu" || renderMode === "gpu") && !this.renderer) {
       throw new Error(
-        `Render mode "${renderMode}" requires a canvas renderer. Use render mode "none" for headless execution.`
+        `Render mode "${renderMode}" requires a canvas renderer. Use render mode "none" for headless execution.`,
       );
     }
 
     const forceReadbackForTracking =
-      method === 'WebGPU' && renderMode === 'gpu' && this.tracker.capturesAgentStates();
-    const computeRenderMode = renderMode === 'gpu' && !forceReadbackForTracking ? 'gpu' : 'cpu';
+      method === "WebGPU" &&
+      renderMode === "gpu" &&
+      this.tracker.capturesAgentStates();
+    const computeRenderMode =
+      renderMode === "gpu" && !forceReadbackForTracking ? "gpu" : "cpu";
     const mergedInputs = this.buildInputs(inputValues);
 
     this.frameInProgress = true;
@@ -544,22 +585,30 @@ export class Simulation {
         method,
         this.agents,
         mergedInputs,
-        computeRenderMode
+        computeRenderMode,
       );
 
       this.agents = nextAgents;
 
       let renderTime = 0;
 
-      if (renderMode !== 'none' && this.renderer) {
+      if (renderMode !== "none" && this.renderer) {
         const renderStart = performance.now();
 
-        if (renderMode === 'gpu') {
-          await this.renderer.renderAgentsGPU(nextAgents, this.computeEngine.gpuRenderState, this.trailMap ?? undefined);
+        if (renderMode === "gpu") {
+          await this.renderer.renderAgentsGPU(
+            nextAgents,
+            this.computeEngine.gpuRenderState,
+            this.trailMap ?? undefined,
+          );
         } else {
           this.renderer.renderBackground();
           if (this.trailMap && this.renderer.getAppearance().showTrails) {
-            this.renderer.renderTrails(this.trailMap, this.renderer.canvas.width, this.renderer.canvas.height);
+            this.renderer.renderTrails(
+              this.trailMap,
+              this.renderer.canvas.width,
+              this.renderer.canvas.height,
+            );
           }
           this.renderer.renderAgents(nextAgents);
         }
@@ -568,7 +617,8 @@ export class Simulation {
       }
 
       const frames = this.performanceMonitor.frames;
-      const lastFrame = frames.length > 0 ? frames[frames.length - 1] : undefined;
+      const lastFrame =
+        frames.length > 0 ? frames[frames.length - 1] : undefined;
 
       if (lastFrame) {
         lastFrame.renderTime = renderTime;
@@ -617,7 +667,9 @@ export class Simulation {
    * @param filter - Optional filter to restrict the frame range and inclusions.
    * @returns A deep-cloned tracking report.
    */
-  public getTrackingReport(filter?: SimulationTrackingFilter): SimulationTrackingReport {
+  public getTrackingReport(
+    filter?: SimulationTrackingFilter,
+  ): SimulationTrackingReport {
     return this.tracker.getReport(filter);
   }
 
@@ -629,6 +681,21 @@ export class Simulation {
    */
   public exportTrackingReport(filter?: SimulationTrackingFilter): string {
     return JSON.stringify(this.getTrackingReport(filter), null, 2);
+  }
+
+  /**
+   * Export the tracking report as a Blob containing a JSON string.
+   *
+   * This is more memory-efficient than `exportTrackingReport` for very large
+   * reports, as it avoids the JavaScript engine's maximum string length limit.
+   *
+   * @param filter - Optional filter to restrict the frame range and inclusions.
+   * @returns A Blob containing the pretty-printed JSON tracking report.
+   */
+  public exportTrackingReportBlob(filter?: SimulationTrackingFilter): Blob {
+    const report = this.getTrackingReport(filter);
+    const json = JSON.stringify(report, null, 2);
+    return new Blob([json], { type: "application/json" });
   }
 
   /**

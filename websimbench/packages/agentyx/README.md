@@ -12,7 +12,7 @@ npm i @websimbench/agentyx
 
 ## Versioned Documentation
 
-The documentation is hosted in WebSimBench. 
+The documentation is hosted in WebSimBench.
 
 - Latest docs: [https://morgs27.github.io/dissertation/#/docs/latest/overview](https://morgs27.github.io/dissertation/#/docs/latest/overview)
 
@@ -31,9 +31,9 @@ The documentation is hosted in WebSimBench.
 ## Quick Start
 
 ```ts
-import { Simulation } from '@websimbench/agentyx';
+import { Simulation } from "@websimbench/agentyx";
 
-const canvas = document.getElementById('my-canvas') as HTMLCanvasElement;
+const canvas = document.getElementById("my-canvas") as HTMLCanvasElement;
 
 const simulation = new Simulation({
   canvas,
@@ -41,7 +41,7 @@ const simulation = new Simulation({
   // CPU and GPU render modes at runtime:
   // gpuCanvas: document.getElementById('my-gpu-canvas') as HTMLCanvasElement,
   source: {
-    kind: 'dsl',
+    kind: "dsl",
     code: `
       input speed = 2;
       input turnAngle = 0.5;
@@ -53,14 +53,14 @@ const simulation = new Simulation({
   },
   options: { agents: 5000 },
   appearance: {
-    agentColor: '#00FFFF',
-    backgroundColor: '#000000',
+    agentColor: "#00FFFF",
+    backgroundColor: "#000000",
     agentSize: 2,
-    agentShape: 'circle',
+    agentShape: "circle",
     showTrails: false,
-    trailColor: '#50FFFF',
-    obstacleColor: '#FF0000',
-    obstacleBorderColor: '#FF0000',
+    trailColor: "#50FFFF",
+    obstacleColor: "#FF0000",
+    obstacleBorderColor: "#FF0000",
     obstacleOpacity: 0.2,
   },
 });
@@ -68,7 +68,7 @@ const simulation = new Simulation({
 await simulation.initGPU();
 
 async function runLoop() {
-  await simulation.runFrame('WebGPU', { speed: 3, turnAngle: 0.2 }, 'gpu');
+  await simulation.runFrame("WebGPU", { speed: 3, turnAngle: 0.2 }, "gpu");
   requestAnimationFrame(runLoop);
 }
 

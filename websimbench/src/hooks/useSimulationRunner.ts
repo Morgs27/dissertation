@@ -1,15 +1,32 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { Logger, Method, Obstacle, RenderMode, Simulation } from '@websimbench/agentyx';
-import { SimulationAppearanceOptions } from './useSimulationOptions';
+import { useState, useRef, useEffect, useCallback } from "react";
+import {
+  Logger,
+  Method,
+  Obstacle,
+  RenderMode,
+  Simulation,
+} from "@websimbench/agentyx";
+import { SimulationAppearanceOptions } from "./useSimulationOptions";
 
+/**
+ * React hook that manages the lifecycle, rendering, and state of a 2D agent simulation.
+ * It handles the WebGPU/CPU context initialization, real-time performance tracking (FPS),
+ * and dynamic appearance updates.
+ *
+ * @param code - The raw agent text code to be compiled and run by the simulation.
+ * @param inputs - A record of user-defined input values to feed into the simulation.
+ * @param options - Visual appearance options like colors, sizes, and trails.
+ * @param obstacles - An array of obstacles defining boundaries and static objects in the environment.
+ * @returns An object containing simulation state controls and references to canvas elements.
+ */
 export function useSimulationRunner(
   code: string,
   inputs: Record<string, number>,
   options: SimulationAppearanceOptions,
-  obstacles: Obstacle[] = []
+  obstacles: Obstacle[] = [],
 ) {
-  const [method, setMethod] = useState<Method>('WebGPU');
-  const [renderMode, setRenderMode] = useState<RenderMode>('gpu');
+  const [method, setMethod] = useState<Method>("WebGPU");
+  const [renderMode, setRenderMode] = useState<RenderMode>("gpu");
   const [fps, setFps] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [hasStartedSimulation, setHasStartedSimulation] = useState(false);
@@ -19,7 +36,10 @@ export function useSimulationRunner(
   const simulationRef = useRef<Simulation | null>(null);
   const animationFrameRef = useRef<number>();
   const isRunningRef = useRef<boolean>(false);
-  const inputsRef = useRef<Record<string, number | Obstacle[]>>({ ...inputs, obstacles });
+  const inputsRef = useRef<Record<string, number | Obstacle[]>>({
+    ...inputs,
+    obstacles,
+  });
   const lastFrameTimeRef = useRef<number>(0);
   const frameTimesRef = useRef<number[]>([]);
 
@@ -28,7 +48,8 @@ export function useSimulationRunner(
       // Stop
       isRunningRef.current = false;
       setIsRunning(false);
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+      if (animationFrameRef.current)
+        cancelAnimationFrame(animationFrameRef.current);
 
       // Print performance summary before destroying
       if (simulationRef.current) {
@@ -98,16 +119,23 @@ export function useSimulationRunner(
         try {
           // Use inputsRef.current to get the latest input values
           const currentInputs = { ...inputsRef.current };
-          await simulationRef.current.runFrame(method, currentInputs, renderMode);
+          await simulationRef.current.runFrame(
+            method,
+            currentInputs,
+            renderMode,
+          );
 
           const now = performance.now();
           if (lastFrameTimeRef.current > 0) {
             const frameDelta = now - lastFrameTimeRef.current;
             frameTimesRef.current.push(frameDelta);
-            if (frameTimesRef.current.length > 60) frameTimesRef.current.shift();
+            if (frameTimesRef.current.length > 60)
+              frameTimesRef.current.shift();
 
             if (frameTimesRef.current.length > 0) {
-              const avgFrameTime = frameTimesRef.current.reduce((a, b) => a + b, 0) / frameTimesRef.current.length;
+              const avgFrameTime =
+                frameTimesRef.current.reduce((a, b) => a + b, 0) /
+                frameTimesRef.current.length;
               const calculatedFps = avgFrameTime > 0 ? 1000 / avgFrameTime : 0;
               setFps(Math.min(Math.round(calculatedFps), 999));
             }
@@ -122,12 +150,11 @@ export function useSimulationRunner(
       };
 
       loop();
-
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       // Log to both console and UI Logger
       console.error("Simulation init error", e);
-      const logger = new Logger('SimulationRunner', 'red');
+      const logger = new Logger("SimulationRunner", "red");
       logger.error(`Simulation init error: ${message}`);
 
       isRunningRef.current = false;
@@ -161,7 +188,8 @@ export function useSimulationRunner(
 
   useEffect(() => {
     return () => {
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+      if (animationFrameRef.current)
+        cancelAnimationFrame(animationFrameRef.current);
       if (simulationRef.current) {
         simulationRef.current.getPerformanceMonitor().printSummary();
         simulationRef.current.destroy();
@@ -179,6 +207,6 @@ export function useSimulationRunner(
     hasStartedSimulation,
     canvasRef,
     gpuCanvasRef,
-    handleRun
+    handleRun,
   };
 }

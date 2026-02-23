@@ -1,0 +1,155 @@
+/* Navbar */
+.navbar {
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+  border-bottom: 0.1rem solid rgb(61, 94, 89);
+  background-color: #000000;
+  z-index: 50;
+}
+
+.navbar-left {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.navbar-brand-text {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: white;
+  letter-spacing: -0.025em;
+}
+
+.navbar-brand-text .text-tropicalTeal {
+  color: #00ffd5;
+}
+
+.navbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  transition: all 200ms;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #9ca3af;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.nav-btn:hover {
+  color: white;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.nav-btn.active {
+  background-color: rgba(0, 255, 213, 0.1);
+  color: #00ffd5;
+}
+
+.navbar-version {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #9ca3af;
+}
+
+.navbar-version-badge {
+  background-color: rgba(255, 255, 255, 0.04);
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+/* Agentyx docs code block syntax highlighting */
+.agentyx-code {
+  color: #c9d8e0;
+  font-family:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+.agentyx-code .token.comment,
+.agentyx-code .token.prolog,
+.agentyx-code .token.doctype,
+.agentyx-code .token.cdata {
+  color: #546a7b;
+  font-style: italic;
+}
+
+.agentyx-code .token.punctuation {
+  color: #7e97a7;
+}
+
+.agentyx-code .token.keyword,
+.agentyx-code .token.tag {
+  color: #6be5c8;
+}
+
+.agentyx-code .token.boolean,
+.agentyx-code .token.number,
+.agentyx-code .token.constant {
+  color: #f0b86e;
+}
+
+.agentyx-code .token.string,
+.agentyx-code .token.char,
+.agentyx-code .token.attr-value {
+  color: #a8d8a0;
+}
+
+.agentyx-code .token.function {
+  color: #82c4f0;
+}
+
+.agentyx-code .token.class-name {
+  color: #e0c497;
+}
+
+.agentyx-code .token.operator {
+  color: #9bb8c9;
+}
+
+.agentyx-code .token.property {
+  color: #c9d8e0;
+}
+
+.agentyx-code .token.attr-name {
+  color: #6be5c8;
+}
+
+.agentyx-code .token.selector,
+.agentyx-code .token.important,
+.agentyx-code .token.atrule {
+  color: #6be5c8;
+}
+
+.agentyx-code .token.regex,
+.agentyx-code .token.variable {
+  color: #f0b86e;
+}
+
+.agentyx-code .token.inserted {
+  color: #a8d8a0;
+}
+
+.agentyx-code .token.deleted {
+  color: #f08080;
+}

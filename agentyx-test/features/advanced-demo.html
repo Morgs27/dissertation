@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        body {
+            margin: 0;
+            background: #000;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-family: sans-serif;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+
+        h1 {
+            margin: 0 0 10px 0;
+            font-size: 1.2rem;
+            color: #4af2e0;
+        }
+
+        p {
+            margin: 0;
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="overlay">
+        <h1>Multi-Species Trails</h1>
+        <p>100,000 Agents • WebGPU Compute</p>
+    </div>
+    <canvas id="c"></canvas>
+    <script type="module">
+        import { Simulation } from 'https://esm.sh/@websimbench/agentyx@0.1.1?bundle';
+
+        const canvas = document.getElementById('c');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const dsl = `
+            species(3);
+            input sensorAngle = 0.4;
+            input sensorDist = 15;
+            input turnAngle = 0.5;
+            input speed = 1.5;
+
+            enableTrails(1.0, 0.05);
+
+            var sL = sense(inputs.sensorAngle, inputs.sensorDist);
+            var sF = sense(0, inputs.sensorDist);
+            var sR = sense(-inputs.sensorAngle, inputs.sensorDist);
+
+            // Follow trails
+            if (sF < sL && sF < sR) {
+              if (random() < 0.5) turn(inputs.turnAngle);
+              else turn(-inputs.turnAngle);
+            } else if (sL > sR) {
+              turn(inputs.turnAngle);
+            } else if (sR > sL) {
+              turn(-inputs.turnAngle);
+            }
+
+            // Differentiate species speed slightly
+            if (species == 0) {
+                moveForward(inputs.speed * 1.2);
+            } else if (species == 1) {
+                moveForward(inputs.speed * 0.8);
+            } else {
+                moveForward(inputs.speed);
+            }
+
+            borderWrapping();
+            deposit(1.5);
+        `;
+
+        const sim = new Simulation({
+            canvas,
+            source: { kind: 'dsl', code: dsl },
+            options: { agents: 100000 },
+            appearance: {
+                showTrails: true,
+                speciesColors: ['#00FFFF', '#FF4466', '#44FF66'],
+                backgroundColor: '#000000',
+                agentSize: 1
+            }
+        });
+
+        await sim.initGPU();
+
+        (async function tick() {
+            await sim.runFrame('WebGPU', {}, 'gpu');
+            requestAnimationFrame(tick);
+        })();
+    </script>
+</body>
+
+</html>

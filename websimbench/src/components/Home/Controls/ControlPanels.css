@@ -1,0 +1,194 @@
+/* Control Panels & Forms */
+.control-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.control-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.control-item {
+  flex: 1;
+  min-width: 0;
+}
+
+.control-box {
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.control-box-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+}
+
+.control-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.control-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.control-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.control-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9ca3af;
+}
+
+.control-input {
+  height: 2.25rem !important;
+  background-color: rgba(0, 0, 0, 0.4) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  color: #00ffd5 !important;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace !important;
+  font-size: 0.75rem !important;
+  padding: 0 0.75rem !important;
+  border-radius: 0.375rem !important;
+}
+
+.control-input:focus {
+  box-shadow: 0 0 0 1px rgba(0, 255, 213, 0.5) !important;
+  border-color: rgba(0, 255, 213, 0.5) !important;
+  outline: none !important;
+}
+
+.control-input-agent {
+  height: 2.25rem !important;
+  background-color: rgba(0, 0, 0, 0.4) !important;
+  border: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  border-radius: 0.375rem !important;
+  padding: 0 0.5rem !important;
+}
+
+.control-input-agent:focus-within {
+  box-shadow: 0 0 0 1px rgba(0, 255, 213, 0.5) !important;
+}
+
+.control-input-agent-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #9ca3af;
+  margin-right: 0.5rem;
+  flex-shrink: 0;
+}
+
+.control-input-agent-field {
+  background-color: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  height: 100% !important;
+  font-size: 0.75rem !important;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace !important;
+  color: #00ffd5 !important;
+  width: 100% !important;
+  text-align: right !important;
+}
+
+.control-input-agent-field:focus {
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.control-select-trigger {
+  height: 2.25rem !important;
+  background-color: rgba(0, 0, 0, 0.4) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  color: #00ffd5 !important;
+  font-size: 0.75rem !important;
+  padding: 0 0.75rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  border-radius: 0.375rem !important;
+}
+
+.control-select-trigger:focus {
+  box-shadow: 0 0 0 1px rgba(0, 255, 213, 0.5) !important;
+}
+
+.control-select-content {
+  background-color: #1a2e33 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 0.375rem !important;
+  padding: 0.25rem !important;
+  color: white !important;
+}
+
+.control-select-item {
+  color: #e5e7eb !important;
+  font-size: 0.75rem !important;
+  padding: 0.375rem 2rem 0.375rem 0.5rem !important;
+  border-radius: 0.125rem !important;
+  cursor: pointer !important;
+  user-select: none !important;
+}
+
+.control-select-item:hover,
+.control-select-item:focus {
+  background-color: rgba(0, 0, 0, 0.1) !important;
+  border: none;
+  outline: none;
+}
+
+.nav-dropdown-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.nav-dropdown-option-icon {
+  display: inline-flex;
+  align-items: center;
+  opacity: 0.9;
+}
+
+.nav-dropdown-option-icon-readonly {
+  opacity: 0.65;
+}
+
+.control-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: #d1d5db;
+  cursor: pointer;
+  transition: color 200ms;
+}
+
+.control-checkbox-label:hover {
+  color: white;
+}
