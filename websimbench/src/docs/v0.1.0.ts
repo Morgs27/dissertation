@@ -4,15 +4,15 @@ import type { DocsContentBlock, DocsLinkCard, DocsVersion } from './types';
 
 const CDN_IMPORT_URL = `https://esm.sh/@websimbench/agentyx@${CURRENT_VERSION}?bundle`;
 
-const PRESET_SLIME_MOLD = PREMADE_SIMULATIONS['Slime Mold'].trim();
-const PRESET_BOIDS = PREMADE_SIMULATIONS['Boids'].trim();
-const PRESET_FIRE = PREMADE_SIMULATIONS['Fire'].trim();
-const PRESET_FLUID = PREMADE_SIMULATIONS['Fluid Dispersal'].trim();
-const PRESET_PREDATOR_PREY = PREMADE_SIMULATIONS['Predator-Prey'].trim();
-const PRESET_RAIN = PREMADE_SIMULATIONS['Rain'].trim();
-const PRESET_MULTI_SPECIES = PREMADE_SIMULATIONS['Multi-Species Boids'].trim();
-const PRESET_TRAFFIC = PREMADE_SIMULATIONS['Traffic'].trim();
-const PRESET_COSMIC_WEB = PREMADE_SIMULATIONS['Cosmic Web'].trim();
+const PRESET_SLIME_MOLD = PREMADE_SIMULATIONS['Slime Mold'].code.trim();
+const PRESET_BOIDS = PREMADE_SIMULATIONS['Boids'].code.trim();
+const PRESET_FIRE = PREMADE_SIMULATIONS['Fire'].code.trim();
+const PRESET_FLUID = PREMADE_SIMULATIONS['Fluid Dispersal'].code.trim();
+const PRESET_PREDATOR_PREY = PREMADE_SIMULATIONS['Predator-Prey'].code.trim();
+const PRESET_RAIN = PREMADE_SIMULATIONS['Rain'].code.trim();
+const PRESET_MULTI_SPECIES = PREMADE_SIMULATIONS['Multi-Species Boids'].code.trim();
+const PRESET_TRAFFIC = PREMADE_SIMULATIONS['Traffic'].code.trim();
+const PRESET_COSMIC_WEB = PREMADE_SIMULATIONS['Cosmic Web'].code.trim();
 
 const DSL_LITERAL = (dsl: string) => JSON.stringify(dsl.trim());
 

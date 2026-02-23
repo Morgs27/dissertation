@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils"
 export interface NavDropdownOption {
     value: string;
     label: string;
+    icon?: React.ReactNode;
+    iconClassName?: string;
 }
 
 export interface NavDropdownProps {
@@ -43,7 +45,14 @@ export function NavDropdown({
                 <SelectContent className="control-select-content" position="popper" sideOffset={4}>
                     {options.map((opt) => (
                         <SelectItem key={opt.value} value={opt.value} className="control-select-item">
-                            {opt.label}
+                            <span className="nav-dropdown-option">
+                                <span>{opt.label}</span>
+                                {opt.icon && (
+                                    <span className={cn("nav-dropdown-option-icon", opt.iconClassName)}>
+                                        {opt.icon}
+                                    </span>
+                                )}
+                            </span>
                         </SelectItem>
                     ))}
                 </SelectContent>

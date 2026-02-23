@@ -1,12 +1,31 @@
+import type { Icon } from "@phosphor-icons/react";
+import {
+    Atom,
+    Bird,
+    Bug,
+    Campfire,
+    CloudRain,
+    Drop,
+    Fish,
+    RocketLaunch,
+    TrafficSignal,
+    UsersThree,
+} from "@phosphor-icons/react";
 
-export const PREMADE_SIMULATIONS: Record<string, string> = {
+export interface PremadeSimulation {
+    code: string;
+    description: string;
+    icon: Icon;
+}
+
+const PREMADE_SIMULATION_CODE: Record<string, string> = {
     'Tutorial': `// --- Agentyx DSL Tutorial ---
 // This tutorial walks you through the core features of the language.
 
 // 1. INPUTS
 // Declare parameters that can be adjusted in real-time.
 input accel = 1.05 [1.0, 1.2]; // Factor to "multiply" speed each frame
-input maxSpeed = 3.5 [1.0, 10];
+input maxSpeed = 1.0 [1.0, 10];
 input turnAngle = 0.1 [0, 1.0];
 input perception = 35 [10, 100];
 input depositAmount = 2.0;
@@ -57,6 +76,9 @@ else {
     }
     
     moveForward(1.5);
+
+    // CAP the speed using the built-in command
+    limitSpeed(inputs.maxSpeed);
 }
 
 // 6. NEIGHBOR INTERACTION
@@ -570,3 +592,56 @@ borderWrapping();
 updatePosition(1.0);
 `
 };
+
+const PREMADE_SIMULATION_METADATA: Record<string, Omit<PremadeSimulation, "code">> = {
+    'Tutorial': {
+        icon: RocketLaunch,
+        description: 'Guided starter that introduces inputs, species, sensing, and trail behavior.'
+    },
+    'Slime Mold': {
+        icon: Bug,
+        description: 'Classic trail-following swarm that grows filament-like emergent paths.'
+    },
+    'Boids': {
+        icon: Bird,
+        description: 'Alignment, cohesion, and separation rules for flocking behavior.'
+    },
+    'Fire': {
+        icon: Campfire,
+        description: 'Multi-species flames and smoke with rising, cooling, and turbulence.'
+    },
+    'Fluid Dispersal': {
+        icon: Drop,
+        description: 'Particle-style fluid spread with gravity, repulsion, damping, and bounce.'
+    },
+    'Predator-Prey': {
+        icon: Fish,
+        description: 'Two-species ecosystem where prey flock and predators hunt nearby targets.'
+    },
+    'Rain': {
+        icon: CloudRain,
+        description: 'Gravity-driven raindrops with wind noise and velocity limiting.'
+    },
+    'Multi-Species Boids': {
+        icon: UsersThree,
+        description: 'Three flock types with distinct speed and interaction traits.'
+    },
+    'Traffic': {
+        icon: TrafficSignal,
+        description: 'Lane-like flow model with spacing checks, braking, and acceleration.'
+    },
+    'Cosmic Web': {
+        icon: Atom,
+        description: 'Cyclic pursuit across five species to create web-like cosmic patterns.'
+    },
+};
+
+export const PREMADE_SIMULATIONS: Record<string, PremadeSimulation> = Object.fromEntries(
+    Object.entries(PREMADE_SIMULATION_CODE).map(([name, code]) => [
+        name,
+        {
+            code,
+            ...PREMADE_SIMULATION_METADATA[name],
+        }
+    ])
+);
