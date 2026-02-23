@@ -1,0 +1,338 @@
+/* Onboarding Modal */
+.onboarding-modal {
+  width: min(94vw, 52rem);
+  max-width: none;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
+  background: #0a1217;
+}
+
+.onboarding-surface {
+  --mx: 50%;
+  --my: 35%;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      620px circle at var(--mx) var(--my),
+      rgba(0, 255, 213, 0.1),
+      rgba(0, 255, 213, 0.025) 36%,
+      transparent 64%
+    ),
+    radial-gradient(
+      480px circle at calc(100% - var(--mx)) calc(100% - var(--my)),
+      rgba(29, 120, 255, 0.07),
+      transparent 63%
+    ),
+    linear-gradient(180deg, #0b171d 0%, #091118 100%);
+  transition: background 280ms ease-out;
+}
+
+.onboarding-surface::before {
+  content: "";
+  position: absolute;
+  inset: -30%;
+  background: radial-gradient(
+    circle,
+    rgba(0, 255, 213, 0.045),
+    transparent 58%
+  );
+  filter: blur(34px);
+  animation: onboarding-ambient-drift 11s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+.onboarding-surface > * {
+  position: relative;
+  z-index: 1;
+}
+
+.onboarding-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem;
+  padding: 1.25rem 1.2rem 0.85rem;
+  text-align: center;
+}
+
+.onboarding-hero-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.onboarding-badge {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  padding: 0.25rem 0.65rem;
+  color: #80ffe8;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+}
+
+.onboarding-heading {
+  font-size: 1.3rem;
+  line-height: 1.2;
+  font-weight: 700;
+  color: #f8fafc;
+  letter-spacing: -0.01em;
+  max-width: 28ch;
+  margin-bottom: 0.5rem;
+}
+
+.onboarding-copy {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  line-height: 1.62;
+  max-width: 54ch;
+}
+
+.onboarding-hero-graphic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.onboarding-hero-svg {
+  width: 100%;
+  max-width: 22rem;
+  height: auto;
+}
+
+.onboarding-hero-panel {
+  fill: rgba(255, 255, 255, 0.02);
+  stroke: rgba(255, 255, 255, 0.08);
+}
+
+.onboarding-orbit circle {
+  stroke: rgba(0, 255, 213, 0.28);
+  stroke-width: 1.4;
+  stroke-dasharray: 5 6;
+}
+
+.onboarding-core {
+  animation: onboarding-core-pulse 2.8s ease-in-out infinite;
+}
+
+.onboarding-core-dot {
+  fill: #d1fff7;
+}
+
+.onboarding-node {
+  fill: #00ffd5;
+}
+
+.onboarding-node-a {
+  animation: onboarding-node-a 3s ease-in-out infinite;
+}
+
+.onboarding-node-b {
+  animation: onboarding-node-b 3.2s ease-in-out infinite;
+}
+
+.onboarding-node-c {
+  animation: onboarding-node-c 2.6s ease-in-out infinite;
+}
+
+.onboarding-orbit-a {
+  transform-origin: center;
+  animation: onboarding-rotate-a 18s linear infinite;
+}
+
+.onboarding-orbit-b {
+  transform-origin: center;
+  animation: onboarding-rotate-b 16s linear infinite reverse;
+}
+
+.onboarding-orbit-c {
+  transform-origin: center;
+  animation: onboarding-rotate-c 24s linear infinite;
+}
+
+.onboarding-header {
+  display: grid;
+  justify-items: center;
+  padding: 0.95rem 1.2rem 0;
+  text-align: center;
+}
+
+.onboarding-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.onboarding-description {
+  margin-top: 0.5rem;
+  color: #94a3b8;
+  color: red;
+  font-size: 0.6rem;
+  max-width: 62ch;
+}
+
+.onboarding-feature-grid {
+  padding: 0.75rem 1.2rem 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.onboarding-feature-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  color: #d1d5db;
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 0.55rem 0.62rem;
+}
+
+.onboarding-actions {
+  padding: 0.95rem 1.2rem 1.15rem;
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.onboarding-btn-outline {
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #e5e7eb;
+  background: transparent;
+  gap: 0.5rem;
+}
+
+.onboarding-btn-outline:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: white;
+}
+
+.onboarding-btn-primary {
+  background: linear-gradient(135deg, #00ffd5 0%, #45f9d5 100%);
+  color: #062029;
+  font-weight: 700;
+  gap: 0.5rem;
+  transition: transform 280ms ease-out;
+}
+
+.onboarding-btn-primary:hover {
+  transform: translateY(-1px);
+}
+
+@keyframes onboarding-core-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+
+  50% {
+    transform: scale(1.12);
+    opacity: 0.7;
+  }
+}
+
+@keyframes onboarding-rotate-a {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes onboarding-rotate-b {
+  from {
+    transform: rotate(360deg);
+  }
+
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes onboarding-rotate-c {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes onboarding-node-a {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0.9;
+  }
+
+  50% {
+    transform: translate(6px, -2px);
+    opacity: 0.6;
+  }
+}
+
+@keyframes onboarding-node-b {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0.85;
+  }
+
+  50% {
+    transform: translate(-2px, 6px);
+    opacity: 0.55;
+  }
+}
+
+@keyframes onboarding-node-c {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0.8;
+  }
+
+  50% {
+    transform: translate(4px, 4px);
+    opacity: 0.5;
+  }
+}
+
+@keyframes onboarding-ambient-drift {
+  from {
+    transform: translate(-5%, -4%);
+    opacity: 0.45;
+  }
+
+  to {
+    transform: translate(6%, 5%);
+    opacity: 0.75;
+  }
+}
+
+@media (max-width: 880px) {
+  .onboarding-feature-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .onboarding-actions {
+    flex-direction: column-reverse;
+  }
+}

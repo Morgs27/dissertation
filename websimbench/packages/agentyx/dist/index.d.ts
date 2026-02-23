@@ -21,17 +21,17 @@
  * @property specificStats - Backend-specific timing breakdowns.
  */
 type FramePerformance = {
-    method: string;
-    agentCount: number;
-    agentPerformance: AgentPerformance[];
-    totalExecutionTime: number;
-    frameTimestamp: number;
-    setupTime?: number;
-    computeTime?: number;
-    renderTime?: number;
-    readbackTime?: number;
-    compileTime?: number;
-    specificStats?: Record<string, number>;
+  method: string;
+  agentCount: number;
+  agentPerformance: AgentPerformance[];
+  totalExecutionTime: number;
+  frameTimestamp: number;
+  setupTime?: number;
+  computeTime?: number;
+  renderTime?: number;
+  readbackTime?: number;
+  compileTime?: number;
+  specificStats?: Record<string, number>;
 };
 /**
  * Execution timing for a single agent (main-thread methods only).
@@ -40,8 +40,8 @@ type FramePerformance = {
  * @property executionTime - Time taken to execute the agent function in milliseconds.
  */
 type AgentPerformance = {
-    agentId: number;
-    executionTime: number;
+  agentId: number;
+  executionTime: number;
 };
 /**
  * Accumulates per-frame performance data and provides summary statistics.
@@ -57,35 +57,35 @@ type AgentPerformance = {
  * ```
  */
 declare class PerformanceMonitor {
-    private readonly logger;
-    private readonly _frames;
-    constructor();
-    /**
-     * Record a completed frame's performance data.
-     *
-     * @param performance - The frame's timing and metric data.
-     */
-    logFrame(performance: FramePerformance): void;
-    /**
-     * All recorded frame performance entries.
-     */
-    get frames(): FramePerformance[];
-    /**
-     * Log a warning when a frame is skipped because the previous frame
-     * was still in progress.
-     */
-    logMissingFrame(): void;
-    /**
-     * Clear all recorded frame data.
-     */
-    reset(): void;
-    /**
-     * Print a human-readable performance summary to the console.
-     *
-     * Outputs average total, setup, compute, render, and readback times
-     * as well as any backend-specific statistics.
-     */
-    printSummary(): void;
+  private readonly logger;
+  private readonly _frames;
+  constructor();
+  /**
+   * Record a completed frame's performance data.
+   *
+   * @param performance - The frame's timing and metric data.
+   */
+  logFrame(performance: FramePerformance): void;
+  /**
+   * All recorded frame performance entries.
+   */
+  get frames(): FramePerformance[];
+  /**
+   * Log a warning when a frame is skipped because the previous frame
+   * was still in progress.
+   */
+  logMissingFrame(): void;
+  /**
+   * Clear all recorded frame data.
+   */
+  reset(): void;
+  /**
+   * Print a human-readable performance summary to the console.
+   *
+   * Outputs average total, setup, compute, render, and readback times
+   * as well as any backend-specific statistics.
+   */
+  printSummary(): void;
 }
 
 /**
@@ -109,14 +109,14 @@ declare class PerformanceMonitor {
  * @property runtime - Detected runtime environment.
  */
 type RuntimeDeviceMetrics = {
-    userAgent?: string;
-    platform?: string;
-    hardwareConcurrency?: number;
-    deviceMemoryGb?: number;
-    language?: string;
-    timezone?: string;
-    nodeVersion?: string;
-    runtime?: 'browser' | 'node' | 'unknown';
+  userAgent?: string;
+  platform?: string;
+  hardwareConcurrency?: number;
+  deviceMemoryGb?: number;
+  language?: string;
+  timezone?: string;
+  nodeVersion?: string;
+  runtime?: "browser" | "node" | "unknown";
 };
 /**
  * Browser-specific environment metrics.
@@ -130,21 +130,21 @@ type RuntimeDeviceMetrics = {
  * @property performanceMemory - Chrome-specific JS heap memory info.
  */
 type RuntimeBrowserMetrics = {
-    online?: boolean;
-    cookieEnabled?: boolean;
-    doNotTrack?: string | null;
-    url?: string;
-    referrer?: string;
-    viewport?: {
-        width: number;
-        height: number;
-        devicePixelRatio: number;
-    };
-    performanceMemory?: {
-        jsHeapSizeLimit: number;
-        totalJSHeapSize: number;
-        usedJSHeapSize: number;
-    };
+  online?: boolean;
+  cookieEnabled?: boolean;
+  doNotTrack?: string | null;
+  url?: string;
+  referrer?: string;
+  viewport?: {
+    width: number;
+    height: number;
+    devicePixelRatio: number;
+  };
+  performanceMemory?: {
+    jsHeapSizeLimit: number;
+    totalJSHeapSize: number;
+    usedJSHeapSize: number;
+  };
 };
 /**
  * WebGPU adapter and device capability metrics.
@@ -161,24 +161,24 @@ type RuntimeBrowserMetrics = {
  * @property maxComputeWorkgroupSizeZ - Maximum workgroup size in the Z dimension.
  */
 type RuntimeGPUMetrics = {
-    vendor: string;
-    architecture: string;
-    description: string;
-    maxBufferSize: number;
-    maxStorageBufferBindingSize: number;
-    maxComputeWorkgroupsPerDimension: number;
-    maxComputeInvocationsPerWorkgroup: number;
-    maxComputeWorkgroupSizeX: number;
-    maxComputeWorkgroupSizeY: number;
-    maxComputeWorkgroupSizeZ: number;
+  vendor: string;
+  architecture: string;
+  description: string;
+  maxBufferSize: number;
+  maxStorageBufferBindingSize: number;
+  maxComputeWorkgroupsPerDimension: number;
+  maxComputeInvocationsPerWorkgroup: number;
+  maxComputeWorkgroupSizeX: number;
+  maxComputeWorkgroupSizeY: number;
+  maxComputeWorkgroupSizeZ: number;
 };
 /**
  * Combined runtime metrics covering device, browser, and GPU capabilities.
  */
 type RuntimeMetrics = {
-    device: RuntimeDeviceMetrics;
-    browser: RuntimeBrowserMetrics;
-    gpu?: RuntimeGPUMetrics;
+  device: RuntimeDeviceMetrics;
+  browser: RuntimeBrowserMetrics;
+  gpu?: RuntimeGPUMetrics;
 };
 /**
  * Collect comprehensive runtime metrics for the current environment.
@@ -216,11 +216,11 @@ declare const collectRuntimeMetrics: () => Promise<RuntimeMetrics>;
  * @property seed - Optional seed for deterministic agent placement via a seeded PRNG.
  */
 type SimulationOptions = {
-    agents: number;
-    workers?: number;
-    width?: number;
-    height?: number;
-    seed?: number;
+  agents: number;
+  workers?: number;
+  width?: number;
+  height?: number;
+  seed?: number;
 };
 /**
  * Visual appearance settings for the simulation renderer.
@@ -238,17 +238,17 @@ type SimulationOptions = {
  * @property obstacleOpacity - Opacity of obstacle fills.
  */
 type SimulationAppearance = {
-    agentColor: string;
-    backgroundColor: string;
-    agentSize: number;
-    agentShape: 'circle' | 'square';
-    showTrails: boolean;
-    trailOpacity?: number;
-    trailColor: string;
-    speciesColors?: string[];
-    obstacleColor: string;
-    obstacleBorderColor: string;
-    obstacleOpacity: number;
+  agentColor: string;
+  backgroundColor: string;
+  agentSize: number;
+  agentShape: "circle" | "square";
+  showTrails: boolean;
+  trailOpacity?: number;
+  trailColor: string;
+  speciesColors?: string[];
+  obstacleColor: string;
+  obstacleBorderColor: string;
+  obstacleOpacity: number;
 };
 /**
  * Dynamic key-value map of input values passed to the compute engine each frame.
@@ -259,7 +259,14 @@ type SimulationAppearance = {
  * from {@link Simulation.setInputs} and the per-frame `inputValues` argument.
  */
 type InputValues = {
-    [key: string]: number | boolean | Agent[] | Float32Array | Uint32Array | Function | Obstacle[];
+  [key: string]:
+    | number
+    | boolean
+    | Agent[]
+    | Float32Array
+    | Uint32Array
+    | Function
+    | Obstacle[];
 };
 /**
  * Metadata for a user-defined input declared in DSL code via the `input` keyword.
@@ -270,10 +277,10 @@ type InputValues = {
  * @property max - Optional maximum value hint for UI sliders.
  */
 type InputDefinition = {
-    name: string;
-    defaultValue: number;
-    min?: number;
-    max?: number;
+  name: string;
+  defaultValue: number;
+  min?: number;
+  max?: number;
 };
 /**
  * Configuration for trail-map environment commands (`enableTrails`).
@@ -282,8 +289,8 @@ type InputDefinition = {
  * @property decayFactorInput - Name of the input controlling per-frame decay factor.
  */
 type TrailEnvironmentConfig = {
-    depositAmountInput?: string;
-    decayFactorInput?: string;
+  depositAmountInput?: string;
+  decayFactorInput?: string;
 };
 /**
  * Output of the DSL compilation pipeline, containing code for every
@@ -299,18 +306,18 @@ type TrailEnvironmentConfig = {
  * @property numRandomCalls - Total random values required per agent per frame.
  */
 type CompilationResult = {
-    requiredInputs: string[];
-    definedInputs: InputDefinition[];
-    wgslCode: string;
-    jsCode: string;
-    WASMCode: string;
-    trailEnvironmentConfig?: TrailEnvironmentConfig;
-    speciesCount?: number;
-    numRandomCalls: number;
-    errors?: {
-        message: string;
-        lineIndex: number;
-    }[];
+  requiredInputs: string[];
+  definedInputs: InputDefinition[];
+  wgslCode: string;
+  jsCode: string;
+  WASMCode: string;
+  trailEnvironmentConfig?: TrailEnvironmentConfig;
+  speciesCount?: number;
+  numRandomCalls: number;
+  errors?: {
+    message: string;
+    lineIndex: number;
+  }[];
 };
 /**
  * A single agent entity with position, velocity, and species index.
@@ -326,12 +333,12 @@ type CompilationResult = {
  * @property species - Species index for multi-species simulations.
  */
 type Agent = {
-    id: number;
-    x: number;
-    y: number;
-    vx: number;
-    vy: number;
-    species: number;
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  species: number;
 };
 /**
  * An axis-aligned rectangular obstacle in world space.
@@ -342,10 +349,10 @@ type Agent = {
  * @property h - Height in pixels.
  */
 type Obstacle = {
-    x: number;
-    y: number;
-    w: number;
-    h: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 };
 /**
  * Compute backend method identifiers.
@@ -356,7 +363,7 @@ type Obstacle = {
  * - `'WebGPU'` — GPU compute via WGSL shaders.
  * - `'WebGL'` — Reserved / legacy. Not currently implemented.
  */
-type Method = 'WebGL' | 'WebAssembly' | 'JavaScript' | 'WebWorkers' | 'WebGPU';
+type Method = "WebGL" | "WebAssembly" | "JavaScript" | "WebWorkers" | "WebGPU";
 /**
  * Rendering strategy for simulation output.
  *
@@ -364,7 +371,7 @@ type Method = 'WebGL' | 'WebAssembly' | 'JavaScript' | 'WebWorkers' | 'WebGPU';
  * - `'gpu'` — WebGPU-based rendering via instanced draw calls.
  * - `'none'` — Headless; no rendering (useful for benchmarking).
  */
-type RenderMode = 'cpu' | 'gpu' | 'none';
+type RenderMode = "cpu" | "gpu" | "none";
 /**
  * User-supplied code for the `'custom'` simulation source kind.
  *
@@ -380,13 +387,13 @@ type RenderMode = 'cpu' | 'gpu' | 'none';
  * @property numRandomCalls - Random values needed per agent per frame.
  */
 type CustomCodeSource = {
-    js?: string | ((agent: Agent, inputs: InputValues) => Agent);
-    wgsl?: string;
-    wasmWat?: string;
-    requiredInputs?: string[];
-    definedInputs?: InputDefinition[];
-    speciesCount?: number;
-    numRandomCalls?: number;
+  js?: string | ((agent: Agent, inputs: InputValues) => Agent);
+  wgsl?: string;
+  wasmWat?: string;
+  requiredInputs?: string[];
+  definedInputs?: InputDefinition[];
+  speciesCount?: number;
+  numRandomCalls?: number;
 };
 /**
  * Discriminated union describing the simulation source.
@@ -394,13 +401,15 @@ type CustomCodeSource = {
  * - `kind: 'dsl'` — DSL source code compiled at construction time.
  * - `kind: 'custom'` — Pre-compiled code supplied by the caller.
  */
-type SimulationSource = {
-    kind: 'dsl';
-    code: string;
-} | {
-    kind: 'custom';
-    code: CustomCodeSource;
-};
+type SimulationSource =
+  | {
+      kind: "dsl";
+      code: string;
+    }
+  | {
+      kind: "custom";
+      code: CustomCodeSource;
+    };
 /**
  * Options controlling what the {@link SimulationTracker} captures.
  *
@@ -411,11 +420,11 @@ type SimulationSource = {
  * @property captureDeviceMetrics - Whether to collect runtime device/browser/GPU metrics.
  */
 type TrackingOptions = {
-    enabled: boolean;
-    captureFrameInputs: boolean;
-    captureAgentStates: boolean;
-    captureLogs: boolean;
-    captureDeviceMetrics: boolean;
+  enabled: boolean;
+  captureFrameInputs: boolean;
+  captureAgentStates: boolean;
+  captureLogs: boolean;
+  captureDeviceMetrics: boolean;
 };
 /**
  * Constructor configuration for the {@link Simulation} class.
@@ -433,14 +442,14 @@ type TrackingOptions = {
  * @property metadata - Arbitrary metadata attached to tracking reports.
  */
 type SimulationConstructor = {
-    canvas?: HTMLCanvasElement | null;
-    gpuCanvas?: HTMLCanvasElement | null;
-    options: SimulationOptions;
-    appearance?: Partial<SimulationAppearance>;
-    source?: SimulationSource;
-    agentScript?: string;
-    tracking?: Partial<TrackingOptions>;
-    metadata?: Record<string, unknown>;
+  canvas?: HTMLCanvasElement | null;
+  gpuCanvas?: HTMLCanvasElement | null;
+  options: SimulationOptions;
+  appearance?: Partial<SimulationAppearance>;
+  source?: SimulationSource;
+  agentScript?: string;
+  tracking?: Partial<TrackingOptions>;
+  metadata?: Record<string, unknown>;
 };
 /**
  * Result returned by {@link Simulation.runFrame} for a single simulation step.
@@ -450,9 +459,9 @@ type SimulationConstructor = {
  * @property skipped - `true` if the frame was dropped because the previous frame was still in progress.
  */
 type SimulationFrameResult = {
-    frameNumber: number;
-    agents: Agent[];
-    skipped: boolean;
+  frameNumber: number;
+  agents: Agent[];
+  skipped: boolean;
 };
 
 /**
@@ -474,10 +483,10 @@ type SimulationFrameResult = {
  * @property message - The fully formatted log message.
  */
 type SimulationLogEntry = {
-    timestamp: number;
-    level: 'verbose' | 'info' | 'warning' | 'error';
-    context: string;
-    message: string;
+  timestamp: number;
+  level: "verbose" | "info" | "warning" | "error";
+  context: string;
+  message: string;
 };
 /**
  * An error captured during a simulation frame.
@@ -487,9 +496,9 @@ type SimulationLogEntry = {
  * @property stack - Optional stack trace.
  */
 type SimulationErrorEntry = {
-    timestamp: number;
-    message: string;
-    stack?: string;
+  timestamp: number;
+  message: string;
+  stack?: string;
 };
 /**
  * Data recorded for a single simulation frame.
@@ -503,13 +512,13 @@ type SimulationErrorEntry = {
  * @property performance - Per-frame performance metrics.
  */
 type SimulationFrameRecord = {
-    frameNumber: number;
-    timestamp: number;
-    method: Method;
-    renderMode: RenderMode;
-    agentPositions?: Agent[];
-    inputSnapshot?: Record<string, unknown>;
-    performance?: FramePerformance;
+  frameNumber: number;
+  timestamp: number;
+  method: Method;
+  renderMode: RenderMode;
+  agentPositions?: Agent[];
+  inputSnapshot?: Record<string, unknown>;
+  performance?: FramePerformance;
 };
 /**
  * Aggregate statistics for a simulation run.
@@ -521,11 +530,11 @@ type SimulationFrameRecord = {
  * @property errorCount - Number of errors recorded during the run.
  */
 type SimulationRunSummary = {
-    frameCount: number;
-    durationMs: number;
-    totalExecutionMs: number;
-    averageExecutionMs: number;
-    errorCount: number;
+  frameCount: number;
+  durationMs: number;
+  totalExecutionMs: number;
+  averageExecutionMs: number;
+  errorCount: number;
 };
 /**
  * Metadata describing the simulation run configuration and environment.
@@ -539,36 +548,38 @@ type SimulationRunSummary = {
  * @property metadata - Arbitrary caller-supplied metadata.
  */
 type SimulationRunMetadata = {
-    runId: string;
-    startedAt: number;
-    endedAt?: number;
-    source: {
-        kind: SimulationSource['kind'];
-        code: string | {
-            js?: string;
-            wgsl?: string;
-            wasmWat?: string;
+  runId: string;
+  startedAt: number;
+  endedAt?: number;
+  source: {
+    kind: SimulationSource["kind"];
+    code:
+      | string
+      | {
+          js?: string;
+          wgsl?: string;
+          wasmWat?: string;
         };
-    };
-    configuration: {
-        options: SimulationOptions;
-        appearance: SimulationAppearance;
-        requiredInputs: string[];
-        definedInputs: CompilationResult['definedInputs'];
-    };
-    environment?: RuntimeMetrics;
-    metadata?: Record<string, unknown>;
+  };
+  configuration: {
+    options: SimulationOptions;
+    appearance: SimulationAppearance;
+    requiredInputs: string[];
+    definedInputs: CompilationResult["definedInputs"];
+  };
+  environment?: RuntimeMetrics;
+  metadata?: Record<string, unknown>;
 };
 /**
  * Complete tracking report for a simulation run, combining metadata,
  * frame records, logs, errors, and summary statistics.
  */
 type SimulationTrackingReport = {
-    run: SimulationRunMetadata;
-    frames: SimulationFrameRecord[];
-    logs: SimulationLogEntry[];
-    errors: SimulationErrorEntry[];
-    summary: SimulationRunSummary;
+  run: SimulationRunMetadata;
+  frames: SimulationFrameRecord[];
+  logs: SimulationLogEntry[];
+  errors: SimulationErrorEntry[];
+  summary: SimulationRunSummary;
 };
 /**
  * Filter options for {@link SimulationTracker.getReport}.
@@ -580,11 +591,11 @@ type SimulationTrackingReport = {
  * @property includeLogs - Set to `false` to strip log entries.
  */
 type SimulationTrackingFilter = {
-    fromFrame?: number;
-    toFrame?: number;
-    includeAgentPositions?: boolean;
-    includeInputSnapshots?: boolean;
-    includeLogs?: boolean;
+  fromFrame?: number;
+  toFrame?: number;
+  includeAgentPositions?: boolean;
+  includeInputSnapshots?: boolean;
+  includeLogs?: boolean;
 };
 /**
  * Records telemetry data throughout a simulation run and produces
@@ -595,76 +606,76 @@ type SimulationTrackingFilter = {
  * metrics on construction.
  */
 declare class SimulationTracker {
-    private readonly options;
-    private readonly logger;
-    private readonly run;
-    private readonly frames;
-    private readonly logs;
-    private readonly errors;
-    private readonly logListener?;
-    /**
-     * Create a new tracker for a simulation run.
-     *
-     * @param params - Initial run configuration used to populate metadata.
-     */
-    constructor(params: {
-        source: SimulationSource;
-        options: SimulationOptions;
-        appearance: SimulationAppearance;
-        compilationResult: CompilationResult;
-        tracking?: Partial<TrackingOptions>;
-        metadata?: Record<string, unknown>;
-    });
-    /**
-     * Asynchronously collect runtime device, browser, and GPU metrics.
-     *
-     * The results are stored in `run.environment` for inclusion in
-     * tracking reports.
-     */
-    collectEnvironmentMetrics(): Promise<void>;
-    /**
-     * Record data for a completed simulation frame.
-     *
-     * @param params - Frame data including agents, inputs, and performance.
-     */
-    recordFrame(params: {
-        frameNumber: number;
-        method: Method;
-        renderMode: RenderMode;
-        agents: Agent[];
-        performance?: FramePerformance;
-        inputs?: InputValues;
-    }): void;
-    /**
-     * Record an error that occurred during frame execution.
-     *
-     * @param error - The caught error or unknown thrown value.
-     */
-    recordError(error: unknown): void;
-    /**
-     * Mark the simulation run as complete by recording the end timestamp.
-     */
-    complete(): void;
-    /**
-     * Generate a deep-cloned tracking report, optionally filtered by
-     * frame range and content inclusions.
-     *
-     * @param filter - Optional filter constraints.
-     * @returns A self-contained tracking report.
-     */
-    getReport(filter?: SimulationTrackingFilter): SimulationTrackingReport;
-    /**
-     * Remove the global log listener registered by this tracker.
-     *
-     * Should be called during simulation teardown to prevent memory leaks.
-     */
-    dispose(): void;
-    /**
-     * Whether this tracker is configured to capture per-frame agent states.
-     *
-     * @returns `true` if tracking is enabled and agent state capture is on.
-     */
-    capturesAgentStates(): boolean;
+  private readonly options;
+  private readonly logger;
+  private readonly run;
+  private readonly frames;
+  private readonly logs;
+  private readonly errors;
+  private readonly logListener?;
+  /**
+   * Create a new tracker for a simulation run.
+   *
+   * @param params - Initial run configuration used to populate metadata.
+   */
+  constructor(params: {
+    source: SimulationSource;
+    options: SimulationOptions;
+    appearance: SimulationAppearance;
+    compilationResult: CompilationResult;
+    tracking?: Partial<TrackingOptions>;
+    metadata?: Record<string, unknown>;
+  });
+  /**
+   * Asynchronously collect runtime device, browser, and GPU metrics.
+   *
+   * The results are stored in `run.environment` for inclusion in
+   * tracking reports.
+   */
+  collectEnvironmentMetrics(): Promise<void>;
+  /**
+   * Record data for a completed simulation frame.
+   *
+   * @param params - Frame data including agents, inputs, and performance.
+   */
+  recordFrame(params: {
+    frameNumber: number;
+    method: Method;
+    renderMode: RenderMode;
+    agents: Agent[];
+    performance?: FramePerformance;
+    inputs?: InputValues;
+  }): void;
+  /**
+   * Record an error that occurred during frame execution.
+   *
+   * @param error - The caught error or unknown thrown value.
+   */
+  recordError(error: unknown): void;
+  /**
+   * Mark the simulation run as complete by recording the end timestamp.
+   */
+  complete(): void;
+  /**
+   * Generate a deep-cloned tracking report, optionally filtered by
+   * frame range and content inclusions.
+   *
+   * @param filter - Optional filter constraints.
+   * @returns A self-contained tracking report.
+   */
+  getReport(filter?: SimulationTrackingFilter): SimulationTrackingReport;
+  /**
+   * Remove the global log listener registered by this tracker.
+   *
+   * Should be called during simulation teardown to prevent memory leaks.
+   */
+  dispose(): void;
+  /**
+   * Whether this tracker is configured to capture per-frame agent states.
+   *
+   * @returns `true` if tracking is enabled and agent state capture is on.
+   */
+  capturesAgentStates(): boolean;
 }
 
 /**
@@ -704,163 +715,169 @@ declare const MAX_AGENTS = 10000000;
  * ```
  */
 declare class Simulation {
-    private readonly logger;
-    private readonly performanceMonitor;
-    private readonly compiler;
-    private readonly computeEngine;
-    private readonly source;
-    private readonly tracker;
-    private renderer;
-    private width;
-    private height;
-    private frameInProgress;
-    private frameNumber;
-    private frameInputs;
-    private obstacles;
-    private appearance;
-    /** Current agent state array. Updated after each successful frame. */
-    agents: Agent[];
-    /** Compilation output from the DSL compiler or custom source. */
-    compilationResult: CompilationResult | null;
-    /** Trail intensity map (width × height `Float32Array`), or `null` if trails are not active. */
-    trailMap: Float32Array | null;
-    /** Pre-generated random values buffer for the current frame, or `null` if not needed. */
-    randomValues: Float32Array | null;
-    /**
-     * Create a new simulation instance.
-     *
-     * Compiles the provided DSL or custom code, initialises agents with random
-     * (or seeded) positions, and sets up the compute engine, renderer, and
-     * tracker.
-     *
-     * @param config - Full simulation configuration.
-     * @throws {Error} If `options.agents` is not a positive integer or exceeds {@link MAX_AGENTS}.
-     */
-    constructor(config: SimulationConstructor);
-    /**
-     * Generate the initial agent population with random or seeded positions.
-     *
-     * @param count - Number of agents to create.
-     * @param speciesCount - Number of distinct species (for round-robin assignment).
-     * @param seed - Optional PRNG seed for reproducible placement.
-     * @returns Array of initialised agents.
-     */
-    private createInitialAgents;
-    /**
-     * Allocate or resize the trail-map buffer to match the given dimensions.
-     *
-     * @param width - Canvas width in pixels.
-     * @param height - Canvas height in pixels.
-     */
-    private ensureTrailMap;
-    /**
-     * Fill the random values buffer with fresh random numbers for this frame.
-     *
-     * @param requiredCalls - Number of random values needed per agent.
-     */
-    private populateRandomValues;
-    /**
-     * Resolve the current simulation dimensions from the renderer canvas
-     * or the manually set width/height.
-     *
-     * @returns Current width and height.
-     */
-    private resolveDimensions;
-    /**
-     * Merge user-supplied frame inputs with system inputs (dimensions, agents,
-     * trail map, random values, obstacles, and defined input defaults) to produce
-     * the final input map for the compute engine.
-     *
-     * @param frameInputValues - Per-frame input overrides from the caller.
-     * @returns Fully resolved input values map.
-     * @throws {Error} If any required input is missing.
-     */
-    private buildInputs;
-    /**
-     * Initialise the WebGPU device and configure both the compute engine
-     * and the renderer for GPU operation.
-     *
-     * Must be called before using `'WebGPU'` as a compute method or `'gpu'`
-     * as a render mode.
-     *
-     * @throws {Error} If WebGPU is not available or the adapter cannot be obtained.
-     */
-    initGPU(): Promise<void>;
-    /**
-     * Update the visual appearance at runtime.
-     *
-     * Only the provided properties are changed; all others remain as-is.
-     *
-     * @param nextAppearance - Partial appearance overrides.
-     */
-    updateAppearance(nextAppearance: Partial<SimulationAppearance>): void;
-    /**
-     * Merge dynamic input values that persist across frames.
-     *
-     * Values set here are included in every subsequent `runFrame` call
-     * unless overridden by the per-frame `inputValues` argument.
-     *
-     * @param nextInputs - Input key-value pairs to merge.
-     */
-    setInputs(nextInputs: InputValues): void;
-    /**
-     * Replace the obstacle list used for `avoidObstacles` commands.
-     *
-     * @param obstacles - Array of rectangular obstacles.
-     */
-    setObstacles(obstacles: Obstacle[]): void;
-    /**
-     * Manually set the simulation world dimensions when no canvas is attached.
-     *
-     * If a trail map exists and its size no longer matches the new dimensions,
-     * it is reallocated.
-     *
-     * @param width - New width in pixels.
-     * @param height - New height in pixels.
-     */
-    setCanvasDimensions(width: number, height: number): void;
-    /**
-     * Run a single simulation frame: compute agent updates, render, and record
-     * tracking data.
-     *
-     * If a previous frame is still in progress, the call returns immediately
-     * with `skipped: true`.
-     *
-     * @param method - Compute backend to use (e.g. `'JavaScript'`, `'WebGPU'`).
-     * @param inputValues - Per-frame input overrides (merged with persistent inputs).
-     * @param renderMode - Rendering strategy: `'cpu'`, `'gpu'`, or `'none'`.
-     * @returns The frame result including updated agent positions.
-     * @throws {Error} If the required compiled code is unavailable, or the render mode
-     *   requires a canvas that was not provided.
-     */
-    runFrame(method: Method, inputValues?: InputValues, renderMode?: RenderMode): Promise<SimulationFrameResult>;
-    /**
-     * Access the internal performance monitor for detailed frame-level metrics.
-     *
-     * @returns The shared {@link PerformanceMonitor} instance.
-     */
-    getPerformanceMonitor(): PerformanceMonitor;
-    /**
-     * Generate a structured tracking report covering the simulation run.
-     *
-     * @param filter - Optional filter to restrict the frame range and inclusions.
-     * @returns A deep-cloned tracking report.
-     */
-    getTrackingReport(filter?: SimulationTrackingFilter): SimulationTrackingReport;
-    /**
-     * Export the tracking report as a formatted JSON string.
-     *
-     * @param filter - Optional filter to restrict the frame range and inclusions.
-     * @returns Pretty-printed JSON string of the tracking report.
-     */
-    exportTrackingReport(filter?: SimulationTrackingFilter): string;
-    /**
-     * Tear down the simulation, releasing all resources.
-     *
-     * Completes the tracking session, disposes the log listener, destroys
-     * the compute engine, and clears all buffers.
-     */
-    destroy(): void;
+  private readonly logger;
+  private readonly performanceMonitor;
+  private readonly compiler;
+  private readonly computeEngine;
+  private readonly source;
+  private readonly tracker;
+  private renderer;
+  private width;
+  private height;
+  private frameInProgress;
+  private frameNumber;
+  private frameInputs;
+  private obstacles;
+  private appearance;
+  /** Current agent state array. Updated after each successful frame. */
+  agents: Agent[];
+  /** Compilation output from the DSL compiler or custom source. */
+  compilationResult: CompilationResult | null;
+  /** Trail intensity map (width × height `Float32Array`), or `null` if trails are not active. */
+  trailMap: Float32Array | null;
+  /** Pre-generated random values buffer for the current frame, or `null` if not needed. */
+  randomValues: Float32Array | null;
+  /**
+   * Create a new simulation instance.
+   *
+   * Compiles the provided DSL or custom code, initialises agents with random
+   * (or seeded) positions, and sets up the compute engine, renderer, and
+   * tracker.
+   *
+   * @param config - Full simulation configuration.
+   * @throws {Error} If `options.agents` is not a positive integer or exceeds {@link MAX_AGENTS}.
+   */
+  constructor(config: SimulationConstructor);
+  /**
+   * Generate the initial agent population with random or seeded positions.
+   *
+   * @param count - Number of agents to create.
+   * @param speciesCount - Number of distinct species (for round-robin assignment).
+   * @param seed - Optional PRNG seed for reproducible placement.
+   * @returns Array of initialised agents.
+   */
+  private createInitialAgents;
+  /**
+   * Allocate or resize the trail-map buffer to match the given dimensions.
+   *
+   * @param width - Canvas width in pixels.
+   * @param height - Canvas height in pixels.
+   */
+  private ensureTrailMap;
+  /**
+   * Fill the random values buffer with fresh random numbers for this frame.
+   *
+   * @param requiredCalls - Number of random values needed per agent.
+   */
+  private populateRandomValues;
+  /**
+   * Resolve the current simulation dimensions from the renderer canvas
+   * or the manually set width/height.
+   *
+   * @returns Current width and height.
+   */
+  private resolveDimensions;
+  /**
+   * Merge user-supplied frame inputs with system inputs (dimensions, agents,
+   * trail map, random values, obstacles, and defined input defaults) to produce
+   * the final input map for the compute engine.
+   *
+   * @param frameInputValues - Per-frame input overrides from the caller.
+   * @returns Fully resolved input values map.
+   * @throws {Error} If any required input is missing.
+   */
+  private buildInputs;
+  /**
+   * Initialise the WebGPU device and configure both the compute engine
+   * and the renderer for GPU operation.
+   *
+   * Must be called before using `'WebGPU'` as a compute method or `'gpu'`
+   * as a render mode.
+   *
+   * @throws {Error} If WebGPU is not available or the adapter cannot be obtained.
+   */
+  initGPU(): Promise<void>;
+  /**
+   * Update the visual appearance at runtime.
+   *
+   * Only the provided properties are changed; all others remain as-is.
+   *
+   * @param nextAppearance - Partial appearance overrides.
+   */
+  updateAppearance(nextAppearance: Partial<SimulationAppearance>): void;
+  /**
+   * Merge dynamic input values that persist across frames.
+   *
+   * Values set here are included in every subsequent `runFrame` call
+   * unless overridden by the per-frame `inputValues` argument.
+   *
+   * @param nextInputs - Input key-value pairs to merge.
+   */
+  setInputs(nextInputs: InputValues): void;
+  /**
+   * Replace the obstacle list used for `avoidObstacles` commands.
+   *
+   * @param obstacles - Array of rectangular obstacles.
+   */
+  setObstacles(obstacles: Obstacle[]): void;
+  /**
+   * Manually set the simulation world dimensions when no canvas is attached.
+   *
+   * If a trail map exists and its size no longer matches the new dimensions,
+   * it is reallocated.
+   *
+   * @param width - New width in pixels.
+   * @param height - New height in pixels.
+   */
+  setCanvasDimensions(width: number, height: number): void;
+  /**
+   * Run a single simulation frame: compute agent updates, render, and record
+   * tracking data.
+   *
+   * If a previous frame is still in progress, the call returns immediately
+   * with `skipped: true`.
+   *
+   * @param method - Compute backend to use (e.g. `'JavaScript'`, `'WebGPU'`).
+   * @param inputValues - Per-frame input overrides (merged with persistent inputs).
+   * @param renderMode - Rendering strategy: `'cpu'`, `'gpu'`, or `'none'`.
+   * @returns The frame result including updated agent positions.
+   * @throws {Error} If the required compiled code is unavailable, or the render mode
+   *   requires a canvas that was not provided.
+   */
+  runFrame(
+    method: Method,
+    inputValues?: InputValues,
+    renderMode?: RenderMode,
+  ): Promise<SimulationFrameResult>;
+  /**
+   * Access the internal performance monitor for detailed frame-level metrics.
+   *
+   * @returns The shared {@link PerformanceMonitor} instance.
+   */
+  getPerformanceMonitor(): PerformanceMonitor;
+  /**
+   * Generate a structured tracking report covering the simulation run.
+   *
+   * @param filter - Optional filter to restrict the frame range and inclusions.
+   * @returns A deep-cloned tracking report.
+   */
+  getTrackingReport(
+    filter?: SimulationTrackingFilter,
+  ): SimulationTrackingReport;
+  /**
+   * Export the tracking report as a formatted JSON string.
+   *
+   * @param filter - Optional filter to restrict the frame range and inclusions.
+   * @returns Pretty-printed JSON string of the tracking report.
+   */
+  exportTrackingReport(filter?: SimulationTrackingFilter): string;
+  /**
+   * Tear down the simulation, releasing all resources.
+   *
+   * Completes the tracking session, disposes the log listener, destroys
+   * the compute engine, and clears all buffers.
+   */
+  destroy(): void;
 }
 
 /**
@@ -887,54 +904,54 @@ declare class Simulation {
  * ```
  */
 declare class Compiler {
-    private logger;
-    constructor();
-    /**
-     * Compile DSL source code into a multi-target {@link CompilationResult}.
-     *
-     * Preprocesses the DSL to extract inputs, trail config, and species
-     * declarations, then delegates to each backend compiler.
-     *
-     * @param agentCode - Raw Agentyx DSL source code.
-     * @returns Compilation output with JS, WGSL, and WAT code.
-     */
-    compileAgentCode(agentCode?: string): CompilationResult;
-    /**
-     * Preprocess DSL source: parse lines, extract inputs, trail config,
-     * species count, and random value requirements.
-     *
-     * @param dsl - Raw DSL source code.
-     * @returns Preprocessed data for the compilation pipeline.
-     */
-    private preprocessDSL;
-    /** Count `random()` call sites across all DSL lines. */
-    private countInlineRandomCalls;
-    /** Parse raw DSL source into structured lines, extracting input and random declarations. */
-    private parseLines;
-    /** Remove `//` and `#` comments from a source line. */
-    private stripComments;
-    /** Parse an `input name = value` declaration, returning metadata or `null`. */
-    private parseInputDeclaration;
-    /** Extract the numeric value and optional `[min, max]` range from a value part. */
-    private parseValueWithRange;
-    /** Split a line at `;` boundaries, expanding braceless `if` into block form. */
-    private splitStatements;
-    /** Collect all required input names from explicit references and command dependencies. */
-    private extractInputs;
-    /** Add implicit input dependencies required by DSL commands. */
-    private addCommandDependencies;
-    /** Extract trail environment configuration from `enableTrails` commands. */
-    private extractTrailConfig;
-    /** Extract the species count from a `species` command declaration. */
-    private extractSpeciesCount;
-    /** Ensure `randomValues` is listed as a required input when random is used. */
-    private ensureRandomValuesDependency;
-    /** Compile preprocessed DSL to all three backends (JS, WGSL, WAT). */
-    private compileToAllTargets;
-    /** Log all compiled output and extracted inputs to the console. */
-    private logCompilationResults;
-    /** Assemble the final {@link CompilationResult} from preprocessed and compiled data. */
-    private buildCompilationResult;
+  private logger;
+  constructor();
+  /**
+   * Compile DSL source code into a multi-target {@link CompilationResult}.
+   *
+   * Preprocesses the DSL to extract inputs, trail config, and species
+   * declarations, then delegates to each backend compiler.
+   *
+   * @param agentCode - Raw Agentyx DSL source code.
+   * @returns Compilation output with JS, WGSL, and WAT code.
+   */
+  compileAgentCode(agentCode?: string): CompilationResult;
+  /**
+   * Preprocess DSL source: parse lines, extract inputs, trail config,
+   * species count, and random value requirements.
+   *
+   * @param dsl - Raw DSL source code.
+   * @returns Preprocessed data for the compilation pipeline.
+   */
+  private preprocessDSL;
+  /** Count `random()` call sites across all DSL lines. */
+  private countInlineRandomCalls;
+  /** Parse raw DSL source into structured lines, extracting input and random declarations. */
+  private parseLines;
+  /** Remove `//` and `#` comments from a source line. */
+  private stripComments;
+  /** Parse an `input name = value` declaration, returning metadata or `null`. */
+  private parseInputDeclaration;
+  /** Extract the numeric value and optional `[min, max]` range from a value part. */
+  private parseValueWithRange;
+  /** Split a line at `;` boundaries, expanding braceless `if` into block form. */
+  private splitStatements;
+  /** Collect all required input names from explicit references and command dependencies. */
+  private extractInputs;
+  /** Add implicit input dependencies required by DSL commands. */
+  private addCommandDependencies;
+  /** Extract trail environment configuration from `enableTrails` commands. */
+  private extractTrailConfig;
+  /** Extract the species count from a `species` command declaration. */
+  private extractSpeciesCount;
+  /** Ensure `randomValues` is listed as a required input when random is used. */
+  private ensureRandomValuesDependency;
+  /** Compile preprocessed DSL to all three backends (JS, WGSL, WAT). */
+  private compileToAllTargets;
+  /** Log all compiled output and extracted inputs to the console. */
+  private logCompilationResults;
+  /** Assemble the final {@link CompilationResult} from preprocessed and compiled data. */
+  private buildCompilationResult;
 }
 
 /**
@@ -949,11 +966,11 @@ declare class Compiler {
 
 /** GPU resources passed to the Renderer for zero-copy GPU rendering. */
 type WebGPURenderResources = {
-    device: GPUDevice;
-    agentVertexBuffer: GPUBuffer;
-    agentCount: number;
-    agentStride: number;
-    trailMapBuffer?: GPUBuffer;
+  device: GPUDevice;
+  agentVertexBuffer: GPUBuffer;
+  agentCount: number;
+  agentStride: number;
+  trailMapBuffer?: GPUBuffer;
 };
 
 /**
@@ -974,66 +991,76 @@ type WebGPURenderResources = {
  * collecting timing metrics through the injected {@link PerformanceMonitor}.
  */
 declare class ComputeEngine {
-    private readonly compilationResult;
-    private agentFunction;
-    private agentCount;
-    private workerCount?;
-    private readonly logger;
-    private gpuDevice;
-    private readonly PerformanceMonitor;
-    gpuRenderState: WebGPURenderResources | undefined;
-    private compileTimes;
-    private trailMapRead;
-    private trailMapWrite;
-    private trailMapSeeded;
-    constructor(compilationResult: CompilationResult, performanceMonitor: PerformanceMonitor, agentCount: number, workerCount?: number);
-    /**
-     * Ensure double-buffer trail maps are allocated for the given dimensions.
-     */
-    private ensureTrailMapBuffers;
-    /**
-     * Apply diffuse and decay to trail map (blur + decay).
-     */
-    private applyDiffuseDecay;
-    private syncTrailMapToExternal;
-    private prepareFrameInputs;
-    private finalizeTrailMap;
-    private _WebWorkers;
-    private get WebWorkersInstance();
-    private _WebGPU;
-    private _WebGPUInitPromise;
-    private getWebGPUInstance;
-    private _WebAssembly;
-    private _WebAssemblyInitPromise;
-    private getWebAssemblyInstance;
-    /**
-     * Provide a GPU device for the WebGPU backend.
-     *
-     * If the WebGPU instance already exists, initialises it immediately;
-     * otherwise the device is stored for deferred initialisation.
-     *
-     * @param device - The WebGPU device obtained from the Renderer.
-     */
-    initGPU(device: GPUDevice): void;
-    /**
-     * Execute a single simulation frame on the specified compute backend.
-     *
-     * @param method - Compute backend to use.
-     * @param agents - Current agent state array.
-     * @param inputValues - Per-frame input values (width, height, trailMap, etc.).
-     * @param renderMode - Determines whether GPU results are read back to CPU.
-     * @returns Updated agent array after one step.
-     */
-    runFrame(method: Method, agents: Agent[], inputValues: InputValues, renderMode: RenderMode): Promise<Agent[]>;
-    private runOnWASM;
-    private runOnWebGPU;
-    private runOnWebWorkers;
-    private runOnMainThread;
-    private logPerformance;
-    /** Release all backend instances and buffers. */
-    destroy(): void;
-    /** Build the agent update function from compiled JavaScript source. */
-    private buildAgentFunction;
+  private readonly compilationResult;
+  private agentFunction;
+  private agentCount;
+  private workerCount?;
+  private readonly logger;
+  private gpuDevice;
+  private readonly PerformanceMonitor;
+  gpuRenderState: WebGPURenderResources | undefined;
+  private compileTimes;
+  private trailMapRead;
+  private trailMapWrite;
+  private trailMapSeeded;
+  constructor(
+    compilationResult: CompilationResult,
+    performanceMonitor: PerformanceMonitor,
+    agentCount: number,
+    workerCount?: number,
+  );
+  /**
+   * Ensure double-buffer trail maps are allocated for the given dimensions.
+   */
+  private ensureTrailMapBuffers;
+  /**
+   * Apply diffuse and decay to trail map (blur + decay).
+   */
+  private applyDiffuseDecay;
+  private syncTrailMapToExternal;
+  private prepareFrameInputs;
+  private finalizeTrailMap;
+  private _WebWorkers;
+  private get WebWorkersInstance();
+  private _WebGPU;
+  private _WebGPUInitPromise;
+  private getWebGPUInstance;
+  private _WebAssembly;
+  private _WebAssemblyInitPromise;
+  private getWebAssemblyInstance;
+  /**
+   * Provide a GPU device for the WebGPU backend.
+   *
+   * If the WebGPU instance already exists, initialises it immediately;
+   * otherwise the device is stored for deferred initialisation.
+   *
+   * @param device - The WebGPU device obtained from the Renderer.
+   */
+  initGPU(device: GPUDevice): void;
+  /**
+   * Execute a single simulation frame on the specified compute backend.
+   *
+   * @param method - Compute backend to use.
+   * @param agents - Current agent state array.
+   * @param inputValues - Per-frame input values (width, height, trailMap, etc.).
+   * @param renderMode - Determines whether GPU results are read back to CPU.
+   * @returns Updated agent array after one step.
+   */
+  runFrame(
+    method: Method,
+    agents: Agent[],
+    inputValues: InputValues,
+    renderMode: RenderMode,
+  ): Promise<Agent[]>;
+  private runOnWASM;
+  private runOnWebGPU;
+  private runOnWebWorkers;
+  private runOnMainThread;
+  private logPerformance;
+  /** Release all backend instances and buffers. */
+  destroy(): void;
+  /** Build the agent update function from compiled JavaScript source. */
+  private buildAgentFunction;
 }
 
 /**
@@ -1057,14 +1084,14 @@ declare class ComputeEngine {
  * | `Verbose` | 4     | All output including debug-level messages. |
  */
 declare enum LogLevel {
-    None = 0,
-    Error = 1,
-    Warning = 2,
-    Info = 3,
-    Verbose = 4
+  None = 0,
+  Error = 1,
+  Warning = 2,
+  Info = 3,
+  Verbose = 4,
 }
 /** @internal Supported code languages for the {@link Logger.code} method. */
-type Language = 'js' | 'wgsl' | 'wasm' | 'dsl';
+type Language = "js" | "wgsl" | "wasm" | "dsl";
 /**
  * Structured, colour-coded console logger with global listener support.
  *
@@ -1083,114 +1110,165 @@ type Language = 'js' | 'wgsl' | 'wasm' | 'dsl';
  * ```
  */
 declare class Logger {
-    private context;
-    private color;
-    /** @internal Global listener registry for log interception. */
-    private static listeners;
-    /**
-     * Create a new logger instance.
-     *
-     * @param context - Human-readable context name shown in log prefixes.
-     * @param color - CSS colour string for styled console output.
-     */
-    constructor(context: string, color?: string);
-    /**
-     * Set the global minimum log level for all Logger instances.
-     *
-     * Messages below this level are silently discarded.
-     *
-     * @param level - The new minimum log level.
-     */
-    static setGlobalLogLevel(level: LogLevel): void;
-    /**
-     * Register a global listener that receives all log messages.
-     *
-     * @param listener - Callback invoked for each log message.
-     */
-    static addListener(listener: (level: LogLevel, context: string, message: string, args: unknown[]) => void): void;
-    /**
-     * Remove a previously registered global listener.
-     *
-     * @param listener - The listener callback to remove.
-     */
-    static removeListener(listener: (level: LogLevel, context: string, message: string, args: unknown[]) => void): void;
-    /**
-     * Emit a log message to all registered listeners.
-     *
-     * @param level - Log level of the message.
-     * @param message - Primary message string.
-     * @param args - Additional arguments (serialised into the message for listeners).
-     * @internal
-     */
-    private emit;
-    /**
-     * Log a verbose/debug message.
-     *
-     * @param message - Message string.
-     * @param args - Additional values to log.
-     */
-    log(message: string, ...args: unknown[]): void;
-    /**
-     * Log an informational message.
-     *
-     * @param message - Message string.
-     * @param args - Additional values to log.
-     */
-    info(message: string, ...args: unknown[]): void;
-    /**
-     * Log a warning message.
-     *
-     * @param message - Message string.
-     * @param args - Additional values to log.
-     */
-    warn(message: string, ...args: unknown[]): void;
-    /**
-     * Log an error message.
-     *
-     * @param message - Message string.
-     * @param args - Additional values to log.
-     */
-    error(message: string, ...args: unknown[]): void;
-    /**
-     * Log an error with surrounding source-code context.
-     *
-     * Shows 2 lines above and below the error line with a `>` marker
-     * pointing to the offending line.
-     *
-     * @param message - Error description.
-     * @param code - Full source code string.
-     * @param lineIndex - Zero-based line index where the error occurred.
-     */
-    codeError(message: string, code: string, lineIndex: number): void;
-    /**
-     * Pretty-print a code snippet to the console with syntax-appropriate formatting.
-     *
-     * JavaScript code is formatted with Prettier; WGSL and WAT use a simple
-     * indentation-based formatter.
-     *
-     * @param label - Descriptive label for the code block.
-     * @param code - The source code to format and display.
-     * @param language - Language identifier for formatting.
-     */
-    code(label: string, code: string, language: Language): Promise<void>;
-    /**
-     * Format JavaScript code using Prettier.
-     *
-     * @param code - Raw JavaScript source.
-     * @returns Formatted JavaScript source.
-     * @internal
-     */
-    private formatJS;
-    /**
-     * Apply simple indentation-based formatting to WGSL/WAT code.
-     *
-     * Adjusts indentation based on brace/bracket nesting.
-     *
-     * @param code - Raw WGSL or WAT source.
-     * @returns Re-indented source.
-     * @internal
-     */
-    private formatGeneralCode;
+  private context;
+  private color;
+  /** @internal Global listener registry for log interception. */
+  private static listeners;
+  /**
+   * Create a new logger instance.
+   *
+   * @param context - Human-readable context name shown in log prefixes.
+   * @param color - CSS colour string for styled console output.
+   */
+  constructor(context: string, color?: string);
+  /**
+   * Set the global minimum log level for all Logger instances.
+   *
+   * Messages below this level are silently discarded.
+   *
+   * @param level - The new minimum log level.
+   */
+  static setGlobalLogLevel(level: LogLevel): void;
+  /**
+   * Register a global listener that receives all log messages.
+   *
+   * @param listener - Callback invoked for each log message.
+   */
+  static addListener(
+    listener: (
+      level: LogLevel,
+      context: string,
+      message: string,
+      args: unknown[],
+    ) => void,
+  ): void;
+  /**
+   * Remove a previously registered global listener.
+   *
+   * @param listener - The listener callback to remove.
+   */
+  static removeListener(
+    listener: (
+      level: LogLevel,
+      context: string,
+      message: string,
+      args: unknown[],
+    ) => void,
+  ): void;
+  /**
+   * Emit a log message to all registered listeners.
+   *
+   * @param level - Log level of the message.
+   * @param message - Primary message string.
+   * @param args - Additional arguments (serialised into the message for listeners).
+   * @internal
+   */
+  private emit;
+  /**
+   * Log a verbose/debug message.
+   *
+   * @param message - Message string.
+   * @param args - Additional values to log.
+   */
+  log(message: string, ...args: unknown[]): void;
+  /**
+   * Log an informational message.
+   *
+   * @param message - Message string.
+   * @param args - Additional values to log.
+   */
+  info(message: string, ...args: unknown[]): void;
+  /**
+   * Log a warning message.
+   *
+   * @param message - Message string.
+   * @param args - Additional values to log.
+   */
+  warn(message: string, ...args: unknown[]): void;
+  /**
+   * Log an error message.
+   *
+   * @param message - Message string.
+   * @param args - Additional values to log.
+   */
+  error(message: string, ...args: unknown[]): void;
+  /**
+   * Log an error with surrounding source-code context.
+   *
+   * Shows 2 lines above and below the error line with a `>` marker
+   * pointing to the offending line.
+   *
+   * @param message - Error description.
+   * @param code - Full source code string.
+   * @param lineIndex - Zero-based line index where the error occurred.
+   */
+  codeError(message: string, code: string, lineIndex: number): void;
+  /**
+   * Pretty-print a code snippet to the console with syntax-appropriate formatting.
+   *
+   * JavaScript code is formatted with Prettier; WGSL and WAT use a simple
+   * indentation-based formatter.
+   *
+   * @param label - Descriptive label for the code block.
+   * @param code - The source code to format and display.
+   * @param language - Language identifier for formatting.
+   */
+  code(label: string, code: string, language: Language): Promise<void>;
+  /**
+   * Format JavaScript code using Prettier.
+   *
+   * @param code - Raw JavaScript source.
+   * @returns Formatted JavaScript source.
+   * @internal
+   */
+  private formatJS;
+  /**
+   * Apply simple indentation-based formatting to WGSL/WAT code.
+   *
+   * Adjusts indentation based on brace/bracket nesting.
+   *
+   * @param code - Raw WGSL or WAT source.
+   * @returns Re-indented source.
+   * @internal
+   */
+  private formatGeneralCode;
 }
 
-export { type Agent, Simulation as AgentyxSimulation, type CompilationResult, Compiler, ComputeEngine, type CustomCodeSource, type InputDefinition, type InputValues, LogLevel, Logger, MAX_AGENTS, type Method, type Obstacle, PerformanceMonitor, type RenderMode, type RuntimeBrowserMetrics, type RuntimeDeviceMetrics, type RuntimeGPUMetrics, type RuntimeMetrics, Simulation, type SimulationAppearance, type SimulationConstructor, type SimulationErrorEntry, type SimulationFrameRecord, type SimulationFrameResult, type SimulationLogEntry, type SimulationOptions, type SimulationRunMetadata, type SimulationRunSummary, type SimulationSource, SimulationTracker, type SimulationTrackingFilter, type SimulationTrackingReport, type TrackingOptions, collectRuntimeMetrics, Simulation as default };
+export {
+  type Agent,
+  Simulation as AgentyxSimulation,
+  type CompilationResult,
+  Compiler,
+  ComputeEngine,
+  type CustomCodeSource,
+  type InputDefinition,
+  type InputValues,
+  LogLevel,
+  Logger,
+  MAX_AGENTS,
+  type Method,
+  type Obstacle,
+  PerformanceMonitor,
+  type RenderMode,
+  type RuntimeBrowserMetrics,
+  type RuntimeDeviceMetrics,
+  type RuntimeGPUMetrics,
+  type RuntimeMetrics,
+  Simulation,
+  type SimulationAppearance,
+  type SimulationConstructor,
+  type SimulationErrorEntry,
+  type SimulationFrameRecord,
+  type SimulationFrameResult,
+  type SimulationLogEntry,
+  type SimulationOptions,
+  type SimulationRunMetadata,
+  type SimulationRunSummary,
+  type SimulationSource,
+  SimulationTracker,
+  type SimulationTrackingFilter,
+  type SimulationTrackingReport,
+  type TrackingOptions,
+  collectRuntimeMetrics,
+  Simulation as default,
+};

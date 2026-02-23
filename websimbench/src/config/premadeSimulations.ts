@@ -1,25 +1,25 @@
 import type { Icon } from "@phosphor-icons/react";
 import {
-    Atom,
-    Bird,
-    Bug,
-    Campfire,
-    CloudRain,
-    Drop,
-    Fish,
-    RocketLaunch,
-    TrafficSignal,
-    UsersThree,
+  Atom,
+  Bird,
+  Bug,
+  Campfire,
+  CloudRain,
+  Drop,
+  Fish,
+  RocketLaunch,
+  TrafficSignal,
+  UsersThree,
 } from "@phosphor-icons/react";
 
 export interface PremadeSimulation {
-    code: string;
-    description: string;
-    icon: Icon;
+  code: string;
+  description: string;
+  icon: Icon;
 }
 
 const PREMADE_SIMULATION_CODE: Record<string, string> = {
-    'Tutorial': `// --- Agentyx DSL Tutorial ---
+  Tutorial: `// --- Agentyx DSL Tutorial ---
 // This tutorial walks you through the core features of the language.
 
 // 1. INPUTS
@@ -101,7 +101,7 @@ borderWrapping();
 // we call updatePosition() to apply those vectors to the agent's x/y.
 updatePosition(1.0);
     `,
-    'Slime Mold': `// Slime Mold Simulation
+  "Slime Mold": `// Slime Mold Simulation
 input sensorAngle = 0.6;
 input sensorDist = 15;
 input turnAngle = 0.6;
@@ -137,7 +137,7 @@ moveForward(inputs.speed);
 borderWrapping();
 deposit(inputs.depositAmount);
 `,
-    'Boids': `// Boids Simulation
+  Boids: `// Boids Simulation
 input perceptionRadius = 40 [0, 100];
 input alignmentFactor = 0.01 [0, 0.1];
 input separationDist = 40 [0, 100];
@@ -194,7 +194,7 @@ borderWrapping()
 updatePosition(inputs.dt);
 `,
 
-    'Fire': `// Fire Simulation
+  Fire: `// Fire Simulation
 species(3); 
 // 0 = Fuel/Base
 // 1 = Active Fire
@@ -253,7 +253,7 @@ else {
 borderWrapping();
 `,
 
-    'Fluid Dispersal': `// Fluid Dispersal Simulation
+  "Fluid Dispersal": `// Fluid Dispersal Simulation
 input gravity = 0.1;
 input repulsionRadius = 15;
 input repulsionForce = 0.5;
@@ -294,7 +294,7 @@ if (x <= 0 || x >= inputs.width) {
 updatePosition(1.0);
 `,
 
-    'Predator-Prey': `// Predator-Prey Simulation
+  "Predator-Prey": `// Predator-Prey Simulation
 species(2); 
 // 0 = Prey
 // 1 = Predator
@@ -398,7 +398,7 @@ borderWrapping();
 updatePosition(1.0);
 `,
 
-    'Rain': `// Rain Simulation
+  Rain: `// Rain Simulation
 input gravity = 0.5;
 input wind = 0.1;
 input terminalVelocity = 10;
@@ -421,7 +421,7 @@ updatePosition(1.0);
 borderWrapping();
 `,
 
-    'Multi-Species Boids': `// Multi-Species Boids Simulation
+  "Multi-Species Boids": `// Multi-Species Boids Simulation
 species(3); 
 // 0: Aggressive/Fast
 // 1: Balanced/Social
@@ -495,7 +495,7 @@ borderWrapping();
 updatePosition(1.0);
 `,
 
-    'Traffic': `// Traffic Simulation
+  Traffic: `// Traffic Simulation
 input vision = 60;
 input pspace = 15;
 input maxSpeed = 3;
@@ -541,7 +541,7 @@ borderWrapping();
 updatePosition(1.0);
 `,
 
-    'Cosmic Web': `// Cosmic Web Simulation
+  "Cosmic Web": `// Cosmic Web Simulation
 species(5);
 
 // Cyclic Pursuit:
@@ -590,58 +590,72 @@ vy *= inputs.friction;
 limitSpeed(inputs.maxSpeed);
 borderWrapping();
 updatePosition(1.0);
-`
+`,
 };
 
-const PREMADE_SIMULATION_METADATA: Record<string, Omit<PremadeSimulation, "code">> = {
-    'Tutorial': {
-        icon: RocketLaunch,
-        description: 'Guided starter that introduces inputs, species, sensing, and trail behavior.'
-    },
-    'Slime Mold': {
-        icon: Bug,
-        description: 'Classic trail-following swarm that grows filament-like emergent paths.'
-    },
-    'Boids': {
-        icon: Bird,
-        description: 'Alignment, cohesion, and separation rules for flocking behavior.'
-    },
-    'Fire': {
-        icon: Campfire,
-        description: 'Multi-species flames and smoke with rising, cooling, and turbulence.'
-    },
-    'Fluid Dispersal': {
-        icon: Drop,
-        description: 'Particle-style fluid spread with gravity, repulsion, damping, and bounce.'
-    },
-    'Predator-Prey': {
-        icon: Fish,
-        description: 'Two-species ecosystem where prey flock and predators hunt nearby targets.'
-    },
-    'Rain': {
-        icon: CloudRain,
-        description: 'Gravity-driven raindrops with wind noise and velocity limiting.'
-    },
-    'Multi-Species Boids': {
-        icon: UsersThree,
-        description: 'Three flock types with distinct speed and interaction traits.'
-    },
-    'Traffic': {
-        icon: TrafficSignal,
-        description: 'Lane-like flow model with spacing checks, braking, and acceleration.'
-    },
-    'Cosmic Web': {
-        icon: Atom,
-        description: 'Cyclic pursuit across five species to create web-like cosmic patterns.'
-    },
+const PREMADE_SIMULATION_METADATA: Record<
+  string,
+  Omit<PremadeSimulation, "code">
+> = {
+  Tutorial: {
+    icon: RocketLaunch,
+    description:
+      "Guided starter that introduces inputs, species, sensing, and trail behavior.",
+  },
+  "Slime Mold": {
+    icon: Bug,
+    description:
+      "Classic trail-following swarm that grows filament-like emergent paths.",
+  },
+  Boids: {
+    icon: Bird,
+    description:
+      "Alignment, cohesion, and separation rules for flocking behavior.",
+  },
+  Fire: {
+    icon: Campfire,
+    description:
+      "Multi-species flames and smoke with rising, cooling, and turbulence.",
+  },
+  "Fluid Dispersal": {
+    icon: Drop,
+    description:
+      "Particle-style fluid spread with gravity, repulsion, damping, and bounce.",
+  },
+  "Predator-Prey": {
+    icon: Fish,
+    description:
+      "Two-species ecosystem where prey flock and predators hunt nearby targets.",
+  },
+  Rain: {
+    icon: CloudRain,
+    description:
+      "Gravity-driven raindrops with wind noise and velocity limiting.",
+  },
+  "Multi-Species Boids": {
+    icon: UsersThree,
+    description:
+      "Three flock types with distinct speed and interaction traits.",
+  },
+  Traffic: {
+    icon: TrafficSignal,
+    description:
+      "Lane-like flow model with spacing checks, braking, and acceleration.",
+  },
+  "Cosmic Web": {
+    icon: Atom,
+    description:
+      "Cyclic pursuit across five species to create web-like cosmic patterns.",
+  },
 };
 
-export const PREMADE_SIMULATIONS: Record<string, PremadeSimulation> = Object.fromEntries(
+export const PREMADE_SIMULATIONS: Record<string, PremadeSimulation> =
+  Object.fromEntries(
     Object.entries(PREMADE_SIMULATION_CODE).map(([name, code]) => [
-        name,
-        {
-            code,
-            ...PREMADE_SIMULATION_METADATA[name],
-        }
-    ])
-);
+      name,
+      {
+        code,
+        ...PREMADE_SIMULATION_METADATA[name],
+      },
+    ]),
+  );

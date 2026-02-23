@@ -42,7 +42,7 @@ export type SimulationAppearance = {
   agentColor: string;
   backgroundColor: string;
   agentSize: number;
-  agentShape: 'circle' | 'square';
+  agentShape: "circle" | "square";
   showTrails: boolean;
   trailOpacity?: number;
   trailColor: string;
@@ -61,7 +61,14 @@ export type SimulationAppearance = {
  * from {@link Simulation.setInputs} and the per-frame `inputValues` argument.
  */
 export type InputValues = {
-  [key: string]: number | boolean | Agent[] | Float32Array | Uint32Array | Function | Obstacle[];
+  [key: string]:
+    | number
+    | boolean
+    | Agent[]
+    | Float32Array
+    | Uint32Array
+    | Function
+    | Obstacle[];
 };
 
 /**
@@ -112,7 +119,7 @@ export type CompilationResult = {
   trailEnvironmentConfig?: TrailEnvironmentConfig;
   speciesCount?: number;
   numRandomCalls: number;
-  errors?: { message: string, lineIndex: number }[];
+  errors?: { message: string; lineIndex: number }[];
 };
 
 /**
@@ -161,7 +168,12 @@ export type Obstacle = {
  * - `'WebGPU'` — GPU compute via WGSL shaders.
  * - `'WebGL'` — Reserved / legacy. Not currently implemented.
  */
-export type Method = 'WebGL' | 'WebAssembly' | 'JavaScript' | 'WebWorkers' | 'WebGPU';
+export type Method =
+  | "WebGL"
+  | "WebAssembly"
+  | "JavaScript"
+  | "WebWorkers"
+  | "WebGPU";
 
 /**
  * Rendering strategy for simulation output.
@@ -170,7 +182,7 @@ export type Method = 'WebGL' | 'WebAssembly' | 'JavaScript' | 'WebWorkers' | 'We
  * - `'gpu'` — WebGPU-based rendering via instanced draw calls.
  * - `'none'` — Headless; no rendering (useful for benchmarking).
  */
-export type RenderMode = 'cpu' | 'gpu' | 'none';
+export type RenderMode = "cpu" | "gpu" | "none";
 
 /**
  * User-supplied code for the `'custom'` simulation source kind.
@@ -204,13 +216,13 @@ export type CustomCodeSource = {
  */
 export type SimulationSource =
   | {
-    kind: 'dsl';
-    code: string;
-  }
+      kind: "dsl";
+      code: string;
+    }
   | {
-    kind: 'custom';
-    code: CustomCodeSource;
-  };
+      kind: "custom";
+      code: CustomCodeSource;
+    };
 
 /**
  * Options controlling what the {@link SimulationTracker} captures.

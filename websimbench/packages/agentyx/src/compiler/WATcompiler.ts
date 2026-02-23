@@ -9,9 +9,9 @@
  */
 
 import { DSLParser, type LineInfo } from "./parser";
-import type { CompilerTarget, CompilationContext } from './compilerTarget';
-import { createContext } from './compilerTarget';
-import { emitCommand as registryEmitCommand } from './commandRegistry';
+import type { CompilerTarget, CompilationContext } from "./compilerTarget";
+import { createContext } from "./compilerTarget";
+import { emitCommand as registryEmitCommand } from "./commandRegistry";
 
 // ─── Expression Helpers (WAT-specific) ───────────────────────────────
 
@@ -63,7 +63,15 @@ function infixToSExpression(expr: string): string {
 
   if (expr.includes(".")) {
     expr = expr.replace(/([a-zA-Z_]\w*)\.(\w+)/g, (match, prefix, suffix) => {
-      if (prefix === 'f32' || prefix === 'i32' || prefix === 'local' || prefix === 'global' || prefix === 'call' || prefix === 'return') return match;
+      if (
+        prefix === "f32" ||
+        prefix === "i32" ||
+        prefix === "local" ||
+        prefix === "global" ||
+        prefix === "call" ||
+        prefix === "return"
+      )
+        return match;
       return `${prefix}_${suffix}`;
     });
   }
@@ -80,7 +88,7 @@ function infixToSExpression(expr: string): string {
   }
 
   if (/^[a-zA-Z_]\w*$/.test(expr) && !/^__RANDOM_\d+__$/.test(expr)) {
-    if (expr === 'id') return `(local.get $_agent_id)`;
+    if (expr === "id") return `(local.get $_agent_id)`;
     return `(local.get $${expr})`;
   }
 
@@ -106,14 +114,15 @@ function infixToSExpression(expr: string): string {
       }
       return infixToSExpression(token.slice(1, -1));
     }
-    if (token === 'id') return `(local.get $_agent_id)`;
+    if (token === "id") return `(local.get $_agent_id)`;
     return `(local.get $${token})`;
   }
 
   // Find operators with lowest precedence (addition/subtraction)
   for (let i = tokens.length - 1; i >= 0; i--) {
     if (tokens[i] === "+" || tokens[i] === "-") {
-      const isUnary = i === 0 || /^[+\-*/^]$/.test(tokens[i - 1]) || tokens[i - 1] === "(";
+      const isUnary =
+        i === 0 || /^[+\-*/^]$/.test(tokens[i - 1]) || tokens[i - 1] === "(";
 
       if (tokens[i] === "-") {
         if (isUnary) {
@@ -167,11 +176,14 @@ function infixToSExpression(expr: string): string {
 
   const converted = tokens
     .map((token) => {
-      const _rm = token.match(/^__RANDOM_(\d+)__$/); if (_rm) return `(call $random (local.get $_agent_id) (i32.const ${_rm[1]}))`;
-      if (/^GLOBAL_\w+$/.test(token)) return `(global.get $inputs_${token.substring(7)})`;
+      const _rm = token.match(/^__RANDOM_(\d+)__$/);
+      if (_rm)
+        return `(call $random (local.get $_agent_id) (i32.const ${_rm[1]}))`;
+      if (/^GLOBAL_\w+$/.test(token))
+        return `(global.get $inputs_${token.substring(7)})`;
       if (/^-?\d+(\.\d+)?$/.test(token)) return `(f32.const ${token})`;
       if (/^[+\-*/]$/.test(token)) return token;
-      if (token === 'id') return `(local.get $_agent_id)`;
+      if (token === "id") return `(local.get $_agent_id)`;
       return `(local.get $${token})`;
     })
     .join(" ");
@@ -179,7 +191,11 @@ function infixToSExpression(expr: string): string {
   return converted;
 }
 
-function normalizeWASMExpression(expr: string, randomInputs: Set<string>, watCtx?: WATContext): string {
+function normalizeWASMExpression(
+  expr: string,
+  randomInputs: Set<string>,
+  watCtx?: WATContext,
+): string {
   let r = expr.trim();
 
   r = r.replace(/sqrt\(([^)]+)\)/g, (_match, arg) => {
@@ -189,12 +205,23 @@ function normalizeWASMExpression(expr: string, randomInputs: Set<string>, watCtx
   r = r.replace(/(\w+(?:\.\w+)?)\s*\^2/g, "$1 * $1");
   r = r.replace(/(\w+(?:\.\w+)?)\s*\*\*2/g, "$1 * $1");
 
-  r = r.replace(/([a-zA-Z_]\w*)\.(?!length|count)(\w+)/g, (match, obj, prop) => {
-    if (obj === 'inputs') return match;
-    if (obj === 'nearbyAgents') return match;
-    if (obj === 'f32' || obj === 'i32' || obj === 'local' || obj === 'global' || obj === 'call' || obj === 'return') return match;
-    return `${obj}_${prop}`;
-  });
+  r = r.replace(
+    /([a-zA-Z_]\w*)\.(?!length|count)(\w+)/g,
+    (match, obj, prop) => {
+      if (obj === "inputs") return match;
+      if (obj === "nearbyAgents") return match;
+      if (
+        obj === "f32" ||
+        obj === "i32" ||
+        obj === "local" ||
+        obj === "global" ||
+        obj === "call" ||
+        obj === "return"
+      )
+        return match;
+      return `${obj}_${prop}`;
+    },
+  );
 
   r = r.replace(/(\w+)\.length/g, "$1_count");
   r = r.replace(/(\w+)\.count/g, "$1_count");
@@ -216,7 +243,7 @@ function normalizeWASMExpression(expr: string, randomInputs: Set<string>, watCtx
   if (r.includes("sense(")) {
     const match = r.match(/sense\(([^)]+)\)/);
     if (match) {
-      const args = match[1].split(',').map(s => infixToSExpression(s.trim()));
+      const args = match[1].split(",").map((s) => infixToSExpression(s.trim()));
       if (args.length === 2) {
         return `(call $sense (local.get $x) (local.get $y) (local.get $vx) (local.get $vy) ${args[0]} ${args[1]})`;
       }
@@ -224,7 +251,10 @@ function normalizeWASMExpression(expr: string, randomInputs: Set<string>, watCtx
   }
 
   r = r.replace(/random\(([^)]*)\)/g, (_match, args) => {
-    const parts = args.split(',').filter((s: string) => s.trim().length > 0).map((s: string) => s.trim());
+    const parts = args
+      .split(",")
+      .filter((s: string) => s.trim().length > 0)
+      .map((s: string) => s.trim());
     const randCall = `__RANDOM_${watCtx ? watCtx.numRandomInputs + watCtx.randomCallCount : 0}__`;
     if (watCtx) watCtx.randomCallCount++;
     if (parts.length === 0) return randCall;
@@ -233,9 +263,15 @@ function normalizeWASMExpression(expr: string, randomInputs: Set<string>, watCtx
   });
 
   if (r.includes("inputs.random")) {
-    const randIdx = watCtx ? watCtx.numRandomInputs + watCtx.randomCallCount : 0;
+    const randIdx = watCtx
+      ? watCtx.numRandomInputs + watCtx.randomCallCount
+      : 0;
     if (watCtx) watCtx.randomCallCount++;
-    return normalizeWASMExpression(r.replace(/inputs\.random/g, `__RANDOM_${randIdx}__`), randomInputs, watCtx);
+    return normalizeWASMExpression(
+      r.replace(/inputs\.random/g, `__RANDOM_${randIdx}__`),
+      randomInputs,
+      watCtx,
+    );
   }
 
   if (randomInputs.size > 0) {
@@ -248,7 +284,11 @@ function normalizeWASMExpression(expr: string, randomInputs: Set<string>, watCtx
   return infixToSExpression(r);
 }
 
-function normalizeWASMCondition(cond: string, randomInputs: Set<string>, watCtx?: WATContext): string {
+function normalizeWASMCondition(
+  cond: string,
+  randomInputs: Set<string>,
+  watCtx?: WATContext,
+): string {
   cond = cond.trim();
 
   const operators = [
@@ -272,7 +312,11 @@ function normalizeWASMCondition(cond: string, randomInputs: Set<string>, watCtx?
   return `(f32.ne ${normalizeWASMExpression(cond, randomInputs, watCtx)} (f32.const 0))`;
 }
 
-function parseCondition(condition: string, randomInputs: Set<string>, watCtx?: WATContext): string {
+function parseCondition(
+  condition: string,
+  randomInputs: Set<string>,
+  watCtx?: WATContext,
+): string {
   condition = condition.trim();
   condition = condition.replace(/(\w+)\.length/g, "$1_count");
   return normalizeWASMCondition(condition, randomInputs, watCtx);
@@ -281,7 +325,7 @@ function parseCondition(condition: string, randomInputs: Set<string>, watCtx?: W
 // ─── WAT Context ─────────────────────────────────────────────────────
 
 interface BlockEntry {
-  type: 'if' | 'foreach' | 'for';
+  type: "if" | "foreach" | "for";
   /** Extra closing parens needed when this block is closed (from elseif expansion) */
   pendingClose: number;
 }
@@ -291,7 +335,15 @@ interface WATContext {
   currentLoopVar?: string;
   /** Track neighbors variable info for foreach distance filtering */
   neighborsInfo: Map<string, { radiusExpr: string }>;
-  variables: Map<string, { type: 'neighbors' | 'mean_result' | 'scalar' | 'loop_index'; radiusExpr?: string; collection?: string; property?: string; }>;
+  variables: Map<
+    string,
+    {
+      type: "neighbors" | "mean_result" | "scalar" | "loop_index";
+      radiusExpr?: string;
+      collection?: string;
+      property?: string;
+    }
+  >;
   randomInputs: Set<string>;
   usedFunctions: Set<string>;
   localVars: Set<string>;
@@ -305,7 +357,7 @@ interface WATContext {
   numRandomCalls: number;
   /** Number of random input declarations (offset for inline random calls) */
   numRandomInputs: number;
-  errors: { message: string, lineIndex: number }[];
+  errors: { message: string; lineIndex: number }[];
   inputs: Set<string>;
   currentLineIndex: number;
 }
@@ -314,7 +366,12 @@ interface WATContext {
 // WAT keeps its own transpileLine because S-expression output requires
 // very different handling from curly-brace languages.
 
-function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<string>, context: WATContext): string | null {
+function transpileLine(
+  line: string,
+  localVars: Set<string>,
+  randomInputs: Set<string>,
+  context: WATContext,
+): string | null {
   const parsed = DSLParser.parseDSLLine(line);
 
   switch (parsed.type) {
@@ -334,26 +391,49 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
       let expr = parsed.expression;
       const arrayMatchInVar = expr.match(/(\w+)\[\w+\]\.(\w+)/);
       if (arrayMatchInVar) {
-        const offsets: Record<string, number> = { x: 4, y: 8, vx: 12, vy: 16, species: 20 };
+        const offsets: Record<string, number> = {
+          x: 4,
+          y: 8,
+          vx: 12,
+          vy: 16,
+          species: 20,
+        };
         const offset = offsets[arrayMatchInVar[2]] || 0;
         return `(local.set $${parsed.name} (f32.load (i32.add (local.get $_for_ptr) (i32.const ${offset}))))`;
       }
 
       // Replace loop variable property access (e.g., nearby.x → nearby_x) in the FULL expression
       if (context.currentLoopVar) {
-        const loopVarRegex = new RegExp(`\\b${context.currentLoopVar}\\.(\\w+)`, 'g');
+        const loopVarRegex = new RegExp(
+          `\\b${context.currentLoopVar}\\.(\\w+)`,
+          "g",
+        );
         expr = expr.replace(loopVarRegex, `${context.currentLoopVar}_$1`);
       }
       const wasmExpr = normalizeWASMExpression(expr, randomInputs, context);
       if (wasmExpr.startsWith("__NEIGHBORS__")) {
-        const radiusExpr = wasmExpr.replace("__NEIGHBORS__", "").replace("__", "");
-        const radius = normalizeWASMExpression(radiusExpr, randomInputs, context);
+        const radiusExpr = wasmExpr
+          .replace("__NEIGHBORS__", "")
+          .replace("__", "");
+        const radius = normalizeWASMExpression(
+          radiusExpr,
+          randomInputs,
+          context,
+        );
         // Store neighbors info for foreach distance filtering
         context.neighborsInfo.set(parsed.name, { radiusExpr: radius });
-        localVars.add(`${parsed.name}_count`); localVars.add(`${parsed.name}_sum_x`); localVars.add(`${parsed.name}_sum_y`);
-        localVars.add(`${parsed.name}_sum_vx`); localVars.add(`${parsed.name}_sum_vy`); localVars.add("_loop_idx");
-        localVars.add("_loop_ptr"); localVars.add("_other_x"); localVars.add("_other_y"); localVars.add("_dx");
-        localVars.add("_dy"); localVars.add("_dist");
+        localVars.add(`${parsed.name}_count`);
+        localVars.add(`${parsed.name}_sum_x`);
+        localVars.add(`${parsed.name}_sum_y`);
+        localVars.add(`${parsed.name}_sum_vx`);
+        localVars.add(`${parsed.name}_sum_vy`);
+        localVars.add("_loop_idx");
+        localVars.add("_loop_ptr");
+        localVars.add("_other_x");
+        localVars.add("_other_y");
+        localVars.add("_dx");
+        localVars.add("_dy");
+        localVars.add("_dist");
         return `
     ;; Find neighbors within radius (reading from agentsReadPtr for order-independent sensing)
     (local.set $${parsed.name}_count (f32.const 0))
@@ -395,47 +475,82 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
     }
 
     case "if": {
-      context.blockStack.push({ type: 'if', pendingClose: context.deferredPendingClose });
+      context.blockStack.push({
+        type: "if",
+        pendingClose: context.deferredPendingClose,
+      });
       context.deferredPendingClose = 0;
 
       // Replace loop variable property access in conditions
       let condition = parsed.condition;
       if (context.currentLoopVar) {
-        const loopVarRegex = new RegExp(`\\b${context.currentLoopVar}\\.(\\w+)`, 'g');
-        condition = condition.replace(loopVarRegex, `${context.currentLoopVar}_$1`);
+        const loopVarRegex = new RegExp(
+          `\\b${context.currentLoopVar}\\.(\\w+)`,
+          "g",
+        );
+        condition = condition.replace(
+          loopVarRegex,
+          `${context.currentLoopVar}_$1`,
+        );
       }
 
       const combinedCondition = (parts: string[], op: "and" | "or") => {
-        const conditions = parts.map(p => parseCondition(p, randomInputs, context));
-        if (conditions.some(c => c.includes("TODO"))) return conditions.find(c => c.includes("TODO")) ?? null;
-        return `(if ${conditions.reduce((acc, c) => acc ? `(i32.${op} ${acc} ${c})` : c)} (then`;
+        const conditions = parts.map((p) =>
+          parseCondition(p, randomInputs, context),
+        );
+        if (conditions.some((c) => c.includes("TODO")))
+          return conditions.find((c) => c.includes("TODO")) ?? null;
+        return `(if ${conditions.reduce((acc, c) => (acc ? `(i32.${op} ${acc} ${c})` : c))} (then`;
       };
 
-      if (condition.includes("&&")) return combinedCondition(condition.split("&&").map(p => p.trim()), "and") ?? null;
-      if (condition.includes("||")) return combinedCondition(condition.split("||").map(p => p.trim()), "or") ?? null;
+      if (condition.includes("&&"))
+        return (
+          combinedCondition(
+            condition.split("&&").map((p) => p.trim()),
+            "and",
+          ) ?? null
+        );
+      if (condition.includes("||"))
+        return (
+          combinedCondition(
+            condition.split("||").map((p) => p.trim()),
+            "or",
+          ) ?? null
+        );
 
       return `(if ${parseCondition(condition, randomInputs, context)} (then`;
     }
 
     case "else":
-      context.blockStack.push({ type: 'if', pendingClose: context.deferredPendingClose });
+      context.blockStack.push({
+        type: "if",
+        pendingClose: context.deferredPendingClose,
+      });
       context.deferredPendingClose = 0;
       return "(else";
     case "elseif":
-      context.blockStack.push({ type: 'if', pendingClose: context.deferredPendingClose });
+      context.blockStack.push({
+        type: "if",
+        pendingClose: context.deferredPendingClose,
+      });
       context.deferredPendingClose = 0;
       return `(elseif ${parseCondition(parsed.condition, randomInputs, context)}`;
 
     case "for": {
-      context.blockStack.push({ type: 'for', pendingClose: 0 });
+      context.blockStack.push({ type: "for", pendingClose: 0 });
       context.loopDepth++;
       const initMatch = parsed.init.match(/var\s+(\w+)\s*=\s*(.+)/);
       const condMatch = parsed.condition.match(/(\w+)\s*<\s*(\w+)\.length/);
       if (initMatch && condMatch && condMatch[2] === "nearbyAgents") {
         const loopVar = initMatch[1];
         context.currentLoopVar = loopVar;
-        localVars.add(loopVar); if (loopVar !== "i") localVars.add(loopVar);
-        localVars.add("_for_idx"); localVars.add("_for_ptr"); localVars.add("_for_dx"); localVars.add("_for_dy"); localVars.add("_for_dist");
+        localVars.add(loopVar);
+        if (loopVar !== "i") localVars.add(loopVar);
+        localVars.add("_for_idx");
+        localVars.add("_for_ptr");
+        localVars.add("_for_dx");
+        localVars.add("_for_dy");
+        localVars.add("_for_dist");
         return `
     ;; For loop over nearbyAgents
     (local.set $_for_idx (i32.const 0))
@@ -452,7 +567,9 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
       } else {
         const loopVar = initMatch ? initMatch[1] : "i";
         localVars.add(loopVar);
-        const initExpr = initMatch ? normalizeWASMExpression(initMatch[2], randomInputs, context) : "(f32.const 0)";
+        const initExpr = initMatch
+          ? normalizeWASMExpression(initMatch[2], randomInputs, context)
+          : "(f32.const 0)";
         return `
     ;; Standard for loop
     (local.set $${loopVar} ${initExpr})
@@ -470,11 +587,17 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
       if (loopVar) {
         context.currentLoopVar = loopVar;
         context.loopDepth++;
-        context.blockStack.push({ type: 'foreach', pendingClose: 0 });
-        localVars.add("_foreach_idx"); localVars.add("_foreach_ptr"); localVars.add(`${loopVar}_x`);
-        localVars.add(`${loopVar}_y`); localVars.add(`${loopVar}_vx`); localVars.add(`${loopVar}_vy`);
+        context.blockStack.push({ type: "foreach", pendingClose: 0 });
+        localVars.add("_foreach_idx");
+        localVars.add("_foreach_ptr");
+        localVars.add(`${loopVar}_x`);
+        localVars.add(`${loopVar}_y`);
+        localVars.add(`${loopVar}_vx`);
+        localVars.add(`${loopVar}_vy`);
         localVars.add(`${loopVar}_species`);
-        localVars.add("_foreach_dx"); localVars.add("_foreach_dy"); localVars.add("_foreach_dist");
+        localVars.add("_foreach_dx");
+        localVars.add("_foreach_dy");
+        localVars.add("_foreach_dist");
 
         // Check if this collection has neighbor info for distance filtering
         const collectionName = collection || loopVar;
@@ -498,7 +621,7 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
           (local.set $_foreach_dx (f32.sub (local.get $x) (local.get $${loopVar}_x)))
           (local.set $_foreach_dy (f32.sub (local.get $y) (local.get $${loopVar}_y)))
           (local.set $_foreach_dist (f32.sqrt (f32.add (f32.mul (local.get $_foreach_dx) (local.get $_foreach_dx)) (f32.mul (local.get $_foreach_dy) (local.get $_foreach_dy)))))
-          ${radiusExpr ? `(if (f32.lt (local.get $_foreach_dist) ${radiusExpr}) (then` : '(if (i32.const 1) (then'}
+          ${radiusExpr ? `(if (f32.lt (local.get $_foreach_dist) ${radiusExpr}) (then` : "(if (i32.const 1) (then"}
             ;; Nearby agent - execute loop body`;
       }
       return `;; TODO: foreach loops require a variable name`;
@@ -508,7 +631,13 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
       let assignExpr = parsed.expression;
       const arrayMatch = assignExpr.match(/(\w+)\[\w+\]\.(\w+)/);
       if (arrayMatch) {
-        const offsets: Record<string, number> = { x: 4, y: 8, vx: 12, vy: 16, species: 20 };
+        const offsets: Record<string, number> = {
+          x: 4,
+          y: 8,
+          vx: 12,
+          vy: 16,
+          species: 20,
+        };
         const offset = offsets[arrayMatch[2]] || 0;
         const loadExpr = `(f32.load (i32.add (local.get $_for_ptr) (i32.const ${offset})))`;
         assignExpr = assignExpr.replace(/(\w+)\[\w+\]\.(\w+)/, loadExpr);
@@ -517,27 +646,43 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
 
       // Replace loop variable property access (e.g., nearby.x → nearby_x) in the FULL expression
       if (context.currentLoopVar) {
-        const loopVarRegex = new RegExp(`\\b${context.currentLoopVar}\\.(\\w+)`, 'g');
-        assignExpr = assignExpr.replace(loopVarRegex, `${context.currentLoopVar}_$1`);
+        const loopVarRegex = new RegExp(
+          `\\b${context.currentLoopVar}\\.(\\w+)`,
+          "g",
+        );
+        assignExpr = assignExpr.replace(
+          loopVarRegex,
+          `${context.currentLoopVar}_$1`,
+        );
       }
       return `(local.set $${parsed.target} ${normalizeWASMExpression(assignExpr, randomInputs, context)})`;
     }
 
     case "command": {
       // Delegate to centralized command registry
-      const ctx: CompilationContext = createContext(Array.from(context.inputs), Array.from(randomInputs), context.numRandomCalls);
+      const ctx: CompilationContext = createContext(
+        Array.from(context.inputs),
+        Array.from(randomInputs),
+        context.numRandomCalls,
+      );
       ctx.localVars = localVars;
       if (context.currentLoopVar) ctx.currentLoopVar = context.currentLoopVar;
       ctx.loopDepth = context.loopDepth;
-      const result = registryEmitCommand(parsed.command, parsed.argument, WATTarget, ctx);
+      const result = registryEmitCommand(
+        parsed.command,
+        parsed.argument,
+        WATTarget,
+        ctx,
+      );
       if (result && result.length > 0) {
-        return result.join('\n    ');
+        return result.join("\n    ");
       }
       return `;; TODO: ${parsed.command} not yet implemented in WASM`;
     }
 
     case "unknown":
-    default: return null;
+    default:
+      return null;
   }
 }
 
@@ -546,7 +691,7 @@ function transpileLine(line: string, localVars: Set<string>, randomInputs: Set<s
 // compileDSLtoWAT uses its own iteration logic due to S-expression nesting.
 
 export const WATTarget: CompilerTarget = {
-  name: 'wat',
+  name: "wat",
 
   emitExpression(expr: string, ctx: CompilationContext): string {
     return normalizeWASMExpression(expr, ctx.randomInputs);
@@ -554,7 +699,9 @@ export const WATTarget: CompilerTarget = {
 
   emitVar(name: string, expression: string, ctx: CompilationContext): string[] {
     ctx.localVars.add(name);
-    return [`(local.set $${name} ${normalizeWASMExpression(expression, ctx.randomInputs)})`];
+    return [
+      `(local.set $${name} ${normalizeWASMExpression(expression, ctx.randomInputs)})`,
+    ];
   },
 
   emitIf(condition: string, ctx: CompilationContext): string[] {
@@ -566,27 +713,48 @@ export const WATTarget: CompilerTarget = {
   },
 
   emitElse(): string[] {
-    return ['(else'];
+    return ["(else"];
   },
 
-  emitFor(_init: string, _condition: string, _increment: string, _ctx: CompilationContext): string[] {
-    return [';; for loop (not used through shared transpiler)'];
+  emitFor(
+    _init: string,
+    _condition: string,
+    _increment: string,
+    _ctx: CompilationContext,
+  ): string[] {
+    return [";; for loop (not used through shared transpiler)"];
   },
 
-  emitForeach(_collection: string, _varName: string | undefined, _itemAlias: string | undefined, _ctx: CompilationContext): string[] {
-    return [';; foreach loop (not used through shared transpiler)'];
+  emitForeach(
+    _collection: string,
+    _varName: string | undefined,
+    _itemAlias: string | undefined,
+    _ctx: CompilationContext,
+  ): string[] {
+    return [";; foreach loop (not used through shared transpiler)"];
   },
 
-  emitAssignment(target: string, expression: string, ctx: CompilationContext): string[] {
-    return [`(local.set $${target} ${normalizeWASMExpression(expression, ctx.randomInputs)})`];
+  emitAssignment(
+    target: string,
+    expression: string,
+    ctx: CompilationContext,
+  ): string[] {
+    return [
+      `(local.set $${target} ${normalizeWASMExpression(expression, ctx.randomInputs)})`,
+    ];
   },
 
   emitCloseBrace(_ctx: CompilationContext): string[] {
-    return ['))'];
+    return ["))"];
   },
 
-  emitProgram(_statements: string[], _inputs: string[], _randomInputs: string[], _ctx: CompilationContext): string {
-    return ';; WAT program generation uses compileDSLtoWAT directly';
+  emitProgram(
+    _statements: string[],
+    _inputs: string[],
+    _randomInputs: string[],
+    _ctx: CompilationContext,
+  ): string {
+    return ";; WAT program generation uses compileDSLtoWAT directly";
   },
 };
 
@@ -612,11 +780,11 @@ export const compileDSLtoWAT = (
   inputs: string[],
   randomInputs: string[] = [],
   numRandomCalls: number = 0,
-): { code: string, errors: { message: string, lineIndex: number }[] } => {
+): { code: string; errors: { message: string; lineIndex: number }[] } => {
   const statements: string[] = [];
   const localVars = new Set<string>();
   const randomInputsSet = new Set(randomInputs);
-  const errors: { message: string, lineIndex: number }[] = [];
+  const errors: { message: string; lineIndex: number }[] = [];
 
   const context: WATContext = {
     loopDepth: 0,
@@ -644,7 +812,10 @@ export const compileDSLtoWAT = (
     if (trimmed.startsWith("}") && trimmed !== "}") {
       // Pop the block for the implicit }
       const closedBlock = context.blockStack.pop();
-      if (closedBlock && (closedBlock.type === 'foreach' || closedBlock.type === 'for')) {
+      if (
+        closedBlock &&
+        (closedBlock.type === "foreach" || closedBlock.type === "for")
+      ) {
         context.loopDepth--;
         if (context.loopDepth <= 0) context.currentLoopVar = undefined;
       }
@@ -653,11 +824,19 @@ export const compileDSLtoWAT = (
       statements.push(")");
     }
 
-    let transpiled = transpileLine(trimmed, localVars, randomInputsSet, context);
+    let transpiled = transpileLine(
+      trimmed,
+      localVars,
+      randomInputsSet,
+      context,
+    );
 
     if (transpiled === null && trimmed !== "}") {
       if (context.blockStack.length > 0) {
-        errors.push({ message: 'Missing closing brace', lineIndex: lines[lines.length - 1].lineIndex });
+        errors.push({
+          message: "Missing closing brace",
+          lineIndex: lines[lines.length - 1].lineIndex,
+        });
       }
     }
 
@@ -670,18 +849,23 @@ export const compileDSLtoWAT = (
       let nextLineContent = "";
       while (nextLineIndex < lines.length) {
         const c = lines[nextLineIndex].content.trim();
-        if (c) { nextLineContent = c; break; }
+        if (c) {
+          nextLineContent = c;
+          break;
+        }
         nextLineIndex++;
       }
-      const followedByElse = nextLineContent.startsWith("else") || nextLineContent.startsWith("} else");
+      const followedByElse =
+        nextLineContent.startsWith("else") ||
+        nextLineContent.startsWith("} else");
 
-      if (closedBlock && closedBlock.type === 'foreach') {
+      if (closedBlock && closedBlock.type === "foreach") {
         // Close the foreach loop: close the distance/body if, skip-self if, then loop/block
         context.loopDepth--;
         if (context.loopDepth <= 0) context.currentLoopVar = undefined;
 
         transpiled = `))\n    ))\n    (local.set $_foreach_idx (i32.add (local.get $_foreach_idx) (i32.const 1)))\n    (local.set $_foreach_ptr (i32.add (local.get $_foreach_ptr) (i32.const 24)))\n    (br $_foreach_loop)\n    )\n    )`;
-      } else if (closedBlock && closedBlock.type === 'for') {
+      } else if (closedBlock && closedBlock.type === "for") {
         context.loopDepth--;
         if (context.loopDepth <= 0) context.currentLoopVar = undefined;
         // Close for loop structure
@@ -722,16 +906,41 @@ export const compileDSLtoWAT = (
   }
 
   localVars.add("_agent_id");
-  randomInputs.forEach(r => localVars.add(r));
+  randomInputs.forEach((r) => localVars.add(r));
 
-  const inputGlobals = inputs.length > 0 ? inputs.filter(n => n !== "randomValues" && n !== "trailMap" && n !== "obstacles" && n !== "obstacleCount").map(n => `(global $inputs_${n} (export "inputs_${n}") (mut f32) (f32.const 0))`).join("\n  ") : "";
+  const inputGlobals =
+    inputs.length > 0
+      ? inputs
+          .filter(
+            (n) =>
+              n !== "randomValues" &&
+              n !== "trailMap" &&
+              n !== "obstacles" &&
+              n !== "obstacleCount",
+          )
+          .map(
+            (n) =>
+              `(global $inputs_${n} (export "inputs_${n}") (mut f32) (f32.const 0))`,
+          )
+          .join("\n  ")
+      : "";
   const agentCountGlobal = `(global $agent_count (export "agent_count") (mut i32) (i32.const 0))`;
 
-  const i32Vars = new Set(["_loop_idx", "_loop_ptr", "_for_idx", "_for_ptr", "_foreach_idx", "_foreach_ptr", "_obs_idx", "_obs_ptr"]);
+  const i32Vars = new Set([
+    "_loop_idx",
+    "_loop_ptr",
+    "_for_idx",
+    "_for_ptr",
+    "_foreach_idx",
+    "_foreach_ptr",
+    "_obs_idx",
+    "_obs_ptr",
+  ]);
   const reservedLocals = new Set(["x", "y", "vx", "vy", "species"]);
   const localVarDecls = Array.from(localVars)
-    .filter(v => !reservedLocals.has(v))
-    .map(v => `(local $${v} ${i32Vars.has(v) ? "i32" : "f32"})`).join("\n      ");
+    .filter((v) => !reservedLocals.has(v))
+    .map((v) => `(local $${v} ${i32Vars.has(v) ? "i32" : "f32"})`)
+    .join("\n      ");
 
   const agentKernel = `
     ;; load agent fields
@@ -743,7 +952,7 @@ export const compileDSLtoWAT = (
     (local.set $species (f32.load (i32.add (local.get $ptr) (i32.const 20))))
 
     ;; load random values (indexed: agent_id * numRandomCalls + ri)
-    ${randomInputs.map((r, ri) => `(local.set $${r} (f32.load (i32.add (global.get $randomValuesPtr) (i32.shl (i32.add (i32.mul (i32.trunc_f32_u (local.get $_agent_id)) (i32.const ${numRandomCalls})) (i32.const ${ri})) (i32.const 2)))))`).join('\n    ')}
+    ${randomInputs.map((r, ri) => `(local.set $${r} (f32.load (i32.add (global.get $randomValuesPtr) (i32.shl (i32.add (i32.mul (i32.trunc_f32_u (local.get $_agent_id)) (i32.const ${numRandomCalls})) (i32.const ${ri})) (i32.const 2)))))`).join("\n    ")}
 
     ;; execute DSL
     ${statements.join("\n    ")}
@@ -769,14 +978,24 @@ export const compileDSLtoWAT = (
     (import "env" "print" (func $print (param f32 f32)))
 
     ${inputGlobals}
-    ${inputs.includes('trailMap') ? `(global $trailMapReadPtr (export "trailMapReadPtr") (mut i32) (i32.const 0))
-    (global $trailMapWritePtr (export "trailMapWritePtr") (mut i32) (i32.const 0))` : ''}
-    ${inputs.includes('randomValues') ? '(global $randomValuesPtr (export "randomValuesPtr") (mut i32) (i32.const 0))' : ''}
-    ${inputs.includes('obstacles') ? `(global $obstaclesPtr (export "obstaclesPtr") (mut i32) (i32.const 0))
-    (global $inputs_obstacleCount (export "inputs_obstacleCount") (mut i32) (i32.const 0))` : ''}
+    ${
+      inputs.includes("trailMap")
+        ? `(global $trailMapReadPtr (export "trailMapReadPtr") (mut i32) (i32.const 0))
+    (global $trailMapWritePtr (export "trailMapWritePtr") (mut i32) (i32.const 0))`
+        : ""
+    }
+    ${inputs.includes("randomValues") ? '(global $randomValuesPtr (export "randomValuesPtr") (mut i32) (i32.const 0))' : ""}
+    ${
+      inputs.includes("obstacles")
+        ? `(global $obstaclesPtr (export "obstaclesPtr") (mut i32) (i32.const 0))
+    (global $inputs_obstacleCount (export "inputs_obstacleCount") (mut i32) (i32.const 0))`
+        : ""
+    }
     (global $agentsReadPtr (export "agentsReadPtr") (mut i32) (i32.const 0))
 
-    ${inputs.includes('randomValues') ? `(func $random (param $id f32) (param $callIndex i32) (result f32)
+    ${
+      inputs.includes("randomValues")
+        ? `(func $random (param $id f32) (param $callIndex i32) (result f32)
       ;; Load randomValues[id * numRandomCalls + callIndex]
       (f32.load
         (i32.add
@@ -785,9 +1004,13 @@ export const compileDSLtoWAT = (
             (i32.add
               (i32.mul (i32.trunc_f32_u (local.get $id)) (i32.const ${numRandomCalls}))
               (local.get $callIndex))
-            (i32.const 2)))))` : ';; No random function needed (no randomValues input)'}
+            (i32.const 2)))))`
+        : ";; No random function needed (no randomValues input)"
+    }
 
-    ${inputs.includes('trailMap') ? `
+    ${
+      inputs.includes("trailMap")
+        ? `
     (func $sense (param $x f32) (param $y f32) (param $vx f32) (param $vy f32) (param $angleOffset f32) (param $dist f32) (result f32)
       (local $angle f32) (local $sx f32) (local $sy f32) (local $ix i32) (local $iy i32) (local $w i32) (local $h i32) (local $idx i32)
       (local.set $w (i32.trunc_f32_s (global.get $inputs_width)))
@@ -823,7 +1046,9 @@ export const compileDSLtoWAT = (
          (local.set $val (f32.load (local.get $ptr)))
          (f32.store (local.get $ptr) (f32.add (local.get $val) (local.get $amount)))
       ))
-    )` : ''}
+    )`
+        : ""
+    }
 
     ${agentCountGlobal}
 
@@ -846,6 +1071,7 @@ export const compileDSLtoWAT = (
         )
       )
     )
-  )`, errors
+  )`,
+    errors,
   };
 };

@@ -1,9 +1,10 @@
-import { House, ChartBar, BookOpen } from "@phosphor-icons/react";
-import { APP_VERSION_LABEL } from '@/config/version';
+import { House, BookOpen } from "@phosphor-icons/react";
+import { APP_VERSION_LABEL } from "@/config/version";
+import "./Navbar.css";
 
 interface NavbarProps {
   currentPage: string;
-  onNavigatePage: (page: 'home' | 'reports' | 'docs') => void;
+  onNavigatePage: (page: "home" | "docs") => void;
 }
 
 export const Navbar = ({ currentPage, onNavigatePage }: NavbarProps) => (
@@ -17,22 +18,16 @@ export const Navbar = ({ currentPage, onNavigatePage }: NavbarProps) => (
 
       <div className="navbar-nav">
         <NavButton
-          active={currentPage === 'home'}
-          onClick={() => onNavigatePage('home')}
+          active={currentPage === "home"}
+          onClick={() => onNavigatePage("home")}
           icon={<House size={18} />}
           label="Home"
         />
         <NavButton
-          active={currentPage === 'docs'}
-          onClick={() => onNavigatePage('docs')}
+          active={currentPage === "docs"}
+          onClick={() => onNavigatePage("docs")}
           icon={<BookOpen size={18} />}
           label="Agentyx"
-        />
-        <NavButton
-          active={currentPage === 'reports'}
-          onClick={() => onNavigatePage('reports')}
-          icon={<ChartBar size={18} />}
-          label="Reports"
         />
       </div>
     </div>
@@ -42,11 +37,18 @@ export const Navbar = ({ currentPage, onNavigatePage }: NavbarProps) => (
   </nav>
 );
 
-const NavButton = ({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: React.ReactNode, label: string }) => (
-  <button
-    onClick={onClick}
-    className={`nav-btn ${active ? 'active' : ''}`}
-  >
+const NavButton = ({
+  active,
+  onClick,
+  icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+}) => (
+  <button onClick={onClick} className={`nav-btn ${active ? "active" : ""}`}>
     {icon}
     {label}
   </button>

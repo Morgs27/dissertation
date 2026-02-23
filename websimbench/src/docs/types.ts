@@ -1,4 +1,4 @@
-export type DocsCodeLanguage = 'bash' | 'ts' | 'js' | 'html' | 'dsl' | 'json';
+export type DocsCodeLanguage = "bash" | "ts" | "js" | "html" | "dsl" | "json";
 
 export type DocsCodeSnippet = {
   title: string;
@@ -6,7 +6,7 @@ export type DocsCodeSnippet = {
   code: string;
 };
 
-export type DocsCalloutVariant = 'tip' | 'note' | 'warning' | 'info';
+export type DocsCalloutVariant = "tip" | "note" | "warning" | "info";
 
 export type DocsLinkCard = {
   page: string;
@@ -16,15 +16,20 @@ export type DocsLinkCard = {
 };
 
 export type DocsContentBlock =
-  | { kind: 'paragraph'; text: string }
-  | { kind: 'bullets'; items: string[] }
-  | { kind: 'ordered-list'; items: string[] }
-  | { kind: 'code'; snippet: DocsCodeSnippet }
-  | { kind: 'callout'; variant: DocsCalloutVariant; title?: string; text: string }
-  | { kind: 'table'; headers: string[]; rows: string[][] }
-  | { kind: 'heading'; text: string }
-  | { kind: 'link-cards'; cards: DocsLinkCard[] }
-  | { kind: 'example-runner'; exampleId: string };
+  | { kind: "paragraph"; text: string }
+  | { kind: "bullets"; items: string[] }
+  | { kind: "ordered-list"; items: string[] }
+  | { kind: "code"; snippet: DocsCodeSnippet }
+  | {
+      kind: "callout";
+      variant: DocsCalloutVariant;
+      title?: string;
+      text: string;
+    }
+  | { kind: "table"; headers: string[]; rows: string[][] }
+  | { kind: "heading"; text: string }
+  | { kind: "link-cards"; cards: DocsLinkCard[] }
+  | { kind: "example-runner"; exampleId: string };
 
 export type DocsContentSection = {
   id: string;
@@ -48,7 +53,7 @@ export type DocsPage = {
 export type DocsNavigationSection = {
   id: string;
   title: string;
-  pages: Array<Pick<DocsPage, 'id' | 'title'>>;
+  pages: Array<Pick<DocsPage, "id" | "title">>;
 };
 
 export type RunnableExample = {

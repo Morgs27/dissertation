@@ -8,25 +8,34 @@
  * emitted.
  */
 
-import type { CompilerTarget, CompilationContext } from './compilerTarget';
+import type { CompilerTarget, CompilationContext } from "./compilerTarget";
 
 // ─── DSL Function Definition ─────────────────────────────────────────
 
 export interface DSLFunction {
-    /** Function name in the DSL */
-    name: string;
-    /** Attempt to match this function in an expression. Returns match or null. */
-    detect(expr: string): RegExpMatchArray | null;
-    /**
-     * Emit code for a `var name = <function>(...)` declaration.
-     * Returns the transpiled statements for the target.
-     */
-    emitVar(match: RegExpMatchArray, varName: string, target: CompilerTarget, ctx: CompilationContext): string[];
-    /**
-     * Emit code for this function used as an inline expression (not in a var declaration).
-     * Optional — not all functions can be used inline.
-     */
-    emitExpr?(match: RegExpMatchArray, target: CompilerTarget, ctx: CompilationContext): string;
+  /** Function name in the DSL */
+  name: string;
+  /** Attempt to match this function in an expression. Returns match or null. */
+  detect(expr: string): RegExpMatchArray | null;
+  /**
+   * Emit code for a `var name = <function>(...)` declaration.
+   * Returns the transpiled statements for the target.
+   */
+  emitVar(
+    match: RegExpMatchArray,
+    varName: string,
+    target: CompilerTarget,
+    ctx: CompilationContext,
+  ): string[];
+  /**
+   * Emit code for this function used as an inline expression (not in a var declaration).
+   * Optional — not all functions can be used inline.
+   */
+  emitExpr?(
+    match: RegExpMatchArray,
+    target: CompilerTarget,
+    ctx: CompilationContext,
+  ): string;
 }
 
 // ─── Registry ────────────────────────────────────────────────────────
@@ -34,7 +43,7 @@ export interface DSLFunction {
 const FUNCTIONS: DSLFunction[] = [];
 
 export function registerFunction(fn: DSLFunction): void {
-    FUNCTIONS.push(fn);
+  FUNCTIONS.push(fn);
 }
 
 /**
@@ -42,19 +51,19 @@ export function registerFunction(fn: DSLFunction): void {
  * Returns null if no function matches.
  */
 export function tryEmitFunctionVar(
-    varName: string,
-    expression: string,
-    target: CompilerTarget,
-    ctx: CompilationContext,
+  varName: string,
+  expression: string,
+  target: CompilerTarget,
+  ctx: CompilationContext,
 ): string[] | null {
-    for (const fn of FUNCTIONS) {
-        const match = fn.detect(expression);
-        if (match) {
-            ctx.usedFunctions.add(fn.name);
-            return fn.emitVar(match, varName, target, ctx);
-        }
+  for (const fn of FUNCTIONS) {
+    const match = fn.detect(expression);
+    if (match) {
+      ctx.usedFunctions.add(fn.name);
+      return fn.emitVar(match, varName, target, ctx);
     }
-    return null;
+  }
+  return null;
 }
 
 /**
@@ -62,88 +71,89 @@ export function tryEmitFunctionVar(
  * Returns the replacement string, or null if no function matches.
  */
 export function tryEmitFunctionExpr(
-    expression: string,
-    target: CompilerTarget,
-    ctx: CompilationContext,
+  expression: string,
+  target: CompilerTarget,
+  ctx: CompilationContext,
 ): string | null {
-    for (const fn of FUNCTIONS) {
-        const match = fn.detect(expression);
-        if (match && fn.emitExpr) {
-            ctx.usedFunctions.add(fn.name);
-            return fn.emitExpr(match, target, ctx);
-        }
+  for (const fn of FUNCTIONS) {
+    const match = fn.detect(expression);
+    if (match && fn.emitExpr) {
+      ctx.usedFunctions.add(fn.name);
+      return fn.emitExpr(match, target, ctx);
     }
-    return null;
+  }
+  return null;
 }
 
 /**
  * Check if an expression is a custom function call (for detection purposes only)
  */
 export function isCustomFunction(expression: string): boolean {
-    return FUNCTIONS.some(fn => fn.detect(expression) !== null);
+  return FUNCTIONS.some((fn) => fn.detect(expression) !== null);
 }
 
 /**
  * Get the set of all registered function names
  */
 export function getRegisteredFunctionNames(): string[] {
-    return FUNCTIONS.map(fn => fn.name);
+  return FUNCTIONS.map((fn) => fn.name);
 }
 
 // ─── Register Built-in Functions ─────────────────────────────────────
 
 // neighbors(radius) — find nearby agents within radius
 registerFunction({
-    name: 'neighbors',
-    detect: (expr) => expr.match(/^neighbors\((.+)\)$/),
-    emitVar(match, varName, target, ctx) {
-        const radiusExpr = target.emitExpression(match[1], ctx);
-        // Track as neighbors collection in context
-        ctx.variables.set(varName, { type: 'neighbors', radiusExpr });
+  name: "neighbors",
+  detect: (expr) => expr.match(/^neighbors\((.+)\)$/),
+  emitVar(match, varName, target, ctx) {
+    const radiusExpr = target.emitExpression(match[1], ctx);
+    // Track as neighbors collection in context
+    ctx.variables.set(varName, { type: "neighbors", radiusExpr });
 
-        if (target.name === 'js') {
-            return [`let ${varName} = _neighbors(${radiusExpr}); `];
-        }
-        if (target.name === 'wgsl') {
-            return [
-                `// Find neighbors for ${varName}`,
-                `var ${varName}_count: u32 = 0u;`,
-                `var ${varName}_sum_x: f32 = 0.0;`,
-                `var ${varName}_sum_y: f32 = 0.0;`,
-                `var ${varName}_sum_vx: f32 = 0.0;`,
-                `var ${varName}_sum_vy: f32 = 0.0;`,
-                `for (var _ni: u32 = 0u; _ni < arrayLength(&agentsRead); _ni++) {`,
-                `if (_ni == i) { continue; }`,
-                `let other = agentsRead[_ni];`,
-                `let dx = x - other.x;`,
-                `let dy = y - other.y;`,
-                `let dist = sqrt(dx*dx + dy*dy);`,
-                `if (dist < ${radiusExpr}) {`,
-                `${varName}_count += 1u;`,
-                `${varName}_sum_x += other.x;`,
-                `${varName}_sum_y += other.y;`,
-                `${varName}_sum_vx += other.vx;`,
-                `${varName}_sum_vy += other.vy;`,
-                `}`,
-                `}`,
-            ];
-        }
-        if (target.name === 'wat') {
-            const radius = radiusExpr;
-            // Register all needed local variables
-            ctx.localVars.add(`${varName}_count`);
-            ctx.localVars.add(`${varName}_sum_x`);
-            ctx.localVars.add(`${varName}_sum_y`);
-            ctx.localVars.add(`${varName}_sum_vx`);
-            ctx.localVars.add(`${varName}_sum_vy`);
-            ctx.localVars.add('_loop_idx');
-            ctx.localVars.add('_loop_ptr');
-            ctx.localVars.add('_other_x');
-            ctx.localVars.add('_other_y');
-            ctx.localVars.add('_dx');
-            ctx.localVars.add('_dy');
-            ctx.localVars.add('_dist');
-            return [`
+    if (target.name === "js") {
+      return [`let ${varName} = _neighbors(${radiusExpr}); `];
+    }
+    if (target.name === "wgsl") {
+      return [
+        `// Find neighbors for ${varName}`,
+        `var ${varName}_count: u32 = 0u;`,
+        `var ${varName}_sum_x: f32 = 0.0;`,
+        `var ${varName}_sum_y: f32 = 0.0;`,
+        `var ${varName}_sum_vx: f32 = 0.0;`,
+        `var ${varName}_sum_vy: f32 = 0.0;`,
+        `for (var _ni: u32 = 0u; _ni < arrayLength(&agentsRead); _ni++) {`,
+        `if (_ni == i) { continue; }`,
+        `let other = agentsRead[_ni];`,
+        `let dx = x - other.x;`,
+        `let dy = y - other.y;`,
+        `let dist = sqrt(dx*dx + dy*dy);`,
+        `if (dist < ${radiusExpr}) {`,
+        `${varName}_count += 1u;`,
+        `${varName}_sum_x += other.x;`,
+        `${varName}_sum_y += other.y;`,
+        `${varName}_sum_vx += other.vx;`,
+        `${varName}_sum_vy += other.vy;`,
+        `}`,
+        `}`,
+      ];
+    }
+    if (target.name === "wat") {
+      const radius = radiusExpr;
+      // Register all needed local variables
+      ctx.localVars.add(`${varName}_count`);
+      ctx.localVars.add(`${varName}_sum_x`);
+      ctx.localVars.add(`${varName}_sum_y`);
+      ctx.localVars.add(`${varName}_sum_vx`);
+      ctx.localVars.add(`${varName}_sum_vy`);
+      ctx.localVars.add("_loop_idx");
+      ctx.localVars.add("_loop_ptr");
+      ctx.localVars.add("_other_x");
+      ctx.localVars.add("_other_y");
+      ctx.localVars.add("_dx");
+      ctx.localVars.add("_dy");
+      ctx.localVars.add("_dist");
+      return [
+        `
     ;; Find neighbors within radius (reading from agentsReadPtr for order-independent sensing)
     (local.set $${varName}_count (f32.const 0))
     (local.set $${varName}_sum_x (f32.const 0))
@@ -173,141 +183,163 @@ registerFunction({
         (local.set $_loop_ptr (i32.add (local.get $_loop_ptr) (i32.const 24)))
         (br $_neighbor_loop)
       )
-    )`];
-        }
-        return [];
+    )`,
+      ];
     }
+    return [];
+  },
 });
 
 // mean(collection.property) — calculate mean of a neighbor property
 registerFunction({
-    name: 'mean',
-    detect: (expr) => expr.match(/^mean\((\w+)\.(\w+)\)$/),
-    emitVar(match, varName, target, ctx) {
-        const collection = match[1];
-        const property = match[2];
-        const collectionInfo = ctx.variables.get(collection);
+  name: "mean",
+  detect: (expr) => expr.match(/^mean\((\w+)\.(\w+)\)$/),
+  emitVar(match, varName, target, ctx) {
+    const collection = match[1];
+    const property = match[2];
+    const collectionInfo = ctx.variables.get(collection);
 
-        // Track this as a mean_result
-        ctx.variables.set(varName, { type: 'mean_result', collection, property });
+    // Track this as a mean_result
+    ctx.variables.set(varName, { type: "mean_result", collection, property });
 
-        if (target.name === 'js') {
-            return [`let ${varName} = _mean(${collection}, '${property}'); `];
-        }
-        if (target.name === 'wgsl') {
-            if (collectionInfo?.type === 'neighbors') {
-                return [
-                    `var ${varName}: f32 = 0.0;`,
-                    `if (${collection}_count > 0u) {`,
-                    `${varName} = ${collection}_sum_${property} / f32(${collection}_count);`,
-                    `}`,
-                ];
-            }
-            return [`var ${varName}: f32 = 0.0;`];
-        }
-        if (target.name === 'wat') {
-            const collName = collection || 'nearbyAgents';
-            return [`(local.set $${varName} (f32.div (local.get $${collName}_sum_${property}) (local.get $${collName}_count)))`];
-        }
-        return [];
+    if (target.name === "js") {
+      return [`let ${varName} = _mean(${collection}, '${property}'); `];
     }
+    if (target.name === "wgsl") {
+      if (collectionInfo?.type === "neighbors") {
+        return [
+          `var ${varName}: f32 = 0.0;`,
+          `if (${collection}_count > 0u) {`,
+          `${varName} = ${collection}_sum_${property} / f32(${collection}_count);`,
+          `}`,
+        ];
+      }
+      return [`var ${varName}: f32 = 0.0;`];
+    }
+    if (target.name === "wat") {
+      const collName = collection || "nearbyAgents";
+      return [
+        `(local.set $${varName} (f32.div (local.get $${collName}_sum_${property}) (local.get $${collName}_count)))`,
+      ];
+    }
+    return [];
+  },
 });
 
 // sense(angle, distance) — read trail map at sensor position
 registerFunction({
-    name: 'sense',
-    detect: (expr) => expr.match(/^sense\((.+)\)$/),
-    emitVar(match, varName, target, ctx) {
-        const args = match[1].split(',').map(s => s.trim());
-        const angle = target.emitExpression(args[0], ctx);
-        const dist = target.emitExpression(args[1], ctx);
+  name: "sense",
+  detect: (expr) => expr.match(/^sense\((.+)\)$/),
+  emitVar(match, varName, target, ctx) {
+    const args = match[1].split(",").map((s) => s.trim());
+    const angle = target.emitExpression(args[0], ctx);
+    const dist = target.emitExpression(args[1], ctx);
 
-        if (target.name === 'js') {
-            return [`let ${varName} = _sense(${angle}, ${dist}); `];
-        }
-        if (target.name === 'wgsl') {
-            return [`var ${varName}: f32 = _sense(x, y, vx, vy, ${angle}, ${dist});`];
-        }
-        if (target.name === 'wat') {
-            // sense needs WAT-specific helper call
-            ctx.localVars.add(varName);
-            return [`(local.set $${varName} (call $_sense (local.get $x) (local.get $y) (local.get $vx) (local.get $vy) ${angle} ${dist}))`];
-        }
-        return [];
-    },
-    emitExpr(match, target, ctx) {
-        const args = match[1].split(',').map(s => s.trim());
-        const angle = target.emitExpression(args[0], ctx);
-        const dist = target.emitExpression(args[1], ctx);
-
-        if (target.name === 'js') return `_sense(${angle}, ${dist})`;
-        if (target.name === 'wgsl') return `_sense(x, y, vx, vy, ${angle}, ${dist})`;
-        if (target.name === 'wat') return `(call $_sense (local.get $x) (local.get $y) (local.get $vx) (local.get $vy) ${angle} ${dist})`;
-        return '';
+    if (target.name === "js") {
+      return [`let ${varName} = _sense(${angle}, ${dist}); `];
     }
+    if (target.name === "wgsl") {
+      return [`var ${varName}: f32 = _sense(x, y, vx, vy, ${angle}, ${dist});`];
+    }
+    if (target.name === "wat") {
+      // sense needs WAT-specific helper call
+      ctx.localVars.add(varName);
+      return [
+        `(local.set $${varName} (call $_sense (local.get $x) (local.get $y) (local.get $vx) (local.get $vy) ${angle} ${dist}))`,
+      ];
+    }
+    return [];
+  },
+  emitExpr(match, target, ctx) {
+    const args = match[1].split(",").map((s) => s.trim());
+    const angle = target.emitExpression(args[0], ctx);
+    const dist = target.emitExpression(args[1], ctx);
+
+    if (target.name === "js") return `_sense(${angle}, ${dist})`;
+    if (target.name === "wgsl")
+      return `_sense(x, y, vx, vy, ${angle}, ${dist})`;
+    if (target.name === "wat")
+      return `(call $_sense (local.get $x) (local.get $y) (local.get $vx) (local.get $vy) ${angle} ${dist})`;
+    return "";
+  },
 });
 
 // random() — random number generation
 registerFunction({
-    name: 'random',
-    detect: (expr) => expr.match(/^random\(([^)]*)\)$/),
-    emitVar(match, varName, target, ctx) {
-        const args = match[1].split(',').filter(s => s.trim().length > 0).map(s => s.trim());
+  name: "random",
+  detect: (expr) => expr.match(/^random\(([^)]*)\)$/),
+  emitVar(match, varName, target, ctx) {
+    const args = match[1]
+      .split(",")
+      .filter((s) => s.trim().length > 0)
+      .map((s) => s.trim());
 
-        if (target.name === 'js') {
-            // Use compile-time call index for parity with WGSL/WAT
-            const callIndex = ctx.randomInputs.size + ctx.randomCallCount;
-            ctx.randomCallCount++;
-            if (args.length === 0) return [`let ${varName} = _random(${callIndex}); `];
-            if (args.length === 1) return [`let ${varName} = _random(${callIndex}, ${target.emitExpression(args[0], ctx)}); `];
-            return [`let ${varName} = _random(${callIndex}, ${target.emitExpression(args[0], ctx)}, ${target.emitExpression(args[1], ctx)}); `];
-        }
-        if (target.name === 'wgsl') {
-            const callIndex = ctx.randomInputs.size + ctx.randomCallCount;
-            ctx.randomCallCount++;
-            const randVal = `randomValues[u32(agent.id) * ${ctx.numRandomCalls}u + ${callIndex}u]`;
-            if (args.length === 0) return [`var ${varName}: f32 = ${randVal};`];
-            if (args.length === 1) {
-                const max = target.emitExpression(args[0], ctx);
-                return [`var ${varName}: f32 = (${randVal} * ${max});`];
-            }
-            const min = target.emitExpression(args[0], ctx);
-            const max = target.emitExpression(args[1], ctx);
-            return [`var ${varName}: f32 = (${min} + ${randVal} * (${max} - ${min}));`];
-        }
-        if (target.name === 'wat') {
-            ctx.localVars.add(varName);
-            return [`(local.set $${varName} (call $_random (local.get $_agent_id)))`];
-        }
-        return [];
-    },
-    emitExpr(match, target, ctx) {
-        const args = match[1].split(',').filter(s => s.trim().length > 0).map(s => s.trim());
-
-        if (target.name === 'js') {
-            // Use compile-time call index for parity with WGSL/WAT
-            const callIndex = ctx.randomInputs.size + ctx.randomCallCount;
-            ctx.randomCallCount++;
-            if (args.length === 0) return `_random(${callIndex})`;
-            if (args.length === 1) return `_random(${callIndex}, ${target.emitExpression(args[0], ctx)})`;
-            return `_random(${callIndex}, ${target.emitExpression(args[0], ctx)}, ${target.emitExpression(args[1], ctx)})`;
-        }
-        if (target.name === 'wgsl') {
-            const callIndex = ctx.randomInputs.size + ctx.randomCallCount;
-            ctx.randomCallCount++;
-            const randVal = `randomValues[u32(agent.id) * ${ctx.numRandomCalls}u + ${callIndex}u]`;
-            if (args.length === 0) return randVal;
-            if (args.length === 1) {
-                const max = target.emitExpression(args[0], ctx);
-                return `(${randVal} * ${max})`;
-            }
-            const min = target.emitExpression(args[0], ctx);
-            const max = target.emitExpression(args[1], ctx);
-            return `(${min} + ${randVal} * (${max} - ${min}))`;
-        }
-        if (target.name === 'wat') {
-            return `(call $_random (local.get $_agent_id))`;
-        }
-        return '';
+    if (target.name === "js") {
+      // Use compile-time call index for parity with WGSL/WAT
+      const callIndex = ctx.randomInputs.size + ctx.randomCallCount;
+      ctx.randomCallCount++;
+      if (args.length === 0)
+        return [`let ${varName} = _random(${callIndex}); `];
+      if (args.length === 1)
+        return [
+          `let ${varName} = _random(${callIndex}, ${target.emitExpression(args[0], ctx)}); `,
+        ];
+      return [
+        `let ${varName} = _random(${callIndex}, ${target.emitExpression(args[0], ctx)}, ${target.emitExpression(args[1], ctx)}); `,
+      ];
     }
+    if (target.name === "wgsl") {
+      const callIndex = ctx.randomInputs.size + ctx.randomCallCount;
+      ctx.randomCallCount++;
+      const randVal = `randomValues[u32(agent.id) * ${ctx.numRandomCalls}u + ${callIndex}u]`;
+      if (args.length === 0) return [`var ${varName}: f32 = ${randVal};`];
+      if (args.length === 1) {
+        const max = target.emitExpression(args[0], ctx);
+        return [`var ${varName}: f32 = (${randVal} * ${max});`];
+      }
+      const min = target.emitExpression(args[0], ctx);
+      const max = target.emitExpression(args[1], ctx);
+      return [
+        `var ${varName}: f32 = (${min} + ${randVal} * (${max} - ${min}));`,
+      ];
+    }
+    if (target.name === "wat") {
+      ctx.localVars.add(varName);
+      return [`(local.set $${varName} (call $_random (local.get $_agent_id)))`];
+    }
+    return [];
+  },
+  emitExpr(match, target, ctx) {
+    const args = match[1]
+      .split(",")
+      .filter((s) => s.trim().length > 0)
+      .map((s) => s.trim());
+
+    if (target.name === "js") {
+      // Use compile-time call index for parity with WGSL/WAT
+      const callIndex = ctx.randomInputs.size + ctx.randomCallCount;
+      ctx.randomCallCount++;
+      if (args.length === 0) return `_random(${callIndex})`;
+      if (args.length === 1)
+        return `_random(${callIndex}, ${target.emitExpression(args[0], ctx)})`;
+      return `_random(${callIndex}, ${target.emitExpression(args[0], ctx)}, ${target.emitExpression(args[1], ctx)})`;
+    }
+    if (target.name === "wgsl") {
+      const callIndex = ctx.randomInputs.size + ctx.randomCallCount;
+      ctx.randomCallCount++;
+      const randVal = `randomValues[u32(agent.id) * ${ctx.numRandomCalls}u + ${callIndex}u]`;
+      if (args.length === 0) return randVal;
+      if (args.length === 1) {
+        const max = target.emitExpression(args[0], ctx);
+        return `(${randVal} * ${max})`;
+      }
+      const min = target.emitExpression(args[0], ctx);
+      const max = target.emitExpression(args[1], ctx);
+      return `(${min} + ${randVal} * (${max} - ${min}))`;
+    }
+    if (target.name === "wat") {
+      return `(call $_random (local.get $_agent_id))`;
+    }
+    return "";
+  },
 });

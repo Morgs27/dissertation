@@ -8,9 +8,12 @@
  * exported as JSON for offline analysis and benchmarking.
  */
 
-import type { FramePerformance } from './performance';
-import { collectRuntimeMetrics, type RuntimeMetrics } from './helpers/deviceInfo';
-import Logger, { LogLevel } from './helpers/logger';
+import type { FramePerformance } from "./performance";
+import {
+  collectRuntimeMetrics,
+  type RuntimeMetrics,
+} from "./helpers/deviceInfo";
+import Logger, { LogLevel } from "./helpers/logger";
 import type {
   Agent,
   CompilationResult,
@@ -21,7 +24,7 @@ import type {
   SimulationOptions,
   SimulationSource,
   TrackingOptions,
-} from './types';
+} from "./types";
 
 /**
  * A single log message captured from the {@link Logger} system.
@@ -33,7 +36,7 @@ import type {
  */
 export type SimulationLogEntry = {
   timestamp: number;
-  level: 'verbose' | 'info' | 'warning' | 'error';
+  level: "verbose" | "info" | "warning" | "error";
   context: string;
   message: string;
 };
@@ -105,14 +108,14 @@ export type SimulationRunMetadata = {
   startedAt: number;
   endedAt?: number;
   source: {
-    kind: SimulationSource['kind'];
+    kind: SimulationSource["kind"];
     code: string | { js?: string; wgsl?: string; wasmWat?: string };
   };
   configuration: {
     options: SimulationOptions;
     appearance: SimulationAppearance;
     requiredInputs: string[];
-    definedInputs: CompilationResult['definedInputs'];
+    definedInputs: CompilationResult["definedInputs"];
   };
   environment?: RuntimeMetrics;
   metadata?: Record<string, unknown>;
@@ -163,11 +166,11 @@ const DEFAULT_TRACKING_OPTIONS: TrackingOptions = {
  * @returns Corresponding severity label.
  * @internal
  */
-const mapLogLevel = (level: LogLevel): SimulationLogEntry['level'] => {
-  if (level === LogLevel.Error) return 'error';
-  if (level === LogLevel.Warning) return 'warning';
-  if (level === LogLevel.Info) return 'info';
-  return 'verbose';
+const mapLogLevel = (level: LogLevel): SimulationLogEntry["level"] => {
+  if (level === LogLevel.Error) return "error";
+  if (level === LogLevel.Warning) return "warning";
+  if (level === LogLevel.Info) return "info";
+  return "verbose";
 };
 
 /**
@@ -180,7 +183,10 @@ const mapLogLevel = (level: LogLevel): SimulationLogEntry['level'] => {
  * @internal
  */
 const generateRunId = (): string => {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
     return crypto.randomUUID();
   }
 
@@ -209,22 +215,34 @@ const cloneAgents = (agents: Agent[]): Agent[] => {
  * @internal
  */
 const sanitizeInputValue = (value: unknown): unknown => {
-  if (typeof value === 'number' || typeof value === 'string' || typeof value === 'boolean' || value === null) {
+  if (
+    typeof value === "number" ||
+    typeof value === "string" ||
+    typeof value === "boolean" ||
+    value === null
+  ) {
     return value;
   }
 
   if (Array.isArray(value)) {
     if (value.length === 0) return [];
 
-    if (typeof value[0] === 'object') {
+    if (typeof value[0] === "object") {
       return value.map((item) => {
-        if (!item || typeof item !== 'object') {
+        if (!item || typeof item !== "object") {
           return item;
         }
 
         const result: Record<string, unknown> = {};
-        for (const [key, nested] of Object.entries(item as Record<string, unknown>)) {
-          if (typeof nested === 'number' || typeof nested === 'string' || typeof nested === 'boolean' || nested == null) {
+        for (const [key, nested] of Object.entries(
+          item as Record<string, unknown>,
+        )) {
+          if (
+            typeof nested === "number" ||
+            typeof nested === "string" ||
+            typeof nested === "boolean" ||
+            nested == null
+          ) {
             result[key] = nested;
           }
         }
@@ -243,13 +261,15 @@ const sanitizeInputValue = (value: unknown): unknown => {
     };
   }
 
-  if (typeof value === 'function') {
-    return '[Function]';
+  if (typeof value === "function") {
+    return "[Function]";
   }
 
-  if (value && typeof value === 'object') {
+  if (value && typeof value === "object") {
     const result: Record<string, unknown> = {};
-    for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+    for (const [key, nested] of Object.entries(
+      value as Record<string, unknown>,
+    )) {
       result[key] = sanitizeInputValue(nested);
     }
     return result;
@@ -268,7 +288,7 @@ const sanitizeInputValue = (value: unknown): unknown => {
  */
 export class SimulationTracker {
   private readonly options: TrackingOptions;
-  private readonly logger = new Logger('SimulationTracker', 'teal');
+  private readonly logger = new Logger("SimulationTracker", "teal");
   private readonly run: SimulationRunMetadata;
   private readonly frames: SimulationFrameRecord[] = [];
   private readonly logs: SimulationLogEntry[] = [];
@@ -277,7 +297,7 @@ export class SimulationTracker {
     level: LogLevel,
     context: string,
     message: string,
-    args: unknown[]
+    args: unknown[],
   ) => void;
 
   /**
@@ -301,22 +321,24 @@ export class SimulationTracker {
       source: {
         kind: params.source.kind,
         code:
-          params.source.kind === 'dsl'
+          params.source.kind === "dsl"
             ? params.source.code
             : {
-              js:
-                typeof params.source.code.js === 'function'
-                  ? params.source.code.js.toString()
-                  : params.source.code.js,
-              wgsl: params.source.code.wgsl,
-              wasmWat: params.source.code.wasmWat,
-            },
+                js:
+                  typeof params.source.code.js === "function"
+                    ? params.source.code.js.toString()
+                    : params.source.code.js,
+                wgsl: params.source.code.wgsl,
+                wasmWat: params.source.code.wasmWat,
+              },
       },
       configuration: {
         options: { ...params.options },
         appearance: { ...params.appearance },
         requiredInputs: [...params.compilationResult.requiredInputs],
-        definedInputs: params.compilationResult.definedInputs.map((def) => ({ ...def })),
+        definedInputs: params.compilationResult.definedInputs.map((def) => ({
+          ...def,
+        })),
       },
       metadata: params.metadata,
     };
@@ -378,11 +400,16 @@ export class SimulationTracker {
       timestamp: Date.now(),
       method: params.method,
       renderMode: params.renderMode,
-      agentPositions: this.options.captureAgentStates ? cloneAgents(params.agents) : undefined,
+      agentPositions: this.options.captureAgentStates
+        ? cloneAgents(params.agents)
+        : undefined,
       inputSnapshot: this.options.captureFrameInputs
         ? Object.fromEntries(
-          Object.entries(params.inputs ?? {}).map(([key, value]) => [key, sanitizeInputValue(value)])
-        )
+            Object.entries(params.inputs ?? {}).map(([key, value]) => [
+              key,
+              sanitizeInputValue(value),
+            ]),
+          )
         : undefined,
       performance: params.performance ? { ...params.performance } : undefined,
     });
@@ -431,15 +458,17 @@ export class SimulationTracker {
    * @param filter - Optional filter constraints.
    * @returns A self-contained tracking report.
    */
-  public getReport(filter?: SimulationTrackingFilter): SimulationTrackingReport {
+  public getReport(
+    filter?: SimulationTrackingFilter,
+  ): SimulationTrackingReport {
     const fromFrame = filter?.fromFrame;
     const toFrame = filter?.toFrame;
 
     const filteredFrames = this.frames.filter((frame) => {
-      if (typeof fromFrame === 'number' && frame.frameNumber < fromFrame) {
+      if (typeof fromFrame === "number" && frame.frameNumber < fromFrame) {
         return false;
       }
-      if (typeof toFrame === 'number' && frame.frameNumber > toFrame) {
+      if (typeof toFrame === "number" && frame.frameNumber > toFrame) {
         return false;
       }
       return true;
@@ -464,7 +493,7 @@ export class SimulationTracker {
 
     const totalExecutionMs = filteredFrames.reduce(
       (total, frame) => total + (frame.performance?.totalExecutionTime ?? 0),
-      0
+      0,
     );
 
     return {
@@ -474,25 +503,35 @@ export class SimulationTracker {
           options: { ...this.run.configuration.options },
           appearance: { ...this.run.configuration.appearance },
           requiredInputs: [...this.run.configuration.requiredInputs],
-          definedInputs: this.run.configuration.definedInputs.map((input) => ({ ...input })),
+          definedInputs: this.run.configuration.definedInputs.map((input) => ({
+            ...input,
+          })),
         },
         environment: this.run.environment
           ? {
-            device: { ...this.run.environment.device },
-            browser: { ...this.run.environment.browser },
-            gpu: this.run.environment.gpu ? { ...this.run.environment.gpu } : undefined,
-          }
+              device: { ...this.run.environment.device },
+              browser: { ...this.run.environment.browser },
+              gpu: this.run.environment.gpu
+                ? { ...this.run.environment.gpu }
+                : undefined,
+            }
           : undefined,
         metadata: this.run.metadata ? { ...this.run.metadata } : undefined,
       },
       frames: frameView,
-      logs: filter?.includeLogs === false ? [] : this.logs.map((entry) => ({ ...entry })),
+      logs:
+        filter?.includeLogs === false
+          ? []
+          : this.logs.map((entry) => ({ ...entry })),
       errors: this.errors.map((entry) => ({ ...entry })),
       summary: {
         frameCount: filteredFrames.length,
         durationMs: Math.max(0, endedAt - this.run.startedAt),
         totalExecutionMs,
-        averageExecutionMs: filteredFrames.length > 0 ? totalExecutionMs / filteredFrames.length : 0,
+        averageExecutionMs:
+          filteredFrames.length > 0
+            ? totalExecutionMs / filteredFrames.length
+            : 0,
         errorCount: this.errors.length,
       },
     };

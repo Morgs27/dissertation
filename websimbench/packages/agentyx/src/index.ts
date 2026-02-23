@@ -23,17 +23,21 @@
  * @packageDocumentation
  */
 
-export { Simulation as AgentyxSimulation, Simulation, MAX_AGENTS } from './simulation';
-export { Compiler } from './compiler/compiler';
-export { ComputeEngine } from './compute/compute';
-export { PerformanceMonitor } from './performance';
+export {
+  Simulation as AgentyxSimulation,
+  Simulation,
+  MAX_AGENTS,
+} from "./simulation";
+export { Compiler } from "./compiler/compiler";
+export { ComputeEngine } from "./compute/compute";
+export { PerformanceMonitor } from "./performance";
 export {
   collectRuntimeMetrics,
   type RuntimeMetrics,
   type RuntimeDeviceMetrics,
   type RuntimeBrowserMetrics,
   type RuntimeGPUMetrics,
-} from './helpers/deviceInfo';
+} from "./helpers/deviceInfo";
 export {
   SimulationTracker,
   type SimulationTrackingReport,
@@ -43,8 +47,8 @@ export {
   type SimulationFrameRecord,
   type SimulationLogEntry,
   type SimulationErrorEntry,
-} from './tracking';
-export { default as Logger, LogLevel } from './helpers/logger';
+} from "./tracking";
+export { default as Logger, LogLevel } from "./helpers/logger";
 export type {
   Agent,
   CompilationResult,
@@ -60,6 +64,6 @@ export type {
   SimulationOptions,
   SimulationSource,
   TrackingOptions,
-} from './types';
+} from "./types";
 
-export { default } from './simulation';
+export { default } from "./simulation";

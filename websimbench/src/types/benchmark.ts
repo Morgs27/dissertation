@@ -3,7 +3,7 @@ import type {
   RenderMode,
   RuntimeMetrics,
   SimulationTrackingReport,
-} from '@websimbench/agentyx';
+} from "@websimbench/agentyx";
 
 export type CanvasSizeOption = {
   width: number;
@@ -36,7 +36,7 @@ export type BenchmarkRunRecord = {
   id: string;
   startedAt: number;
   endedAt: number;
-  status: 'completed' | 'failed';
+  status: "completed" | "failed";
   config: BenchmarkRunConfig;
   trackingReport: SimulationTrackingReport;
   runtimeMetrics?: RuntimeMetrics;
@@ -67,5 +67,5 @@ export type BenchmarkFilter = {
   renderModes?: RenderMode[];
   minAgents?: number;
   maxAgents?: number;
-  status?: Array<BenchmarkRunRecord['status']>;
+  status?: Array<BenchmarkRunRecord["status"]>;
 };

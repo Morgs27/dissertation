@@ -28,7 +28,10 @@ const getWabtModule = async () => {
  * @param logger - Logger for error diagnostics.
  * @returns Compiled `WebAssembly.Module`.
  */
-export const compileWATtoWASM = async (watCode: string, logger: Logger): Promise<WebAssembly.Module> => {
+export const compileWATtoWASM = async (
+  watCode: string,
+  logger: Logger,
+): Promise<WebAssembly.Module> => {
   try {
     const wabtModule = await getWabtModule();
     const parsed = wabtModule.parseWat("dsl_module.wat", watCode);
@@ -88,7 +91,8 @@ export class WebAssemblyCompute {
   private memory: WebAssembly.Memory | undefined = undefined;
   private f32: Float32Array | undefined = undefined;
   private exports: Record<string, unknown> | undefined = undefined;
-  private stepAll: ((base: number, count: number) => void) | undefined = undefined;
+  private stepAll: ((base: number, count: number) => void) | undefined =
+    undefined;
   private readonly agentCount: number;
   private readonly watCode: string;
 
@@ -114,9 +118,11 @@ export class WebAssemblyCompute {
         cos: Math.cos,
         atan2: Math.atan2,
         random: Math.random,
-        print: (id: number, val: number) => this.logger.info(`AGENT[${id}] PRINT:`, val),
-        log: (id: number, val: number) => this.logger.info(`WASM Log[${id}]:`, val)
-      }
+        print: (id: number, val: number) =>
+          this.logger.info(`AGENT[${id}] PRINT:`, val),
+        log: (id: number, val: number) =>
+          this.logger.info(`WASM Log[${id}]:`, val),
+      },
     });
 
     this.exports = instance.exports as Record<string, unknown>;
@@ -156,7 +162,10 @@ export class WebAssemblyCompute {
     this.setGlobal("agentsReadPtr", layout.agentsReadPtr);
 
     if (inputs.trailMapRead && layout.trailMapReadPtr > 0) {
-      f32.set(inputs.trailMapRead as Float32Array, layout.trailMapReadPtr >>> 2);
+      f32.set(
+        inputs.trailMapRead as Float32Array,
+        layout.trailMapReadPtr >>> 2,
+      );
       this.setGlobal("trailMapReadPtr", layout.trailMapReadPtr);
     }
 
@@ -173,12 +182,20 @@ export class WebAssemblyCompute {
     }
 
     if (inputs.randomValues && layout.randomValuesPtr > 0) {
-      f32.set(inputs.randomValues as Float32Array, layout.randomValuesPtr >>> 2);
+      f32.set(
+        inputs.randomValues as Float32Array,
+        layout.randomValuesPtr >>> 2,
+      );
       this.setGlobal("randomValuesPtr", layout.randomValuesPtr);
     }
 
     if (layout.obstaclesCount > 0 && layout.obstaclesPtr > 0) {
-      const obstacleArray = inputs.obstacles as Array<{ x: number; y: number; w: number; h: number }>;
+      const obstacleArray = inputs.obstacles as Array<{
+        x: number;
+        y: number;
+        w: number;
+        h: number;
+      }>;
       const obstacleData = new Float32Array(layout.obstaclesCount * 4);
 
       for (let i = 0; i < obstacleArray.length; i++) {
@@ -210,7 +227,9 @@ export class WebAssemblyCompute {
     if (inputs.trailMapWrite && layout.trailMapWritePtr > 0) {
       const destination = inputs.trailMapWrite as Float32Array;
       const readStartIndex = layout.trailMapWritePtr >>> 2;
-      destination.set(this.f32!.subarray(readStartIndex, readStartIndex + destination.length));
+      destination.set(
+        this.f32!.subarray(readStartIndex, readStartIndex + destination.length),
+      );
     }
 
     const readEnd = performance.now();
@@ -220,8 +239,8 @@ export class WebAssemblyCompute {
       performance: {
         writeTime: writeEnd - writeStart,
         computeTime: computeEnd - computeStart,
-        readTime: readEnd - readStart
-      }
+        readTime: readEnd - readStart,
+      },
     };
   }
 
@@ -233,7 +252,10 @@ export class WebAssemblyCompute {
     this.memory = undefined;
   }
 
-  private computeLayout(inputs: InputValues, activeAgentCount: number): MemoryLayout {
+  private computeLayout(
+    inputs: InputValues,
+    activeAgentCount: number,
+  ): MemoryLayout {
     const agentsWriteEnd = activeAgentCount * bytesPerAgent;
     const agentsReadPtr = agentsWriteEnd;
     const agentsReadEnd = agentsReadPtr + activeAgentCount * bytesPerAgent;
@@ -254,13 +276,21 @@ export class WebAssemblyCompute {
       cursor += trailMapSize * 2;
     }
 
-    const randomValuesSize = inputs.randomValues instanceof Float32Array
-      ? inputs.randomValues.byteLength
-      : 0;
+    const randomValuesSize =
+      inputs.randomValues instanceof Float32Array
+        ? inputs.randomValues.byteLength
+        : 0;
     const randomValuesPtr = randomValuesSize > 0 ? cursor : 0;
     cursor += randomValuesSize;
 
-    const obstacles = Array.isArray(inputs.obstacles) ? inputs.obstacles as Array<{ x: number; y: number; w: number; h: number }> : [];
+    const obstacles = Array.isArray(inputs.obstacles)
+      ? (inputs.obstacles as Array<{
+          x: number;
+          y: number;
+          w: number;
+          h: number;
+        }>)
+      : [];
     const obstaclesCount = obstacles.length;
     const obstaclesSize = obstaclesCount * 16;
     const obstaclesPtr = obstaclesSize > 0 ? cursor : 0;
@@ -275,7 +305,7 @@ export class WebAssemblyCompute {
       randomValuesSize,
       obstaclesPtr,
       obstaclesCount,
-      totalBytesNeeded: cursor
+      totalBytesNeeded: cursor,
     };
   }
 
@@ -287,7 +317,9 @@ export class WebAssemblyCompute {
     const currentBytes = this.memory.buffer.byteLength;
 
     if (totalBytesNeeded > currentBytes) {
-      const pagesNeeded = Math.ceil((totalBytesNeeded - currentBytes) / wasmPageSize);
+      const pagesNeeded = Math.ceil(
+        (totalBytesNeeded - currentBytes) / wasmPageSize,
+      );
       if (pagesNeeded > 0) {
         this.memory.grow(pagesNeeded);
         this.f32 = new Float32Array(this.memory.buffer);
@@ -329,7 +361,7 @@ export class WebAssemblyCompute {
         y: f32[o + 2],
         vx: f32[o + 3],
         vy: f32[o + 4],
-        species: f32[o + 5]
+        species: f32[o + 5],
       };
     });
   }

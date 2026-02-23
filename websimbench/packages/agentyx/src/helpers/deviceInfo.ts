@@ -7,7 +7,7 @@
  * environments.
  */
 
-import GPU from './gpu';
+import GPU from "./gpu";
 
 /**
  * Device-level hardware and platform metrics.
@@ -29,7 +29,7 @@ export type RuntimeDeviceMetrics = {
   language?: string;
   timezone?: string;
   nodeVersion?: string;
-  runtime?: 'browser' | 'node' | 'unknown';
+  runtime?: "browser" | "node" | "unknown";
 };
 
 /**
@@ -104,7 +104,7 @@ export type RuntimeMetrics = {
  * @internal
  */
 const isBrowserRuntime = (): boolean => {
-  return typeof window !== 'undefined' && typeof navigator !== 'undefined';
+  return typeof window !== "undefined" && typeof navigator !== "undefined";
 };
 
 /**
@@ -113,11 +113,14 @@ const isBrowserRuntime = (): boolean => {
  * @returns Object with `device` and `browser` metric fields.
  * @internal
  */
-const collectBrowserMetrics = (): { device: RuntimeDeviceMetrics; browser: RuntimeBrowserMetrics } => {
+const collectBrowserMetrics = (): {
+  device: RuntimeDeviceMetrics;
+  browser: RuntimeBrowserMetrics;
+} => {
   const nav = navigator;
 
   const device: RuntimeDeviceMetrics = {
-    runtime: 'browser',
+    runtime: "browser",
     userAgent: nav.userAgent,
     platform: nav.platform,
     hardwareConcurrency: nav.hardwareConcurrency,
@@ -130,15 +133,15 @@ const collectBrowserMetrics = (): { device: RuntimeDeviceMetrics; browser: Runti
     online: nav.onLine,
     cookieEnabled: nav.cookieEnabled,
     doNotTrack: nav.doNotTrack,
-    url: typeof location !== 'undefined' ? location.href : undefined,
-    referrer: typeof document !== 'undefined' ? document.referrer : undefined,
+    url: typeof location !== "undefined" ? location.href : undefined,
+    referrer: typeof document !== "undefined" ? document.referrer : undefined,
     viewport:
-      typeof window !== 'undefined'
+      typeof window !== "undefined"
         ? {
-          width: window.innerWidth,
-          height: window.innerHeight,
-          devicePixelRatio: window.devicePixelRatio,
-        }
+            width: window.innerWidth,
+            height: window.innerHeight,
+            devicePixelRatio: window.devicePixelRatio,
+          }
         : undefined,
   };
 
@@ -167,12 +170,15 @@ const collectBrowserMetrics = (): { device: RuntimeDeviceMetrics; browser: Runti
  * @returns Object with `device` and empty `browser` metric fields.
  * @internal
  */
-const collectNodeMetrics = (): { device: RuntimeDeviceMetrics; browser: RuntimeBrowserMetrics } => {
-  const processRef = typeof process !== 'undefined' ? process : undefined;
+const collectNodeMetrics = (): {
+  device: RuntimeDeviceMetrics;
+  browser: RuntimeBrowserMetrics;
+} => {
+  const processRef = typeof process !== "undefined" ? process : undefined;
 
   return {
     device: {
-      runtime: processRef?.versions?.node ? 'node' : 'unknown',
+      runtime: processRef?.versions?.node ? "node" : "unknown",
       platform: processRef?.platform,
       nodeVersion: processRef?.versions?.node,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -193,7 +199,7 @@ const collectGpuMetrics = async (): Promise<RuntimeGPUMetrics | undefined> => {
   }
 
   try {
-    const gpuHelper = new GPU('RuntimeMetrics');
+    const gpuHelper = new GPU("RuntimeMetrics");
     const device = await gpuHelper.getDevice();
     const adapter = await navigator.gpu.requestAdapter();
 
@@ -203,14 +209,23 @@ const collectGpuMetrics = async (): Promise<RuntimeGPUMetrics | undefined> => {
       description?: string;
     } | null = null;
 
-    if (adapter && 'requestAdapterInfo' in adapter && typeof (adapter as GPUAdapter & { requestAdapterInfo: () => Promise<unknown> }).requestAdapterInfo === 'function') {
-      adapterInfo = (await (adapter as GPUAdapter & {
-        requestAdapterInfo: () => Promise<{
-          vendor?: string;
-          architecture?: string;
-          description?: string;
-        }>;
-      }).requestAdapterInfo()) ?? null;
+    if (
+      adapter &&
+      "requestAdapterInfo" in adapter &&
+      typeof (
+        adapter as GPUAdapter & { requestAdapterInfo: () => Promise<unknown> }
+      ).requestAdapterInfo === "function"
+    ) {
+      adapterInfo =
+        (await (
+          adapter as GPUAdapter & {
+            requestAdapterInfo: () => Promise<{
+              vendor?: string;
+              architecture?: string;
+              description?: string;
+            }>;
+          }
+        ).requestAdapterInfo()) ?? null;
     }
 
     if (!device) {
@@ -218,13 +233,15 @@ const collectGpuMetrics = async (): Promise<RuntimeGPUMetrics | undefined> => {
     }
 
     return {
-      vendor: adapterInfo?.vendor ?? 'Unknown',
-      architecture: adapterInfo?.architecture ?? 'Unknown',
-      description: adapterInfo?.description ?? 'Unknown',
+      vendor: adapterInfo?.vendor ?? "Unknown",
+      architecture: adapterInfo?.architecture ?? "Unknown",
+      description: adapterInfo?.description ?? "Unknown",
       maxBufferSize: device.limits.maxBufferSize,
       maxStorageBufferBindingSize: device.limits.maxStorageBufferBindingSize,
-      maxComputeWorkgroupsPerDimension: device.limits.maxComputeWorkgroupsPerDimension,
-      maxComputeInvocationsPerWorkgroup: device.limits.maxComputeInvocationsPerWorkgroup,
+      maxComputeWorkgroupsPerDimension:
+        device.limits.maxComputeWorkgroupsPerDimension,
+      maxComputeInvocationsPerWorkgroup:
+        device.limits.maxComputeInvocationsPerWorkgroup,
       maxComputeWorkgroupSizeX: device.limits.maxComputeWorkgroupSizeX,
       maxComputeWorkgroupSizeY: device.limits.maxComputeWorkgroupSizeY,
       maxComputeWorkgroupSizeZ: device.limits.maxComputeWorkgroupSizeZ,
@@ -252,7 +269,9 @@ const collectGpuMetrics = async (): Promise<RuntimeGPUMetrics | undefined> => {
  * ```
  */
 export const collectRuntimeMetrics = async (): Promise<RuntimeMetrics> => {
-  const base = isBrowserRuntime() ? collectBrowserMetrics() : collectNodeMetrics();
+  const base = isBrowserRuntime()
+    ? collectBrowserMetrics()
+    : collectNodeMetrics();
   const gpu = await collectGpuMetrics();
 
   return {

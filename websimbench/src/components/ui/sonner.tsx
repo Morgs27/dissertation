@@ -1,5 +1,11 @@
-import { Toaster as Sonner, type ToasterProps } from "sonner"
-import { CheckCircle, Info, Warning, XCircle, Spinner } from "@phosphor-icons/react"
+import { Toaster as Sonner, type ToasterProps } from "sonner";
+import {
+  CheckCircle,
+  Info,
+  Warning,
+  XCircle,
+  Spinner,
+} from "@phosphor-icons/react";
 
 const Toaster = ({ ...props }: ToasterProps) => {
   return (
@@ -7,21 +13,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
       theme="dark"
       className="toaster group"
       icons={{
-        success: (
-          <CheckCircle className="size-4" />
-        ),
-        info: (
-          <Info className="size-4" />
-        ),
-        warning: (
-          <Warning className="size-4" />
-        ),
-        error: (
-          <XCircle className="size-4" />
-        ),
-        loading: (
-          <Spinner className="size-4 animate-spin" />
-        ),
+        success: <CheckCircle className="size-4" />,
+        info: <Info className="size-4" />,
+        warning: <Warning className="size-4" />,
+        error: <XCircle className="size-4" />,
+        loading: <Spinner className="size-4 animate-spin" />,
       }}
       style={
         {
@@ -38,7 +34,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }}
       {...props}
     />
-  )
-}
+  );
+};
 
-export { Toaster }
+export { Toaster };

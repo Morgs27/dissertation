@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef } from "react";
 
 import {
   DropdownMenu,
@@ -21,15 +21,16 @@ import {
 } from "@phosphor-icons/react";
 import { NavDropdown } from "@/components/ui/nav-dropdown";
 import { HeaderIconButton } from "@/components/ui/header-icon-button";
-import Editor from 'react-simple-code-editor';
-import { highlight, languages } from 'prismjs';
-import 'prismjs/components/prism-clike';
-import 'prismjs/components/prism-javascript';
-import 'prismjs/components/prism-wasm';
+import Editor from "react-simple-code-editor";
+import { highlight, languages } from "prismjs";
+import "prismjs/components/prism-clike";
+import "prismjs/components/prism-javascript";
+import "prismjs/components/prism-wasm";
 
-import { PREMADE_SIMULATIONS } from '../config/premadeSimulations';
-import { DOCS_LATEST_VERSION } from '@/config/version';
-import { createHashRoute } from '@/lib/routes';
+import { PREMADE_SIMULATIONS } from "../../config/premadeSimulations";
+import { DOCS_LATEST_VERSION } from "@/config/version";
+import { createHashRoute } from "@/lib/routes";
+import "./EditorPanel.css";
 
 interface EditorPanelProps {
   code: string;
@@ -44,14 +45,14 @@ interface EditorPanelProps {
 const editorStyle = {
   fontFamily: '"Fira code", "Fira Mono", monospace',
   fontSize: 14,
-  minHeight: '100%',
-  backgroundColor: 'rgba(0, 0, 0, 0.1)',
+  minHeight: "100%",
+  backgroundColor: "rgba(0, 0, 0, 0.1)",
 };
 
 const DSL_DOC_LINKS = [
-  { label: 'DSL Basics', page: 'dsl-basics', icon: BookOpenText },
-  { label: 'Commands', page: 'dsl-commands', icon: ListBullets },
-  { label: 'Functions', page: 'dsl-functions', icon: FunctionIcon },
+  { label: "DSL Basics", page: "dsl-basics", icon: BookOpenText },
+  { label: "Commands", page: "dsl-commands", icon: ListBullets },
+  { label: "Functions", page: "dsl-functions", icon: FunctionIcon },
 ];
 
 export const EditorPanel = ({
@@ -61,23 +62,23 @@ export const EditorPanel = ({
   handleLoadCode,
   compiledCode,
   isCompiling,
-  compileErrors
+  compileErrors,
 }: EditorPanelProps) => {
-  const [activeTab, setActiveTab] = useState('sim-code');
+  const [activeTab, setActiveTab] = useState("sim-code");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isEditorEmpty = code.trim().length === 0;
 
   const navigateToDocsPage = (docsPage: string) => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     window.location.hash = createHashRoute({
-      page: 'docs',
+      page: "docs",
       version: DOCS_LATEST_VERSION,
       docsPage,
     });
   };
 
   const handleLoadPremade = (simCode: string) => {
-    // Confirm before overwriting if the code is not empty? 
+    // Confirm before overwriting if the code is not empty?
     // For now, just overwrite as requested by "load" behavior usually implies replacement.
     // If we wanted to be safer we could check if code !== DEFAULT_CODE etc.
     setCode(simCode);
@@ -97,20 +98,20 @@ export const EditorPanel = ({
               value: "wasm",
               label: "WASM",
               icon: <Eye size={11} weight="bold" />,
-              iconClassName: "nav-dropdown-option-icon-readonly"
+              iconClassName: "nav-dropdown-option-icon-readonly",
             },
             {
               value: "javascript",
               label: "JS",
               icon: <Eye size={11} weight="bold" />,
-              iconClassName: "nav-dropdown-option-icon-readonly"
+              iconClassName: "nav-dropdown-option-icon-readonly",
             },
             {
               value: "wgsl",
               label: "WGSL",
               icon: <Eye size={11} weight="bold" />,
-              iconClassName: "nav-dropdown-option-icon-readonly"
-            }
+              iconClassName: "nav-dropdown-option-icon-readonly",
+            },
           ]}
         />
 
@@ -136,7 +137,10 @@ export const EditorPanel = ({
                 <CaretDown size={12} weight="bold" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="editor-simulations-menu-content">
+            <DropdownMenuContent
+              align="end"
+              className="editor-simulations-menu-content"
+            >
               {Object.entries(PREMADE_SIMULATIONS).map(([name, simulation]) => {
                 const Icon = simulation.icon;
                 return (
@@ -149,8 +153,12 @@ export const EditorPanel = ({
                       <Icon size={14} weight="bold" />
                     </span>
                     <span className="editor-simulation-item-text">
-                      <span className="editor-simulation-item-title">{name}</span>
-                      <span className="editor-simulation-item-description">{simulation.description}</span>
+                      <span className="editor-simulation-item-title">
+                        {name}
+                      </span>
+                      <span className="editor-simulation-item-description">
+                        {simulation.description}
+                      </span>
                     </span>
                   </DropdownMenuItem>
                 );
@@ -175,28 +183,36 @@ export const EditorPanel = ({
             type="file"
             ref={fileInputRef}
             onChange={handleLoadCode}
-            style={{ display: 'none' }}
+            style={{ display: "none" }}
             accept=".js,.ts,.txt,.sim"
           />
         </div>
       </div>
 
       <div className="editor-content-area">
-        <div className={`editor-content-tab ${activeTab !== 'sim-code' ? 'hidden' : ''}`}>
+        <div
+          className={`editor-content-tab ${activeTab !== "sim-code" ? "hidden" : ""}`}
+        >
           <div className="editor-code-wrapper">
             <Editor
               value={code}
               onValueChange={setCode}
-              highlight={code => {
-                const lines = code.split('\n');
-                return lines.map((lineContent, i) => {
-                  const error = compileErrors.find(e => e.lineIndex === i);
-                  const highlighted = highlight(lineContent, languages.js, 'js');
-                  if (error) {
-                    return `<span style="text-decoration: underline wavy red; text-decoration-skip-ink: none; background-color: rgba(255, 0, 0, 0.1);" title="${error.message}">${highlighted || ' '}</span>`;
-                  }
-                  return highlighted || ' ';
-                }).join('\n');
+              highlight={(code) => {
+                const lines = code.split("\n");
+                return lines
+                  .map((lineContent, i) => {
+                    const error = compileErrors.find((e) => e.lineIndex === i);
+                    const highlighted = highlight(
+                      lineContent,
+                      languages.js,
+                      "js",
+                    );
+                    if (error) {
+                      return `<span style="text-decoration: underline wavy red; text-decoration-skip-ink: none; background-color: rgba(255, 0, 0, 0.1);" title="${error.message}">${highlighted || " "}</span>`;
+                    }
+                    return highlighted || " ";
+                  })
+                  .join("\n");
               }}
               padding={16}
               style={editorStyle}
@@ -222,11 +238,13 @@ export const EditorPanel = ({
                       {item.label}
                     </button>
                   ))}
-                  <div style={{ flex: 1, flexBasis: '100%' }}></div>
+                  <div style={{ flex: 1, flexBasis: "100%" }}></div>
                   <button
                     type="button"
                     className="editor-empty-link-btn editor-empty-link-btn-primary"
-                    onClick={() => handleLoadPremade(PREMADE_SIMULATIONS['Tutorial'].code)}
+                    onClick={() =>
+                      handleLoadPremade(PREMADE_SIMULATIONS["Tutorial"].code)
+                    }
                   >
                     <RocketLaunch size={14} weight="bold" />
                     Load Example
@@ -236,33 +254,43 @@ export const EditorPanel = ({
             )}
           </div>
         </div>
-        <div className={`editor-content-tab ${activeTab !== 'wasm' ? 'hidden' : ''}`}>
+        <div
+          className={`editor-content-tab ${activeTab !== "wasm" ? "hidden" : ""}`}
+        >
           <Editor
             value={compiledCode.wasm}
-            onValueChange={() => { }}
-            highlight={code => highlight(code, languages.wasm || languages.js, 'wasm')}
+            onValueChange={() => {}}
+            highlight={(code) =>
+              highlight(code, languages.wasm || languages.js, "wasm")
+            }
             padding={16}
             readOnly
             style={editorStyle}
             className="agentyx-code"
           />
         </div>
-        <div className={`editor-content-tab ${activeTab !== 'javascript' ? 'hidden' : ''}`}>
+        <div
+          className={`editor-content-tab ${activeTab !== "javascript" ? "hidden" : ""}`}
+        >
           <Editor
             value={compiledCode.js}
-            onValueChange={() => { }}
-            highlight={code => highlight(code, languages.js, 'js')}
+            onValueChange={() => {}}
+            highlight={(code) => highlight(code, languages.js, "js")}
             padding={16}
             readOnly
             style={editorStyle}
             className="agentyx-code"
           />
         </div>
-        <div className={`editor-content-tab ${activeTab !== 'wgsl' ? 'hidden' : ''}`}>
+        <div
+          className={`editor-content-tab ${activeTab !== "wgsl" ? "hidden" : ""}`}
+        >
           <Editor
             value={compiledCode.wgsl}
-            onValueChange={() => { }}
-            highlight={code => highlight(code, languages.clike || languages.js, 'clike')}
+            onValueChange={() => {}}
+            highlight={(code) =>
+              highlight(code, languages.clike || languages.js, "clike")
+            }
             padding={16}
             readOnly
             style={editorStyle}
@@ -270,6 +298,6 @@ export const EditorPanel = ({
           />
         </div>
       </div>
-    </div >
+    </div>
   );
 };
