@@ -8,12 +8,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   CircleNotch,
+  CaretDown,
   FloppyDisk,
   UploadSimple,
   PencilLineIcon,
   BookOpen,
   BookOpenText,
   ListBullets,
+  Eye,
   Function as FunctionIcon,
   RocketLaunch,
 } from "@phosphor-icons/react";
@@ -91,9 +93,24 @@ export const EditorPanel = ({
           onValueChange={setActiveTab}
           options={[
             { value: "sim-code", label: "Agent Code" },
-            { value: "wasm", label: "WASM" },
-            { value: "javascript", label: "JS" },
-            { value: "wgsl", label: "WGSL" }
+            {
+              value: "wasm",
+              label: "WASM",
+              icon: <Eye size={11} weight="bold" />,
+              iconClassName: "nav-dropdown-option-icon-readonly"
+            },
+            {
+              value: "javascript",
+              label: "JS",
+              icon: <Eye size={11} weight="bold" />,
+              iconClassName: "nav-dropdown-option-icon-readonly"
+            },
+            {
+              value: "wgsl",
+              label: "WGSL",
+              icon: <Eye size={11} weight="bold" />,
+              iconClassName: "nav-dropdown-option-icon-readonly"
+            }
           ]}
         />
 
@@ -107,21 +124,37 @@ export const EditorPanel = ({
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <HeaderIconButton
+              <button
+                type="button"
                 title="Premade Simulations"
-                icon={<BookOpen size={18} />}
-                label="Simulations"
-              />
+                className="editor-simulations-trigger"
+              >
+                <span className="editor-simulations-label">
+                  <BookOpen size={14} weight="bold" />
+                  Simulations
+                </span>
+                <CaretDown size={12} weight="bold" />
+              </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {Object.entries(PREMADE_SIMULATIONS).map(([name, simCode]) => (
-                <DropdownMenuItem
-                  key={name}
-                  onClick={() => handleLoadPremade(simCode)}
-                >
-                  {name}
-                </DropdownMenuItem>
-              ))}
+            <DropdownMenuContent align="end" className="editor-simulations-menu-content">
+              {Object.entries(PREMADE_SIMULATIONS).map(([name, simulation]) => {
+                const Icon = simulation.icon;
+                return (
+                  <DropdownMenuItem
+                    key={name}
+                    className="editor-simulation-item"
+                    onClick={() => handleLoadPremade(simulation.code)}
+                  >
+                    <span className="editor-simulation-item-icon">
+                      <Icon size={14} weight="bold" />
+                    </span>
+                    <span className="editor-simulation-item-text">
+                      <span className="editor-simulation-item-title">{name}</span>
+                      <span className="editor-simulation-item-description">{simulation.description}</span>
+                    </span>
+                  </DropdownMenuItem>
+                );
+              })}
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -193,7 +226,7 @@ export const EditorPanel = ({
                   <button
                     type="button"
                     className="editor-empty-link-btn editor-empty-link-btn-primary"
-                    onClick={() => handleLoadPremade(PREMADE_SIMULATIONS['Tutorial'])}
+                    onClick={() => handleLoadPremade(PREMADE_SIMULATIONS['Tutorial'].code)}
                   >
                     <RocketLaunch size={14} weight="bold" />
                     Load Example
