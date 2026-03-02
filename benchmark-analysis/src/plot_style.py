@@ -29,7 +29,7 @@ FIGURES_DIR = _PROJECT_ROOT / "outputs" / "figures"
 # ---------------------------------------------------------------------------
 # Active palette (set by apply_style)
 # ---------------------------------------------------------------------------
-_active_palette: dict[str, str] = C.PALETTES[0]
+_active_palette: dict[str, str] = C.PALETTES[0].copy()
 
 
 def apply_style(palette: int = 0) -> None:
@@ -43,7 +43,16 @@ def apply_style(palette: int = 0) -> None:
         0 = Academic (default), 1 = Teal.
     """
     global _active_palette
-    _active_palette = C.PALETTES[palette]
+    if not 0 <= palette < len(C.PALETTES):
+        raise ValueError(
+            f"Invalid palette index {palette}. Expected 0..{len(C.PALETTES) - 1}."
+        )
+
+    # Reset any previously-applied global style (for example grayscale)
+    # before applying the project theme.
+    mpl.rcdefaults()
+
+    _active_palette = C.PALETTES[palette].copy()
     # Also update the module-level constant so anyone importing it directly
     # sees the new colours.
     C.METHOD_COLORS.clear()
@@ -69,6 +78,9 @@ def apply_style(palette: int = 0) -> None:
             "savefig.pad_inches": 0.1,
             # --- Grid ---
             "axes.grid": True,
+            "axes.prop_cycle": mpl.cycler(
+                color=[_active_palette[m] for m in C.METHOD_ORDER if m in _active_palette]
+            ),
             "grid.alpha": 0.3,
             "grid.linestyle": "--",
             # --- Lines ---

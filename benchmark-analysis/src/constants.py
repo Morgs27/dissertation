@@ -51,7 +51,9 @@ PALETTES: list[dict[str, str]] = [
 ]
 
 # Default palette (index 0)
-METHOD_COLORS: dict[str, str] = PALETTES[0]
+# Keep this as an independent dict so mutating METHOD_COLORS never mutates
+# PALETTES[0].
+METHOD_COLORS: dict[str, str] = PALETTES[0].copy()
 
 # Render-mode markers (for plots that differentiate render path)
 RENDER_MODE_MARKERS: dict[str, str] = {
