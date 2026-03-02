@@ -54,15 +54,16 @@ benchmark-analysis/
 ## Shared Module Reference
 
 ### `src/constants.py`
-- **`METHOD_COLORS`** — Colorblind-friendly dict mapping method names → hex colours. Use these everywhere; never pick ad-hoc colours.
+- **`PALETTES`** — List of colour dicts. Index 0 = **Academic** (colorblind-friendly), index 1 = **Teal** (warm teal gradient around `#6DA49D`).
+- **`METHOD_COLORS`** — Active palette dict (updated by `apply_style(palette=N)`). Use via `get_method_color()`; never pick ad-hoc colours.
 - **`METHOD_ORDER`** — Canonical list `[JavaScript, WebWorkers, WebAssembly, WebGPU]` for consistent legend/axis ordering.
 - **`METHOD_LABELS`** — Display-friendly names for axis labels and legends.
 - **`RENDER_MODE_MARKERS`** / **`RENDER_MODE_LABELS`** — Marker shapes and labels for render modes.
 
 ### `src/plot_style.py`
-- **`apply_style()`** — Call once at the top of every notebook. Sets `rcParams` for academic paper quality (serif fonts, subtle grid, constrained layout).
+- **`apply_style(palette=0)`** — Call once at the top of every notebook. Sets `rcParams` for academic paper quality. Pass `palette=1` for teal theme.
 - **`save_figure(fig, name)`** — Saves to `outputs/figures/<name>.{png,pdf}` at 300 DPI. Always call this for every figure.
-- **`get_method_color(method)`** — Returns the canonical hex colour for a compute method.
+- **`get_method_color(method)`** — Returns the active palette's hex colour for a compute method.
 
 ### `src/data_loader.py`
 - **`load_benchmark_suite(path)`** → raw dict from a single JSON file.

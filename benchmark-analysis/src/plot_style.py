@@ -1,20 +1,24 @@
 """
 Unified plotting style for academic paper figures.
 
-Call ``apply_style()`` once at the top of every notebook to ensure
-consistent fonts, grid, colours, and sizing across all figures.
+Call ``apply_style()`` (or ``apply_style(palette=1)`` for teal) once at
+the top of every notebook to ensure consistent fonts, grid, colours,
+and sizing across all figures.
+
+Available palettes
+------------------
+0 — **Academic** (default): colorblind-friendly Wong palette variants.
+1 — **Teal**: warm teal / sage gradient built around #6DA49D.
 """
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
-from datetime import datetime
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-from .constants import METHOD_COLORS
+from . import constants as C
 
 # ---------------------------------------------------------------------------
 # Project paths
@@ -22,9 +26,29 @@ from .constants import METHOD_COLORS
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 FIGURES_DIR = _PROJECT_ROOT / "outputs" / "figures"
 
+# ---------------------------------------------------------------------------
+# Active palette (set by apply_style)
+# ---------------------------------------------------------------------------
+_active_palette: dict[str, str] = C.PALETTES[0]
 
-def apply_style() -> None:
-    """Apply the global matplotlib rcParams for dissertation figures."""
+
+def apply_style(palette: int = 0) -> None:
+    """
+    Apply the global matplotlib rcParams for dissertation figures.
+
+    Parameters
+    ----------
+    palette : int
+        Index into ``constants.PALETTES``.
+        0 = Academic (default), 1 = Teal.
+    """
+    global _active_palette
+    _active_palette = C.PALETTES[palette]
+    # Also update the module-level constant so anyone importing it directly
+    # sees the new colours.
+    C.METHOD_COLORS.clear()
+    C.METHOD_COLORS.update(_active_palette)
+
     FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 
     mpl.rcParams.update(
@@ -60,8 +84,8 @@ def apply_style() -> None:
 
 
 def get_method_color(method: str) -> str:
-    """Return the canonical colour for a compute method."""
-    return METHOD_COLORS.get(method, "#BBBBBB")
+    """Return the active palette colour for a compute method."""
+    return _active_palette.get(method, "#BBBBBB")
 
 
 def save_figure(fig: plt.Figure, name: str, *, formats: tuple[str, ...] = ("png", "pdf")) -> list[Path]:

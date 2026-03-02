@@ -1,7 +1,7 @@
 """
 Canonical constants for the benchmark analysis pipeline.
 
-Defines backend names, display labels, colorblind-friendly colour palette,
+Defines backend names, display labels, colour palettes (multiple themes),
 and legend ordering so that every notebook and figure is consistent.
 """
 
@@ -29,15 +29,29 @@ METHOD_LABELS: dict[str, str] = {
 }
 
 # ---------------------------------------------------------------------------
-# Colour palette — colorblind-friendly (Wong palette variants)
-# Consistent across every plot in the dissertation.
+# Colour palettes
+# Index 0: Academic (colorblind-friendly Wong palette variants)
+# Index 1: Teal    (warm teal / sage gradient)
 # ---------------------------------------------------------------------------
-METHOD_COLORS: dict[str, str] = {
-    JAVASCRIPT: "#4477AA",   # blue
-    WEB_WORKERS: "#228833",  # green
-    WEB_ASSEMBLY: "#EE6677", # red / coral
-    WEB_GPU: "#AA3377",      # purple
-}
+PALETTES: list[dict[str, str]] = [
+    # 0 — Academic (default)
+    {
+        JAVASCRIPT:   "#4477AA",   # steel blue
+        WEB_WORKERS:  "#228833",   # forest green
+        WEB_ASSEMBLY: "#EE6677",   # coral red
+        WEB_GPU:      "#AA3377",   # plum purple
+    },
+    # 1 — Teal
+    {
+        JAVASCRIPT:   "#6DA49D",   # soft teal
+        WEB_WORKERS:  "#3B7A71",   # deep teal
+        WEB_ASSEMBLY: "#A3D5CE",   # light mint teal
+        WEB_GPU:      "#2C5F5A",   # dark teal
+    },
+]
+
+# Default palette (index 0)
+METHOD_COLORS: dict[str, str] = PALETTES[0]
 
 # Render-mode markers (for plots that differentiate render path)
 RENDER_MODE_MARKERS: dict[str, str] = {
