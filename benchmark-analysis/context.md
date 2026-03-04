@@ -31,9 +31,12 @@ benchmark-analysis/
 │   ├── slime-sweep-low-agents/   #   500 → 8,000 agents (45 runs)
 │   │   ├── overview.txt
 │   │   └── slime-mold_benchmark_*.json
-│   └── slime-sweep-high-agents/  #   10,000 → 160,000 agents (45 runs)
+│   ├── slime-sweep-high-agents/  #   10,000 → 160,000 agents (45 runs)
+│   │   ├── overview.txt
+│   │   └── slime-mold_benchmark_*.json
+│   └── boids-general-sweep/      #   500 → 20,000 agents (70 runs)
 │       ├── overview.txt
-│       └── slime-mold_benchmark_*.json
+│       └── boids_benchmark_*.json
 │
 ├── src/                          # Shared Python modules (import into notebooks)
 │   ├── __init__.py
@@ -43,7 +46,8 @@ benchmark-analysis/
 │                                 #   frames_to_dataframe(), load_all_suites()
 │
 ├── notebooks/                    # Jupyter analysis notebooks
-│   └── 01_slime_sweep_performance.ipynb
+│   ├── 01_slime_sweep_performance.ipynb
+│   └── 02_boids_sweep_performance.ipynb
 │
 ├── outputs/
 │   └── figures/                  # Auto-saved 300 DPI PNG + PDF figures
