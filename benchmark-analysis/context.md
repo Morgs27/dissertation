@@ -70,10 +70,16 @@ benchmark-analysis/
 - **`get_method_color(method)`** — Returns the active palette's hex colour for a compute method.
 
 ### `src/data_loader.py`
-- **`load_benchmark_suite(path)`** → raw dict from a single JSON file.
-- **`runs_to_dataframe(suite)`** → tidy DataFrame, one row per run (method × render × agents × optional variant). Columns include `avgExecutionMs`, `avgComputeTime`, `avgSetupTime`, `avgReadbackTime`, `frameTime_p50/p95/p99`, etc.
-- **`frames_to_dataframe(suite)`** → one row per frame per run, for time-series and distribution analysis. Includes bridge timings and memory stats.
-- **`load_all_suites(raw_data_dir)`** → walks `raw-data/`, loads all JSONs, concatenates into a single DataFrame with a `suite` column.
+- **`discover_files(raw_data_dir)`** → DataFrame listing all JSON files with path, size, category, and simulation name.
+- **`load_runs_df(path)`** → tidy DataFrame, one row per run. **Streams large files with ijson** — safe for 4 GB+. Columns include `avgExecutionMs`, `avgComputeTime`, `avgSetupTime`, `avgReadbackTime`, `frameTime_p50/p95/p99`, etc.
+- **`load_frames_df(path, *, methods, agent_counts, max_frames)`** → one row per frame per run, with optional filters. Streams large files.
+- **`load_all_runs(raw_data_dir)`** → walks `raw-data/`, streams all JSONs, concatenates into a single DataFrame with `suite` and `category` columns.
+- **`load_raw(path)`** → raw dict from a single JSON file. **Small files only** (warns if > 500 MB).
+
+### `src/analysis.py`
+- **`compare_methods(df, metric, agent_count, render_mode)`** → pivot table with methods as columns, agent counts as rows.
+- **`scaling_summary(df, method, metric, render_mode)`** → how a metric scales with agent count (mean, std, n).
+- **`timing_breakdown(df, methods, agent_count, render_mode)`** → setup/compute/readback/render breakdown per method.
 
 ## Plotting and Visualization Standards
 
