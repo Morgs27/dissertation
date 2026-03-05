@@ -22,7 +22,11 @@ from .data_loader import (
 # ── Analysis helpers ──────────────────────────────────────────────────────
 from .analysis import (
     compare_methods,
+    crossover_point,
+    positional_divergence,
+    rolling_frame_stats,
     scaling_summary,
+    speedup_vs_baseline,
     timing_breakdown,
 )
 

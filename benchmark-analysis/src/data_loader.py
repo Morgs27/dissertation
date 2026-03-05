@@ -149,11 +149,16 @@ def _extract_run_row(run: dict, suite_name: str) -> dict:
 
 
 def _coerce_numeric(df: pd.DataFrame) -> pd.DataFrame:
-    """Convert expected-numeric columns to numeric dtype."""
-    int_cols = ("agentCount", "workerCount", "executedFrames", "errorCount", "compileEvents")
-    for col in int_cols:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
+    """Convert expected-numeric columns to numeric dtype.
+
+    ijson returns ``Decimal`` objects for numbers; pandas/matplotlib
+    can't work with those, so we cast everything numeric to float/int.
+    """
+    # Attempt to convert every column — to_numeric will gracefully skip strings
+    for col in df.columns:
+        if col in ("suite", "status", "method", "renderMode", "wasmExecutionMode"):
+            continue  # skip known string columns
+        df[col] = pd.to_numeric(df[col], errors="coerce")
     return df
 
 
@@ -326,7 +331,18 @@ def load_frames_df(
                     )
                 rows.append(row)
 
-    return pd.DataFrame(rows)
+    df = pd.DataFrame(rows)
+    # ijson returns Decimal objects — coerce all numeric-looking columns to float
+    numeric_cols = [
+        "frameNumber", "totalExecutionTime", "setupTime", "computeTime",
+        "renderTime", "readbackTime", "compileTime", "hostToGpuTime",
+        "gpuToHostTime", "methodMemoryFootprintBytes", "agentCount",
+        "workerCount",
+    ]
+    for col in numeric_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df
 
 
 # ── Multi-file loader ─────────────────────────────────────────────────────
@@ -359,6 +375,59 @@ def load_all_runs(raw_data_dir: str | Path) -> pd.DataFrame:
         dfs.append(df)
 
     return pd.concat(dfs, ignore_index=True)
+
+
+# ── Agent-level DataFrame ────────────────────────────────────────────────
+
+def agent_states_to_dataframe(
+    suite: dict[str, Any],
+    method: str,
+    render_mode: str,
+    agent_count: int,
+) -> pd.DataFrame:
+    """
+    Extract per-agent state tracking data for a specific run.
+
+    Requires a fully-loaded suite (via ``load_raw``).  The run must
+    have been recorded with ``captureAgentStates=true``.
+
+    Returns one row per agent per frame with ``frameNumber``, ``id``,
+    ``x``, ``y``, ``vx``, ``vy``, ``species``.
+    """
+    target_run = None
+    for run in suite.get("runs", []):
+        if (
+            run.get("method") == method
+            and run.get("renderMode") == render_mode
+            and run.get("agentCount") == agent_count
+        ):
+            target_run = run
+            break
+
+    if not target_run:
+        raise ValueError(
+            f"No run found matching {method=}, {render_mode=}, {agent_count=}"
+        )
+
+    rows: list[dict] = []
+    tr = target_run.get("trackingReport", {})
+    for frame in tr.get("frames", []):
+        frame_num = frame.get("frameNumber")
+        agents = frame.get("agentPositions", [])
+        if not agents:
+            continue
+        for agent in agents:
+            rows.append({
+                "frameNumber": frame_num,
+                "id": agent.get("id"),
+                "x": agent.get("x"),
+                "y": agent.get("y"),
+                "vx": agent.get("vx"),
+                "vy": agent.get("vy"),
+                "species": agent.get("species"),
+            })
+
+    return pd.DataFrame(rows)
 
 
 # ── Legacy aliases ────────────────────────────────────────────────────────

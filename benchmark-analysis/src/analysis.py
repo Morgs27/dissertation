@@ -142,3 +142,148 @@ def timing_breakdown(
     # Reorder to canonical order
     order = [m for m in METHOD_ORDER if m in grouped.index]
     return grouped.loc[order]
+
+
+# ── Crossover analysis ────────────────────────────────────────────────────
+
+def crossover_point(
+    df: pd.DataFrame,
+    method_a: str,
+    method_b: str,
+    metric: str = "avgExecutionMs",
+    render_mode: str | None = None,
+) -> int | None:
+    """
+    Find the lowest agent count where *method_b* becomes faster than
+    *method_a* (i.e. ``metric_a > metric_b``).
+
+    Returns ``None`` if *method_b* never beats *method_a* in the data.
+    """
+    pivot = compare_methods(df, metric, render_mode=render_mode)
+    if method_a not in pivot.columns or method_b not in pivot.columns:
+        return None
+    diff = pivot[method_a] - pivot[method_b]
+    faster = diff[diff > 0]
+    if faster.empty:
+        return None
+    return int(faster.index.min())
+
+
+# ── Speedup ratios ────────────────────────────────────────────────────────
+
+def speedup_vs_baseline(
+    df: pd.DataFrame,
+    baseline_col: str,
+    baseline_val,
+    group_cols: list[str],
+    metric: str = "avgExecutionMs",
+) -> pd.DataFrame:
+    """
+    Compute speedup ratios relative to a baseline subset.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Should contain columns *baseline_col*, *group_cols*, *metric*.
+    baseline_col : str
+        Column that identifies the baseline variant (e.g. ``workerCount``).
+    baseline_val
+        Value of *baseline_col* used as the denominator.
+    group_cols : list[str]
+        Columns that define equivalent groups (e.g. ``["agentCount", "suite"]``).
+    metric : str
+        Timing metric to compute speedup on.
+
+    Returns
+    -------
+    pd.DataFrame
+        Original DataFrame with an added ``speedup`` column.
+    """
+    base = (
+        df[df[baseline_col] == baseline_val]
+        .groupby(group_cols)[metric]
+        .mean()
+        .rename("_baseline")
+    )
+    merged = df.merge(base, on=group_cols, how="left")
+    merged["speedup"] = merged["_baseline"] / merged[metric]
+    return merged.drop(columns=["_baseline"])
+
+
+# ── Rolling frame statistics ──────────────────────────────────────────────
+
+def rolling_frame_stats(
+    frames_df: pd.DataFrame,
+    window: int = 50,
+    metric: str = "totalExecutionTime",
+) -> pd.DataFrame:
+    """
+    Add rolling mean and std columns for a frame-level metric.
+
+    Parameters
+    ----------
+    frames_df : pd.DataFrame
+        Frame-level DataFrame from ``load_frames_df``.
+    window : int
+        Rolling window size (in frames).
+    metric : str
+        Column to smooth.
+
+    Returns
+    -------
+    pd.DataFrame
+        Original DataFrame with ``{metric}_rolling_mean`` and
+        ``{metric}_rolling_std`` columns.
+    """
+    out = frames_df.copy()
+    out = out.sort_values(["method", "frameNumber"])
+    out[f"{metric}_rolling_mean"] = (
+        out.groupby("method")[metric]
+        .transform(lambda s: s.rolling(window, min_periods=1).mean())
+    )
+    out[f"{metric}_rolling_std"] = (
+        out.groupby("method")[metric]
+        .transform(lambda s: s.rolling(window, min_periods=1).std())
+    )
+    return out
+
+
+# ── Positional divergence (numerical accuracy) ───────────────────────────
+
+def positional_divergence(
+    frames_a: pd.DataFrame,
+    frames_b: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Compute per-frame Euclidean distance between agent positions from
+    two different methods / devices.
+
+    Both DataFrames must have columns ``frameNumber``, ``id``, ``x``, ``y``
+    (as produced by ``agent_states_to_dataframe`` or extracted from
+    ``load_frames_df`` with agent positions).
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns: ``frameNumber``, ``id``, ``dx``, ``dy``, ``distance``,
+        plus a per-frame ``mean_distance`` and ``max_distance``.
+    """
+    import numpy as np
+
+    merged = frames_a.merge(
+        frames_b,
+        on=["frameNumber", "id"],
+        suffixes=("_a", "_b"),
+        how="inner",
+    )
+    merged["dx"] = merged["x_a"] - merged["x_b"]
+    merged["dy"] = merged["y_a"] - merged["y_b"]
+    merged["distance"] = np.sqrt(merged["dx"] ** 2 + merged["dy"] ** 2)
+
+    # Per-frame aggregates
+    per_frame = (
+        merged.groupby("frameNumber")["distance"]
+        .agg(["mean", "max"])
+        .rename(columns={"mean": "mean_distance", "max": "max_distance"})
+    )
+    return merged, per_frame
