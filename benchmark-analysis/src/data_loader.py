@@ -131,6 +131,14 @@ def frames_to_dataframe(suite: dict[str, Any], suite_name: str = "") -> pd.DataF
             mem = perf.get("memoryStats", {})
             if mem:
                 row["methodMemoryFootprintBytes"] = mem.get("methodMemoryFootprintBytes")
+            
+            # Input Snapshots
+            inputs = frame.get("inputSnapshot", {})
+            if inputs:
+                for k, v in inputs.items():
+                    if not isinstance(v, (dict, list)):  # Skip type metadata dicts
+                        row[f"input_{k}"] = v
+            
             rows.append(row)
     return pd.DataFrame(rows)
 
@@ -152,3 +160,41 @@ def load_all_suites(raw_data_dir: str | Path) -> pd.DataFrame:
     if not dfs:
         raise FileNotFoundError(f"No benchmark JSON files found under {raw}")
     return pd.concat(dfs, ignore_index=True)
+
+
+# ── Agent-level DataFrame ────────────────────────────────────────────────
+
+def agent_states_to_dataframe(suite: dict[str, Any], method: str, render_mode: str, agent_count: int) -> pd.DataFrame:
+    """
+    Extract the per-agent state tracking array for a specific run into a tidy DataFrame.
+    """
+    target_run = None
+    for run in suite.get("runs", []):
+        if (run.get("method") == method and 
+            run.get("renderMode") == render_mode and 
+            run.get("agentCount") == agent_count):
+            target_run = run
+            break
+            
+    if not target_run:
+        raise ValueError(f"No run found matching {method=}, {render_mode=}, {agent_count=}")
+        
+    rows = []
+    tr = target_run.get("trackingReport", {})
+    for frame in tr.get("frames", []):
+        frame_num = frame.get("frameNumber")
+        agents = frame.get("agentPositions", [])
+        if not agents:
+            continue
+        for agent in agents:
+            rows.append({
+                "frameNumber": frame_num,
+                "id": agent.get("id"),
+                "x": agent.get("x"),
+                "y": agent.get("y"),
+                "vx": agent.get("vx"),
+                "vy": agent.get("vy"),
+                "species": agent.get("species"),
+            })
+            
+    return pd.DataFrame(rows)
