@@ -62,6 +62,18 @@ RENDER_MODE_MARKERS: dict[str, str] = {
     "gpu": "D",
 }
 
+# ---------------------------------------------------------------------------
+# Worker Count Colours (for 03_webworker_scaling)
+# Sequential colorblind-friendly palette for 1, 2, 4, 8, 14 workers
+# ---------------------------------------------------------------------------
+WORKER_COUNT_COLORS: dict[int, str] = {
+    1: "#ECA300",   # Amber
+    2: "#DF5327",   # Dark Orange
+    4: "#802268",   # Purple
+    8: "#4D4696",   # Deep Indigo
+    14: "#2A9D8F",  # Teal/Green
+}
+
 RENDER_MODE_LABELS: dict[str, str] = {
     "none": "No Render",
     "cpu": "CPU Render",

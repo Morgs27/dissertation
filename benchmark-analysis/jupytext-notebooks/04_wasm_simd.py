@@ -61,99 +61,56 @@ speedup = (scalar["avgComputeTime"] / simd["avgComputeTime"]).rename("simd_speed
 speedup = speedup.dropna()
 
 # %% [markdown]
-# ## 3. SIMD speedup curves by simulation
+# ## 3. SIMD speedup summary per simulation
+#
+# How does the SIMD speedup vary across simulations at different scales?
 
 # %%
-sweep_sims = sorted(speedup["suite"].unique())
+# Select representative agent counts
+selected_ac = [ac for ac in [1000, 5000, 20000] if ac in speedup["agentCount"].unique()]
+if not selected_ac:
+    selected_ac = speedup["agentCount"].unique()[:3]
 
-fig, ax = plt.subplots(figsize=(10, 6))
+fig, ax = plt.subplots(figsize=(12, 6))
 
-cmap = plt.cm.Set2(np.linspace(0, 1, len(sweep_sims)))
-for color, sim in zip(cmap, sweep_sims):
-    subset = speedup[speedup["suite"] == sim].sort_values("agentCount")
-    if subset.empty:
-        continue
-    ax.plot(
-        subset["agentCount"], subset["simd_speedup"],
-        "o-", color=color, label=sim.capitalize(), markersize=5,
-    )
+pivot = speedup[speedup["agentCount"].isin(selected_ac)].pivot(
+    index="suite", columns="agentCount", values="simd_speedup"
+).fillna(0)
+
+# Plot grouped bar chart
+x = np.arange(len(pivot.index))
+width = 0.8 / len(selected_ac)
+cmap = plt.cm.viridis(np.linspace(0.15, 0.85, len(selected_ac)))
+
+for i, (ac, color) in enumerate(zip(selected_ac, cmap)):
+    values = pivot[ac]
+    bars = ax.bar(x + i*width - width*(len(selected_ac)-1)/2, values, 
+                  width, label=f"N={ac:,}", color=color, edgecolor="white")
+    
+    # Add values on top of bars
+    for bar in bars:
+        h = bar.get_height()
+        if h > 0:
+            ax.text(bar.get_x() + bar.get_width()/2., h + 0.05,
+                    f'{h:.2f}×', ha='center', va='bottom', 
+                    rotation=90, fontsize=8)
 
 ax.axhline(1.0, ls="--", color="gray", alpha=0.5, label="No speedup (1.0×)")
-ax.set_xscale("log")
-ax.set_xlabel("Agent Count")
 ax.set_ylabel("SIMD Speedup (scalar / simd)")
-ax.set_title("WASM SIMD vs Scalar: Compute Time Speedup by Simulation")
-ax.legend(fontsize=8, ncol=2)
-save_figure(fig, "04_simd_speedup_per_sim")
+ax.set_title("WASM SIMD Speedup per Simulation at Selected Agent Counts", fontweight="bold")
+ax.set_xticks(x)
+ax.set_xticklabels([s.capitalize() for s in pivot.index], rotation=0)
+ax.legend(fontsize=9, loc="upper right")
+
+# Make room for text labels
+ax.set_ylim(bottom=0, top=pivot.max().max() * 1.25)
+
+plt.tight_layout()
+save_figure(fig, "04_simd_speedup_summary")
 plt.show()
 
 # %% [markdown]
-# ## 4. Average SIMD speedup across all simulations
-
-# %%
-avg_speedup = speedup.groupby("agentCount")["simd_speedup"].agg(["mean", "std"]).reset_index()
-
-fig, ax = plt.subplots(figsize=(9, 5))
-ax.plot(avg_speedup["agentCount"], avg_speedup["mean"], "o-", color="#228833", markersize=7)
-ax.fill_between(
-    avg_speedup["agentCount"],
-    avg_speedup["mean"] - avg_speedup["std"],
-    avg_speedup["mean"] + avg_speedup["std"],
-    alpha=0.2, color="#228833",
-)
-ax.axhline(1.0, ls="--", color="gray", alpha=0.5)
-ax.set_xscale("log")
-ax.set_xlabel("Agent Count")
-ax.set_ylabel("SIMD Speedup (×)")
-ax.set_title("WASM SIMD Compute Speedup — Averaged Across 8 Simulations (mean ± 1σ)")
-save_figure(fig, "04_simd_speedup_avg")
-plt.show()
-
-# %% [markdown]
-# ## 5. Which simulations benefit most from SIMD?
-
-# %%
-sim_avg = speedup.groupby("suite")["simd_speedup"].agg(["mean", "std"]).reset_index()
-sim_avg = sim_avg.sort_values("mean", ascending=True)
-
-fig, ax = plt.subplots(figsize=(9, 5))
-colors = ["#228833" if m > 1.0 else "#EE6677" for m in sim_avg["mean"]]
-ax.barh(sim_avg["suite"].str.capitalize(), sim_avg["mean"], xerr=sim_avg["std"],
-        color=colors, edgecolor="white", capsize=3)
-ax.axvline(1.0, ls="--", color="gray", alpha=0.5)
-ax.set_xlabel("Average SIMD Speedup (×)")
-ax.set_title("Per-Simulation SIMD Benefit (averaged over all agent counts)")
-save_figure(fig, "04_simd_benefit_by_sim")
-plt.show()
-
-# %% [markdown]
-# ## 6. Timing component comparison: SIMD vs Scalar
-
-# %%
-timing_cols = ["avgSetupTime", "avgComputeTime", "avgReadbackTime", "avgRenderTime"]
-present = [c for c in timing_cols if c in wasm_df.columns]
-
-for n in [5000, 10000, 20000]:
-    fig, ax = plt.subplots(figsize=(8, 4))
-    for mode in ["scalar", "simd"]:
-        subset = wasm_df[(wasm_df["wasmExecutionMode"] == mode) & (wasm_df["agentCount"] == n)]
-        means = subset[present].mean()
-        pos = np.arange(len(present))
-        offset = -0.2 if mode == "scalar" else 0.2
-        color = "#EE6677" if mode == "scalar" else "#228833"
-        ax.bar(pos + offset, means, width=0.35, label=mode.capitalize(),
-               color=color, edgecolor="white")
-
-    ax.set_xticks(range(len(present)))
-    ax.set_xticklabels([c.replace("avg", "").replace("Time", "") for c in present])
-    ax.set_ylabel("Time (ms)")
-    ax.set_title(f"WASM Timing Components — N={n:,} (mean across sims)")
-    ax.legend()
-    save_figure(fig, f"04_simd_timing_{n}")
-    plt.show()
-
-# %% [markdown]
-# ## 7. Summary table
+# ## 4. Summary table
 
 # %%
 print("=== SIMD Speedup Summary ===")

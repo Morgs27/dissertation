@@ -326,3 +326,203 @@ def positional_divergence(
         .rename(columns={"mean": "mean_distance", "max": "max_distance"})
     )
     return merged, per_frame
+
+
+# ── Compute time percentages ─────────────────────────────────────────────
+
+def compute_time_percentages(
+    df: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Add percentage columns for each timing component relative to
+    ``avgTotalTime``.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Run-level DataFrame with ``avgSetupTime``, ``avgComputeTime``,
+        ``avgReadbackTime``, ``avgRenderTime``, and ``avgTotalTime``.
+
+    Returns
+    -------
+    pd.DataFrame
+        Copy of *df* with added ``setup_pct``, ``compute_pct``,
+        ``readback_pct``, ``render_pct`` columns (0–100).
+    """
+    out = df.copy()
+    total = out["avgTotalTime"].replace(0, float("nan"))
+    for col, pct_col in [
+        ("avgSetupTime", "setup_pct"),
+        ("avgComputeTime", "compute_pct"),
+        ("avgReadbackTime", "readback_pct"),
+        ("avgRenderTime", "render_pct"),
+    ]:
+        if col in out.columns:
+            out[pct_col] = (out[col] / total) * 100
+    return out
+
+
+# ── Variance / stability summary ─────────────────────────────────────────
+
+def variance_summary(
+    frames_df: pd.DataFrame,
+    metric: str = "totalExecutionTime",
+    groupby: list[str] | None = None,
+) -> pd.DataFrame:
+    """
+    Compute variance, coefficient of variation (CV), IQR, and range for
+    a frame-level metric, grouped by the given columns.
+
+    Parameters
+    ----------
+    frames_df : pd.DataFrame
+        Frame-level DataFrame (from ``load_frames_df``).
+    metric : str
+        Column to compute statistics for.
+    groupby : list[str], optional
+        Columns to group by.  Defaults to ``["method", "agentCount"]``.
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns: groupby keys + ``mean``, ``std``, ``cv``, ``iqr``,
+        ``range``, ``p5``, ``p25``, ``p50``, ``p75``, ``p95``, ``n``.
+    """
+    import numpy as np
+
+    if groupby is None:
+        groupby = ["method", "agentCount"]
+
+    def _stats(s: pd.Series) -> pd.Series:
+        return pd.Series({
+            "mean": s.mean(),
+            "std": s.std(),
+            "cv": s.std() / s.mean() if s.mean() != 0 else float("nan"),
+            "iqr": s.quantile(0.75) - s.quantile(0.25),
+            "range": s.max() - s.min(),
+            "p5": s.quantile(0.05),
+            "p25": s.quantile(0.25),
+            "p50": s.quantile(0.50),
+            "p75": s.quantile(0.75),
+            "p95": s.quantile(0.95),
+            "n": len(s),
+        })
+
+    return (
+        frames_df.groupby(groupby)[metric]
+        .apply(_stats)
+        .unstack()
+        .reset_index()
+    )
+
+
+# ── Battery drain rate ───────────────────────────────────────────────────
+
+def battery_drain_rate(
+    df: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Compute battery drain rate per second and per 1000 frames from
+    run-level battery sampling columns.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Run-level DataFrame with ``rsBattery_deltaLevel``,
+        ``durationMs``, and ``executedFrames``.
+
+    Returns
+    -------
+    pd.DataFrame
+        Copy of *df* with ``battery_drain_per_sec`` (level units / s)
+        and ``battery_drain_per_1k_frames`` columns.  Rows where battery
+        data is absent will have NaN.
+    """
+    out = df.copy()
+    delta = out["rsBattery_deltaLevel"].abs()  # delta is negative (drain)
+    duration_s = out["durationMs"] / 1000.0
+    out["battery_drain_per_sec"] = delta / duration_s.replace(0, float("nan"))
+    out["battery_drain_per_1k_frames"] = (
+        delta / out["executedFrames"].replace(0, float("nan")) * 1000
+    )
+    return out
+
+
+# ── Thermal throttling summary ───────────────────────────────────────────
+
+def thermal_throttling_summary(
+    df: pd.DataFrame,
+    groupby: list[str] | None = None,
+) -> pd.DataFrame:
+    """
+    Pivot thermal canary metrics by method (and optionally other columns).
+
+    Returns per-group mean drift, p95 drift, max drift, and total
+    throttling events.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Run-level DataFrame with ``rsThermal_*`` columns.
+    groupby : list[str], optional
+        Columns to group by.  Defaults to ``["method"]``.
+
+    Returns
+    -------
+    pd.DataFrame
+        Aggregated thermal metrics.
+    """
+    if groupby is None:
+        groupby = ["method"]
+
+    thermal_cols = {
+        "rsThermal_avgDriftMs": "mean",
+        "rsThermal_p95DriftMs": "mean",
+        "rsThermal_maxDriftMs": "max",
+        "rsThermal_throttlingEvents": "sum",
+        "rsThermal_sampleCount": "sum",
+    }
+    present = {c: a for c, a in thermal_cols.items() if c in df.columns}
+    if not present:
+        return pd.DataFrame()
+
+    return df.groupby(groupby).agg(present).reset_index()
+
+
+# ── Memory pressure ──────────────────────────────────────────────────────
+
+def memory_pressure(
+    df: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Compute memory-pressure derived metrics from run-level data.
+
+    Adds:
+    - ``jsHeap_delta_pct``: JS heap growth as % of heap limit.
+    - ``methodMem_pct_of_heap``: Method memory footprint as % of used
+      JS heap.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Run-level DataFrame with ``rsJsHeap_*`` and ``avgMemoryBytes``
+        columns.
+
+    Returns
+    -------
+    pd.DataFrame
+        Copy of *df* with derived columns.
+    """
+    out = df.copy()
+    if "rsJsHeap_deltaBytes" in out.columns and "rsJsHeap_startBytes" in out.columns:
+        limit = out.get("rsJsHeap_maxBytes", out.get("rsJsHeap_startBytes"))
+        out["jsHeap_delta_pct"] = (
+            out["rsJsHeap_deltaBytes"] / limit.replace(0, float("nan")) * 100
+        )
+    if "avgMemoryBytes" in out.columns and "rsJsHeap_avgBytes" in out.columns:
+        out["methodMem_pct_of_heap"] = (
+            out["avgMemoryBytes"]
+            / out["rsJsHeap_avgBytes"].replace(0, float("nan"))
+            * 100
+        )
+    return out

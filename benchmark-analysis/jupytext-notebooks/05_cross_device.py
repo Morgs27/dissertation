@@ -85,7 +85,7 @@ combined = pd.concat([desktop, mobile], ignore_index=True)
 
 # %%
 for sim in sims_to_compare:
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5), sharey=True)
 
     for ax, device in zip(axes, ["MacBook (M4 Pro)", "Pixel 9 Pro"]):
         dev_df = combined[(combined["suite"] == sim) & (combined["device"] == device)]
@@ -202,3 +202,43 @@ if "cpu" in render_compare.columns and "gpu" in render_compare.columns:
 # %%
 print("=== Average Slowdown by Method ===")
 print(method_avg.round(2).to_string(index=False))
+
+# %% [markdown]
+# ## 7. Per-method cross-device overlay
+# 
+# How does each method scale on Mobile vs Desktop for Slime and Boids?
+
+# %%
+fig, axes = plt.subplots(2, 2, figsize=(14, 10), sharex=True)
+axes = axes.flatten()
+
+for ax, method in zip(axes, METHOD_ORDER):
+    subset = combined[combined["method"] == method]
+    if subset.empty:
+        continue
+        
+    c = get_method_color(method)
+    
+    for sim, marker in [("slime", "o"), ("boids", "s")]:
+        for dev, ls in [("MacBook (M4 Pro)", "-"), ("Pixel 9 Pro", "--")]:
+            plot_data = subset[(subset["suite"] == sim) & (subset["device"] == dev)].sort_values("agentCount")
+            if not plot_data.empty:
+                ax.plot(
+                    plot_data["agentCount"], plot_data["avgComputeTime"],
+                    label=f"{sim.capitalize()} ({'Mac' if 'MacBook' in dev else 'Pixel'})",
+                    color=c, marker=marker, linestyle=ls, markersize=5,
+                    alpha=0.8 if dev == "MacBook (M4 Pro)" else 0.5
+                )
+
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_title(METHOD_LABELS.get(method, method), fontweight="bold")
+    ax.set_ylabel("Avg Compute Time (ms)")
+    if method in [METHOD_ORDER[-2], METHOD_ORDER[-1]]:
+         ax.set_xlabel("Agent Count")
+
+axes[0].legend(fontsize=8, loc="upper left")
+fig.suptitle("Cross-Device Overlay by Method (Slime & Boids)", fontsize=14, fontweight="bold")
+plt.tight_layout()
+save_figure(fig, "05_cross_device_overlay")
+plt.show()

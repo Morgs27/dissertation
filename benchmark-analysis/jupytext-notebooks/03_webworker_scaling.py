@@ -26,7 +26,7 @@ import pandas as pd
 from src import (
     speedup_vs_baseline,
     apply_style, get_method_color, save_figure,
-    METHOD_LABELS,
+    METHOD_LABELS, WORKER_COUNT_COLORS,
 )
 
 apply_style()
@@ -84,6 +84,7 @@ workers = sorted(ww_df["workerCount"].unique())
 ax.plot(workers, workers, "k--", alpha=0.3, label="Ideal (linear)")
 
 ax.set_xlabel("Number of Web Workers")
+ax.set_yscale("log")
 ax.set_ylabel("Speedup (× single-worker)")
 ax.set_title("Web Worker Speedup vs Worker Count (mean ± 1σ across 8 sims)")
 ax.legend(ncol=2, fontsize=9)
@@ -125,6 +126,7 @@ for color, n in zip(cmap, agent_counts_to_plot):
         ax.plot(p_range, amdahl(p_range, f_val), "-", color=color,
                 label=f"N={n:,} (f={f_val:.2f})")
 
+ax.set_yscale("log")
 ax.plot(workers, workers, "k--", alpha=0.3, label="Ideal")
 ax.set_xlabel("Number of Web Workers")
 ax.set_ylabel("Speedup")
@@ -182,9 +184,10 @@ fig, ax = plt.subplots(figsize=(9, 5))
 for wc in sorted(ww_df["workerCount"].unique()):
     subset = ww_df[ww_df["workerCount"] == wc]
     avg = subset.groupby("agentCount")["avgSetupTime"].mean().reset_index()
-    ax.plot(avg["agentCount"], avg["avgSetupTime"], "o-", label=f"{int(wc)} workers")
+    c = WORKER_COUNT_COLORS.get(wc, "gray")
+    ax.plot(avg["agentCount"], avg["avgSetupTime"], "o-", label=f"{int(wc)} workers", color=c)
 
-ax.set_xscale("log")
+# ax.set_xscale("log")
 ax.set_xlabel("Agent Count")
 ax.set_ylabel("Avg Setup Time (ms)")
 ax.set_title("WebWorkers: Setup/Serialization Overhead vs Agent Count")

@@ -190,4 +190,28 @@ ax.legend()
 save_figure(fig, "02_memory_footprint")
 plt.show()
 
+# %% [markdown]
+# ### JS Heap Growth (if available)
+
 # %%
+if "rsJsHeap_avgBytes" in main_df.columns:
+    heap_df = main_df[main_df["rsJsHeap_avgBytes"].notna()].copy()
+    heap_df["heapMB"] = heap_df["rsJsHeap_avgBytes"] / (1024 * 1024)
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+    for method in METHOD_ORDER:
+        subset = heap_df[heap_df["method"] == method]
+        if subset.empty:
+            continue
+        avg = subset.groupby("agentCount")["heapMB"].mean().reset_index()
+        ax.plot(avg["agentCount"], avg["heapMB"],
+                label=METHOD_LABELS.get(method, method),
+                color=get_method_color(method), marker="o")
+
+    ax.set_xscale("log")
+    ax.set_xlabel("Agent Count")
+    ax.set_ylabel("JS Heap Used (MB)")
+    ax.set_title("JS Heap Usage vs Agent Count")
+    ax.legend()
+    save_figure(fig, "02_js_heap_footprint")
+    plt.show()

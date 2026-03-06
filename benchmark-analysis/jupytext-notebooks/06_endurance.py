@@ -36,7 +36,13 @@ apply_style()
 # %%
 summary_df = pd.read_parquet("../processed/endurance_runs.parquet")
 frames_df = pd.read_parquet("../processed/endurance_frames.parquet")
-print(f"Runs: {len(summary_df)} | Frames: {len(frames_df)}")
+try:
+    samples_df = pd.read_parquet("../processed/endurance_runtime_samples.parquet")
+except FileNotFoundError:
+    samples_df = pd.DataFrame()
+    print("Warning: endurance_runtime_samples.parquet not found (needs rebuild).")
+    
+print(f"Runs: {len(summary_df)} | Frames: {len(frames_df)} | Samples: {len(samples_df)}")
 
 print("\n=== Endurance Run Summaries ===")
 print(summary_df[["suite", "method", "renderMode", "agentCount",
@@ -104,6 +110,50 @@ fig.suptitle("Endurance: Compute Time Over 1000 Seconds", fontsize=14, fontweigh
 plt.tight_layout()
 save_figure(fig, "06_endurance_timeseries")
 plt.show()
+
+# %% [markdown]
+# ## 2b. Battery level over time
+# 
+# How does each method drain the device battery over 1000s?
+
+# %%
+if not samples_df.empty and "battery_level" in samples_df.columns:
+    fig, axes = plt.subplots(rows, cols, figsize=(8 * cols, 5 * rows))
+    if n_sims == 1:
+        axes = [axes]
+    else:
+        axes = axes.flatten()
+
+    for ax, sim in zip(axes, endurance_sims):
+        sdf = samples_df[samples_df["suite"] == sim]
+        if sdf.empty:
+            ax.set_title(f"{sim} — no battery data")
+            continue
+
+        for method in sdf["method"].unique():
+            subset = sdf[sdf["method"] == method].sort_values("timestamp")
+            if subset.empty or subset["battery_level"].isna().all():
+                continue
+
+            time_s = subset["elapsedMs"] / 1000.0
+            ax.plot(
+                time_s, subset["battery_level"] * 100,
+                label=METHOD_LABELS.get(method, method),
+                color=get_method_color(method), linewidth=2,
+            )
+
+        ax.set_xlabel("Time (seconds)")
+        ax.set_ylabel("Battery Level (%)")
+        ax.set_title(f"{sim}", fontweight="bold")
+        ax.legend(fontsize=8)
+
+    for ax in axes[n_sims:]:
+        ax.set_visible(False)
+
+    fig.suptitle("Endurance: Battery Drain Over 1000 Seconds", fontsize=14, fontweight="bold")
+    plt.tight_layout()
+    save_figure(fig, "06_endurance_battery")
+    plt.show()
 
 # %% [markdown]
 # ## 3. Thermal throttling detection
@@ -232,6 +282,63 @@ save_figure(fig, "06_variance_over_time")
 plt.show()
 
 # %% [markdown]
+# ## 4b. Frame-time stability (Coefficient of Variation) over time
+#
+# Coefficient of Variation (CV = σ / μ) normalizes variance by the mean compute time,
+# allowing fair stability comparison between fast and slow methods.
+
+# %%
+fig, axes = plt.subplots(rows, cols, figsize=(8 * cols, 5 * rows))
+if n_sims == 1:
+    axes = [axes]
+else:
+    axes = axes.flatten()
+
+for ax, sim in zip(axes, endurance_sims):
+    fdf = frames_df[frames_df["suite"] == sim]
+    if fdf.empty:
+        continue
+
+    for method in fdf["method"].unique():
+        subset = fdf[fdf["method"] == method].sort_values("frameNumber").copy()
+        if len(subset) < 100:
+            continue
+
+        window = max(100, len(subset) // 20)
+        rolling_mean = subset["computeTime"].rolling(window, min_periods=50).mean()
+        rolling_std = subset["computeTime"].rolling(window, min_periods=50).std()
+        rolling_cv = rolling_std / rolling_mean
+
+        run_info = summary_df[
+            (summary_df["suite"] == sim) & (summary_df["method"] == method)
+        ]
+        if not run_info.empty:
+            total_frames = int(run_info.iloc[0]["executedFrames"])
+            duration_s = run_info.iloc[0]["durationMs"] / 1000
+            time_s = subset["frameNumber"].values / total_frames * duration_s
+        else:
+            time_s = subset["frameNumber"].values
+
+        ax.plot(time_s, rolling_cv,
+                label=METHOD_LABELS.get(method, method),
+                color=get_method_color(method), alpha=0.8)
+
+    ax.set_xlabel("Time (seconds)")
+    ax.set_ylabel("Compute Time CV (σ/μ)")
+    ax.set_title(f"{sim}", fontweight="bold")
+    ax.axhline(0.1, ls="--", color="gray", alpha=0.3)
+    ax.legend(fontsize=8)
+
+for ax in axes[n_sims:]:
+    ax.set_visible(False)
+
+fig.suptitle("Relative Stability Over Time (Coefficient of Variation)",
+             fontsize=14, fontweight="bold")
+plt.tight_layout()
+save_figure(fig, "06_cv_over_time")
+plt.show()
+
+# %% [markdown]
 # ## 5. Throughput comparison
 
 # %%
@@ -248,4 +355,56 @@ ax.set_title("Sustained Throughput Over 1000 Seconds")
 ax.set_xticklabels(pivot.index, rotation=0)
 ax.legend(title="Method")
 save_figure(fig, "06_endurance_throughput")
+plt.show()
+
+# %% [markdown]
+# ## 5b. Frame Throughput (FPS) over time
+
+# %%
+fig, axes = plt.subplots(rows, cols, figsize=(8 * cols, 5 * rows))
+if n_sims == 1:
+    axes = [axes]
+else:
+    axes = axes.flatten()
+
+for ax, sim in zip(axes, endurance_sims):
+    fdf = frames_df[frames_df["suite"] == sim]
+    if fdf.empty:
+        continue
+
+    for method in fdf["method"].unique():
+        subset = fdf[fdf["method"] == method].sort_values("frameNumber").copy()
+        if len(subset) < 100:
+            continue
+
+        window = max(100, len(subset) // 20)
+        rolling_mean_ms = subset["computeTime"].rolling(window, min_periods=50).mean()
+        rolling_fps = 1000.0 / rolling_mean_ms
+
+        run_info = summary_df[
+            (summary_df["suite"] == sim) & (summary_df["method"] == method)
+        ]
+        if not run_info.empty:
+            total_frames = int(run_info.iloc[0]["executedFrames"])
+            duration_s = run_info.iloc[0]["durationMs"] / 1000
+            time_s = subset["frameNumber"].values / total_frames * duration_s
+        else:
+            time_s = subset["frameNumber"].values
+
+        ax.plot(time_s, rolling_fps,
+                label=METHOD_LABELS.get(method, method),
+                color=get_method_color(method), alpha=0.8)
+
+    ax.set_xlabel("Time (seconds)")
+    ax.set_ylabel("Throughput (FPS)")
+    ax.set_title(f"{sim}", fontweight="bold")
+    ax.legend(fontsize=8)
+
+for ax in axes[n_sims:]:
+    ax.set_visible(False)
+
+fig.suptitle("Frame Throughput (FPS) Over Time",
+             fontsize=14, fontweight="bold")
+plt.tight_layout()
+save_figure(fig, "06_fps_over_time")
 plt.show()

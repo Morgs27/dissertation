@@ -29,6 +29,8 @@ import pandas as pd
 
 _SIZE_WARNING_BYTES = 500 * 1024 * 1024  # 500 MB
 
+import re as _re
+
 
 def _human_size(n: int) -> str:
     for unit in ("B", "KB", "MB", "GB"):
@@ -36,6 +38,13 @@ def _human_size(n: int) -> str:
             return f"{n:.1f} {unit}"
         n /= 1024  # type: ignore[assignment]
     return f"{n:.1f} TB"
+
+
+def _snake_case(s: str) -> str:
+    """Convert a human-readable key like ``'JS Execution'`` to ``'js_execution'``."""
+    s = s.replace("(", "").replace(")", "").replace("->", "_to_")
+    s = _re.sub(r"[^a-zA-Z0-9]+", "_", s)
+    return s.strip("_").lower()
 
 
 # ── Discovery ─────────────────────────────────────────────────────────────
@@ -111,6 +120,16 @@ def _extract_run_row(run: dict, suite_name: str) -> dict:
     mrs_list = summary.get("methodRenderSummaries", [{}])
     mrs = mrs_list[0] if mrs_list else {}
 
+    # Runtime sampling aggregates (jsHeap, battery, thermalCanary)
+    rs = summary.get("runtimeSampling", {})
+    rs_heap = rs.get("jsHeap", {})
+    rs_batt = rs.get("battery", {})
+    rs_therm = rs.get("thermalCanary", {})
+
+    # Input & agent stats
+    inp = summary.get("inputStats", {})
+    ags = summary.get("agentStats", {})
+
     return {
         "suite": suite_name,
         "status": run.get("status"),
@@ -121,6 +140,7 @@ def _extract_run_row(run: dict, suite_name: str) -> dict:
         "wasmExecutionMode": run.get("wasmExecutionMode"),
         "executedFrames": run.get("executedFrames"),
         # Summary aggregates
+        "frameCount": summary.get("frameCount"),
         "durationMs": summary.get("durationMs"),
         "avgExecutionMs": summary.get("averageExecutionMs"),
         "totalExecutionMs": summary.get("totalExecutionMs"),
@@ -145,6 +165,40 @@ def _extract_run_row(run: dict, suite_name: str) -> dict:
         "frameTime_p50": frame_stats.get("p50"),
         "frameTime_p95": frame_stats.get("p95"),
         "frameTime_p99": frame_stats.get("p99"),
+        # ── Runtime sampling: JS heap ─────────────────────────────────
+        "rsJsHeap_sampleCount": rs_heap.get("sampleCount"),
+        "rsJsHeap_startBytes": rs_heap.get("startBytes"),
+        "rsJsHeap_endBytes": rs_heap.get("endBytes"),
+        "rsJsHeap_deltaBytes": rs_heap.get("deltaBytes"),
+        "rsJsHeap_minBytes": rs_heap.get("minBytes"),
+        "rsJsHeap_maxBytes": rs_heap.get("maxBytes"),
+        "rsJsHeap_avgBytes": rs_heap.get("averageBytes"),
+        # ── Runtime sampling: battery ─────────────────────────────────
+        "rsBattery_supported": rs_batt.get("supported"),
+        "rsBattery_sampleCount": rs_batt.get("sampleCount"),
+        "rsBattery_startLevel": rs_batt.get("startLevel"),
+        "rsBattery_endLevel": rs_batt.get("endLevel"),
+        "rsBattery_deltaLevel": rs_batt.get("deltaLevel"),
+        "rsBattery_startCharging": rs_batt.get("startCharging"),
+        "rsBattery_endCharging": rs_batt.get("endCharging"),
+        # ── Runtime sampling: thermal canary ──────────────────────────
+        "rsThermal_sampleCount": rs_therm.get("sampleCount"),
+        "rsThermal_sampleIntervalMs": rs_therm.get("sampleIntervalMs"),
+        "rsThermal_avgDriftMs": rs_therm.get("avgDriftMs"),
+        "rsThermal_p95DriftMs": rs_therm.get("p95DriftMs"),
+        "rsThermal_maxDriftMs": rs_therm.get("maxDriftMs"),
+        "rsThermal_throttlingEvents": rs_therm.get("throttlingEvents"),
+        "rsThermal_throttlingThresholdMs": rs_therm.get(
+            "throttlingEventThresholdMs"
+        ),
+        # ── Input stats ───────────────────────────────────────────────
+        "inputStats_requiredCount": inp.get("requiredInputCount"),
+        "inputStats_definedCount": inp.get("definedInputCount"),
+        "inputStats_avgKeysPerFrame": inp.get("averageKeysPerFrame"),
+        # ── Agent stats ───────────────────────────────────────────────
+        "agentStats_minPerFrame": ags.get("minAgentsPerFrame"),
+        "agentStats_maxPerFrame": ags.get("maxAgentsPerFrame"),
+        "agentStats_avgPerFrame": ags.get("averageAgentsPerFrame"),
     }
 
 
@@ -156,7 +210,10 @@ def _coerce_numeric(df: pd.DataFrame) -> pd.DataFrame:
     """
     # Attempt to convert every column — to_numeric will gracefully skip strings
     for col in df.columns:
-        if col in ("suite", "status", "method", "renderMode", "wasmExecutionMode"):
+        if col in (
+            "suite", "status", "method", "renderMode",
+            "wasmExecutionMode", "methodMemoryFootprintType",
+        ):
             continue  # skip known string columns
         df[col] = pd.to_numeric(df[col], errors="coerce")
     return df
@@ -311,6 +368,8 @@ def load_frames_df(
                 row = {
                     **base,
                     "frameNumber": frame.get("frameNumber"),
+                    "timestamp": frame.get("timestamp"),
+                    "inputKeyCount": frame.get("inputKeyCount"),
                     "totalExecutionTime": perf.get("totalExecutionTime"),
                     "setupTime": perf.get("setupTime"),
                     "computeTime": perf.get("computeTime"),
@@ -318,31 +377,160 @@ def load_frames_df(
                     "readbackTime": perf.get("readbackTime"),
                     "compileTime": perf.get("compileTime"),
                 }
-                # Bridge timings (WebGPU)
+                # ── specificStats (method-dependent keys) ─────────────
+                for raw_key, val in perf.get("specificStats", {}).items():
+                    col = "ss_" + _snake_case(raw_key)
+                    row[col] = val
+                # ── bridgeTimings — all 12 sub-keys ───────────────────
                 bridge = perf.get("bridgeTimings", {})
                 if bridge:
                     row["hostToGpuTime"] = bridge.get("hostToGpuTime")
+                    row["hostToGpuAgentUploadTime"] = bridge.get(
+                        "hostToGpuAgentUploadTime"
+                    )
+                    row["hostToGpuInputUploadTime"] = bridge.get(
+                        "hostToGpuInputUploadTime"
+                    )
+                    row["hostToGpuUniformUploadTime"] = bridge.get(
+                        "hostToGpuUniformUploadTime"
+                    )
+                    row["hostToGpuTrailUploadTime"] = bridge.get(
+                        "hostToGpuTrailUploadTime"
+                    )
+                    row["hostToGpuRandomUploadTime"] = bridge.get(
+                        "hostToGpuRandomUploadTime"
+                    )
+                    row["hostToGpuObstacleUploadTime"] = bridge.get(
+                        "hostToGpuObstacleUploadTime"
+                    )
                     row["gpuToHostTime"] = bridge.get("gpuToHostTime")
-                # Memory
+                    row["gpuToHostAgentReadbackTime"] = bridge.get(
+                        "gpuToHostAgentReadbackTime"
+                    )
+                    row["gpuToHostTrailReadbackTime"] = bridge.get(
+                        "gpuToHostTrailReadbackTime"
+                    )
+                    row["gpuToHostLogReadbackTime"] = bridge.get(
+                        "gpuToHostLogReadbackTime"
+                    )
+                    row["queueSubmitTime"] = bridge.get("queueSubmitTime")
+                # ── memoryStats — full ────────────────────────────────
                 mem = perf.get("memoryStats", {})
                 if mem:
                     row["methodMemoryFootprintBytes"] = mem.get(
                         "methodMemoryFootprintBytes"
                     )
+                    row["methodMemoryFootprintType"] = mem.get(
+                        "methodMemoryFootprintType"
+                    )
+                    row["jsHeapSizeLimitBytes"] = mem.get(
+                        "jsHeapSizeLimitBytes"
+                    )
+                    row["totalJsHeapSizeBytes"] = mem.get(
+                        "totalJsHeapSizeBytes"
+                    )
+                    row["usedJsHeapSizeBytes"] = mem.get(
+                        "usedJsHeapSizeBytes"
+                    )
                 rows.append(row)
 
-    df = pd.DataFrame(rows)
-    # ijson returns Decimal objects — coerce all numeric-looking columns to float
-    numeric_cols = [
-        "frameNumber", "totalExecutionTime", "setupTime", "computeTime",
-        "renderTime", "readbackTime", "compileTime", "hostToGpuTime",
-        "gpuToHostTime", "methodMemoryFootprintBytes", "agentCount",
-        "workerCount",
-    ]
-    for col in numeric_cols:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-    return df
+    return _coerce_numeric(pd.DataFrame(rows))
+
+
+# ── Streaming runtime-samples loader ─────────────────────────────────────
+
+def load_runtime_samples_df(
+    json_path: str | Path,
+    *,
+    methods: list[str] | None = None,
+    agent_counts: list[int] | None = None,
+    suite_name: str = "",
+) -> pd.DataFrame:
+    """
+    Stream a benchmark JSON and extract **runtime sample** rows.
+
+    Each row represents one periodic sample of JS heap, battery, and
+    thermal-canary telemetry.  Useful for time-series analysis of
+    memory pressure, energy drain, and thermal throttling during
+    long-running benchmarks.
+
+    Parameters
+    ----------
+    json_path : path-like
+        Path to a ``websimbench.benchmark.v1`` JSON file.
+    methods : list[str], optional
+        Only include runs with these compute methods.
+    agent_counts : list[int], optional
+        Only include runs with these agent counts.
+    suite_name : str, optional
+        Label for the ``suite`` column.
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per runtime sample with JS heap, battery, and thermal
+        canary columns.
+    """
+    path = Path(json_path)
+    name = suite_name or path.parent.name
+
+    rows: list[dict] = []
+
+    with open(path, "rb") as fh:
+        if not suite_name:
+            parser = ijson.parse(fh)
+            for prefix, event, value in parser:
+                if prefix == "simulationName":
+                    name = value
+                    break
+                if prefix == "runs":
+                    break
+            fh.seek(0)
+
+        for run in ijson.items(fh, "runs.item"):
+            run_method = run.get("method")
+            run_agents = run.get("agentCount")
+
+            if methods and run_method not in methods:
+                continue
+            if agent_counts and run_agents not in agent_counts:
+                continue
+
+            base = {
+                "suite": name,
+                "method": run_method,
+                "renderMode": run.get("renderMode"),
+                "agentCount": run_agents,
+                "workerCount": run.get("workerCount"),
+                "wasmExecutionMode": run.get("wasmExecutionMode"),
+            }
+
+            tr = run.get("trackingReport", {})
+            for sample in tr.get("runtimeSamples", []):
+                heap = sample.get("jsHeap", {})
+                batt = sample.get("battery", {})
+                canary = sample.get("thermalCanary", {})
+                rows.append({
+                    **base,
+                    "timestamp": sample.get("timestamp"),
+                    "elapsedMs": sample.get("elapsedMs"),
+                    "frameNumber": sample.get("frameNumber"),
+                    # JS heap
+                    "jsHeap_limit": heap.get("jsHeapSizeLimit"),
+                    "jsHeap_total": heap.get("totalJSHeapSize"),
+                    "jsHeap_used": heap.get("usedJSHeapSize"),
+                    # Battery
+                    "battery_supported": batt.get("supported"),
+                    "battery_level": batt.get("level"),
+                    "battery_charging": batt.get("charging"),
+                    "battery_chargingTime": batt.get("chargingTime"),
+                    "battery_dischargingTime": batt.get("dischargingTime"),
+                    # Thermal canary
+                    "thermal_intervalMs": canary.get("intervalMs"),
+                    "thermal_driftMs": canary.get("driftMs"),
+                })
+
+    return _coerce_numeric(pd.DataFrame(rows))
 
 
 # ── Multi-file loader ─────────────────────────────────────────────────────
@@ -378,6 +566,78 @@ def load_all_runs(raw_data_dir: str | Path) -> pd.DataFrame:
 
 
 # ── Agent-level DataFrame ────────────────────────────────────────────────
+
+
+def stream_agent_positions_df(
+    json_path: str | Path,
+    *,
+    methods: tuple[str, ...] | list[str] = ("JavaScript", "WebGPU"),
+    agent_counts: tuple[int, ...] | list[int] = (100,),
+    render_mode: str = "cpu",
+    suite_name: str = "",
+) -> pd.DataFrame:
+    """
+    Stream a (potentially multi-GB) benchmark JSON and extract **agent
+    position** data for matching runs.
+
+    Unlike ``agent_states_to_dataframe`` (which requires the full JSON in
+    memory), this function uses ``ijson`` to iterate over runs one at a
+    time, keeping memory usage constant regardless of file size.
+
+    Returns one row per agent per frame with columns ``suite``, ``method``,
+    ``agentCount``, ``frameNumber``, ``id``, ``x``, ``y``, ``vx``, ``vy``.
+    """
+    path = Path(json_path)
+    name = suite_name or path.parent.name
+
+    rows: list[dict] = []
+
+    with open(path, "rb") as fh:
+        if not suite_name:
+            parser = ijson.parse(fh)
+            for prefix, event, value in parser:
+                if prefix == "simulationName":
+                    name = value
+                    break
+                if prefix == "runs":
+                    break
+            if not name:
+                name = path.parent.name
+            fh.seek(0)
+
+        for run in ijson.items(fh, "runs.item"):
+            run_method = run.get("method")
+            run_agents = run.get("agentCount")
+            run_render = run.get("renderMode")
+
+            if run_method not in methods:
+                continue
+            if run_agents not in agent_counts:
+                continue
+            if run_render != render_mode:
+                continue
+
+            tr = run.get("trackingReport", {})
+            for frame in tr.get("frames", []):
+                frame_num = frame.get("frameNumber")
+                agents = frame.get("agentPositions", [])
+                if not agents:
+                    continue
+                for agent in agents:
+                    rows.append({
+                        "suite": name,
+                        "method": run_method,
+                        "agentCount": run_agents,
+                        "frameNumber": frame_num,
+                        "id": agent.get("id"),
+                        "x": agent.get("x"),
+                        "y": agent.get("y"),
+                        "vx": agent.get("vx"),
+                        "vy": agent.get("vy"),
+                    })
+
+    return _coerce_numeric(pd.DataFrame(rows))
+
 
 def agent_states_to_dataframe(
     suite: dict[str, Any],

@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.abspath(".."))
 
 import pandas as pd
 from pathlib import Path
-from src import load_runs_df, load_frames_df
+from src import load_runs_df, load_frames_df, load_runtime_samples_df
 
 OUT = Path("../processed")
 OUT.mkdir(exist_ok=True)
@@ -93,6 +93,21 @@ print(f"✓ endurance_runs.parquet — {len(end_sum_df)} runs")
 print(f"✓ endurance_frames.parquet — {len(end_frm_df)} frames")
 
 # %% [markdown]
+# ## 4b. Endurance — runtime samples (battery, JS heap, thermal canary)
+
+# %%
+end_samples = []
+for path in sorted(Path("../raw-data/endurance").rglob("*.json")):
+    sim = path.parent.name
+    print(f"Loading runtime samples for endurance/{sim}...")
+    sdf = load_runtime_samples_df(path, suite_name=sim)
+    end_samples.append(sdf)
+
+end_samp_df = pd.concat(end_samples, ignore_index=True)
+end_samp_df.to_parquet(OUT / "endurance_runtime_samples.parquet", index=False)
+print(f"✓ endurance_runtime_samples.parquet — {len(end_samp_df)} samples")
+
+# %% [markdown]
 # ## 5. Trig tests — full JSON (small files, need agent positions)
 
 # %%
@@ -119,10 +134,36 @@ trig_df.to_parquet(OUT / "trig_runs.parquet", index=False)
 print(f"✓ trig_runs.parquet — {len(trig_df)} runs")
 
 # %% [markdown]
+# ## 6. Agent positions for error analysis (basic sweeps)
+#
+# Stream JS + WebGPU agent positions at `agentCount=100` from each
+# basic-sweep file. Saves one parquet per simulation (~1–2 MB each)
+# so that the error analysis notebook loads instantly.
+
+# %%
+from src import stream_agent_positions_df
+
+sweep_sims_pos = ["boids", "cosmic", "fire", "fluid", "predator", "rain", "slime", "traffic"]
+for sim in sweep_sims_pos:
+    path = next(p for p in sorted(Path("../raw-data/basic-sweeps").rglob("*.json")) if sim in p.parent.name)
+    out_path = OUT / f"agent_positions_{sim}.parquet"
+    print(f"Streaming agent positions for {sim} ({path.stat().st_size / 1e9:.1f} GB)...")
+    adf = stream_agent_positions_df(
+        path,
+        methods=("JavaScript", "WebGPU"),
+        agent_counts=(100,),
+        render_mode="cpu",
+        suite_name=sim,
+    )
+    adf.to_parquet(out_path, index=False)
+    print(f"  ✓ {out_path.name} — {len(adf)} rows, {out_path.stat().st_size / 1e6:.1f} MB")
+
+# %% [markdown]
 # ## Summary
 
 # %%
 print("\n=== Processed files ===")
 for f in sorted(OUT.glob("*.parquet")):
-    print(f"  {f.name:30s}  {f.stat().st_size / 1e6:6.1f} MB")
+    print(f"  {f.name:40s}  {f.stat().st_size / 1e6:6.1f} MB")
 print("\nDone! All other notebooks will now load from these parquet files.")
+

@@ -172,6 +172,55 @@ save_figure(fig, "01_scaling_spread")
 plt.show()
 
 # %% [markdown]
+# ## Compute time spread across all simulations
+#
+# While the previous plot shows per-frame variance within a *single* run,
+# this plot shows the spread of average compute time *across all 8 simulations*.
+# It highlights how much computational cost varies depending on the specific
+# simulation rules (e.g., simple boids vs complex slime mold).
+
+# %%
+fig, axes = plt.subplots(1, 4, figsize=(18, 4.5), sharex=False, sharey=True)
+axes = axes.flatten()
+
+for ax, method in zip(axes, METHOD_ORDER):
+    subset = main_df[main_df["method"] == method]
+    if subset.empty:
+        continue
+    c = get_method_color(method)
+    
+    # Group by agent count to find min, median, max across the 8 sims
+    grouped = subset.groupby("agentCount")["avgComputeTime"].agg(["min", "median", "max"]).reset_index()
+    
+    # Fill between min and max
+    ax.fill_between(
+        grouped["agentCount"],
+        grouped["min"],
+        grouped["max"],
+        alpha=0.2, color=c, label="Min - Max across sims"
+    )
+        
+    # Median line
+    ax.plot(
+        grouped["agentCount"], grouped["median"],
+        label="Median sim",
+        color=c, marker="o", markersize=4, linewidth=2,
+    )
+
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_title(METHOD_LABELS.get(method, method), fontsize=12, fontweight="bold")
+    ax.set_xlabel("Agent Count")
+    
+axes[0].set_ylabel("Avg Compute Time (ms)")
+axes[0].legend(fontsize=9, loc="upper left")
+fig.suptitle("Compute Time Spread Across 8 Simulations per Method (CPU Render)",
+             fontsize=14, fontweight="bold", y=1.05)
+plt.tight_layout()
+save_figure(fig, "01_scaling_compute_spread")
+plt.show()
+
+# %% [markdown]
 # ## Crossover point analysis (Exact Interpolated)
 #
 # At what interpolated agent count does WebGPU become faster than other methods?
