@@ -25,7 +25,7 @@ import numpy as np
 import pandas as pd
 
 from src import (
-    compare_methods, scaling_summary, crossover_point,
+    compare_methods, scaling_summary, crossover_point, interpolated_crossover_point,
     apply_style, get_method_color, save_figure,
     METHOD_ORDER, METHOD_LABELS,
 )
@@ -38,6 +38,13 @@ apply_style()
 # %%
 sweep_df = pd.read_parquet("../processed/basic_sweeps.parquet")
 hi_df = pd.read_parquet("../processed/high_agents.parquet")
+
+# Clamp sub-timer-resolution zeros to 1 microsecond to prevent omission on log-log plots
+for df in [sweep_df, hi_df]:
+    for col in ["avgComputeTime", "frameTime_min", "frameTime_p50", "frameTime_p95", "frameTime_max"]:
+        if col in df.columns:
+            df[col] = df[col].clip(lower=0.001)
+
 print(f"Basic sweeps: {len(sweep_df)} runs | High agents: {len(hi_df)} runs")
 
 # %% [markdown]
@@ -102,7 +109,7 @@ for ax, sim in zip(axes, sweep_sims):
     ax.set_ylabel("Avg Compute Time (ms)")
 
 axes[0].legend(fontsize=8, loc="upper left")
-fig.suptitle("Mean Compute Time vs Agent Count (CPU Render, Best Config)",
+fig.suptitle("Mean Compute Time vs Agent Count (Across all simulations)",
              fontsize=14, fontweight="bold")
 plt.tight_layout()
 save_figure(fig, "01_scaling_mean")
@@ -113,251 +120,185 @@ plt.show()
 #
 # The summary-level `frameTime_*` stats capture total frame time.
 # Here we show min, p50, p95, and max to visualise the spread
-# of per-frame performance at each agent count.
+# of per-frame performance at each agent count for a representative simulation.
 
 # %%
-fig, axes = plt.subplots(2, 4, figsize=(18, 9), sharex=False, sharey=False)
+sim = "boids"
+sim_df = main_df[main_df["suite"] == sim]
+
+fig, axes = plt.subplots(1, 4, figsize=(18, 4.5), sharex=False, sharey=True)
 axes = axes.flatten()
 
-for ax, sim in zip(axes, sweep_sims):
-    sim_df = main_df[main_df["suite"] == sim]
+for ax, method in zip(axes, METHOD_ORDER):
+    subset = sim_df[sim_df["method"] == method].sort_values("agentCount")
+    if subset.empty:
+        continue
+    c = get_method_color(method)
 
-    for method in METHOD_ORDER:
-        subset = sim_df[sim_df["method"] == method].sort_values("agentCount")
-        if subset.empty:
-            continue
-        c = get_method_color(method)
-
-        # Median line
-        ax.plot(
-            subset["agentCount"], subset["frameTime_p50"],
-            label=METHOD_LABELS.get(method, method),
-            color=c, marker="o", markersize=3, linewidth=1.5,
+    # p5–p95 band
+    if "frameTime_min" in subset.columns and "frameTime_p95" in subset.columns:
+        ax.fill_between(
+            subset["agentCount"],
+            subset["frameTime_min"],
+            subset["frameTime_p95"],
+            alpha=0.2, color=c, label="Min - P95"
         )
+        
+    # Median line
+    ax.plot(
+        subset["agentCount"], subset["frameTime_p50"],
+        label="Median (P50)",
+        color=c, marker="o", markersize=4, linewidth=2,
+    )
 
-        # p5–p95 band (use min as lower bound since we don't have p5)
-        if "frameTime_min" in subset.columns and "frameTime_p95" in subset.columns:
-            ax.fill_between(
-                subset["agentCount"],
-                subset["frameTime_min"],
-                subset["frameTime_p95"],
-                alpha=0.12, color=c,
-            )
-
-        # Max as scatter
-        if "frameTime_max" in subset.columns:
-            ax.scatter(
-                subset["agentCount"], subset["frameTime_max"],
-                marker="x", color=c, s=15, alpha=0.5, zorder=5,
-            )
+    # Max as scatter
+    if "frameTime_max" in subset.columns:
+        ax.scatter(
+            subset["agentCount"], subset["frameTime_max"],
+            marker="^", color=c, s=25, alpha=0.7, zorder=5, label="Max"
+        )
 
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_title(sim.capitalize(), fontsize=11, fontweight="bold")
+    ax.set_title(METHOD_LABELS.get(method, method), fontsize=12, fontweight="bold")
     ax.set_xlabel("Agent Count")
-    ax.set_ylabel("Frame Time (ms)")
-
-axes[0].legend(fontsize=7, loc="upper left")
-fig.suptitle("Frame Time Spread: Median (line), Min–P95 (band), Max (×)",
-             fontsize=13, fontweight="bold")
+    
+axes[0].set_ylabel("Frame Time (ms)")
+axes[0].legend(fontsize=9, loc="upper left")
+fig.suptitle(f"Frame Time Spread per Method: {sim.capitalize()} (CPU Render)",
+             fontsize=14, fontweight="bold", y=1.05)
 plt.tight_layout()
 save_figure(fig, "01_scaling_spread")
 plt.show()
 
 # %% [markdown]
-# ## 5. Violin / box plot of frame times at selected agent counts
+# ## 5. Crossover point analysis (Exact Interpolated)
 #
-# For a representative simulation, show the distribution of frame-level
-# compute times across methods at key agent counts.
-
-# %%
-# Load frame-level data for one sim to do violin plots
-from src import load_frames_df
-from pathlib import Path
-
-rep_sim = "boids"
-rep_path = next(Path("../raw-data/basic-sweeps").rglob("*.json"), None)
-for p in sorted(Path("../raw-data/basic-sweeps").rglob("*.json")):
-    if rep_sim in p.parent.name:
-        rep_path = p
-        break
-
-if rep_path and rep_path.exists():
-    print(f"Loading frame-level data from {rep_path.name} for violin plots...")
-    frames = load_frames_df(rep_path, suite_name=rep_sim)
-
-    # Best per method for frames too
-    frames_cpu = frames[frames["renderMode"] == "cpu"].copy()
-
-    # WebWorkers: keep only workerCount that gave best average
-    ww_best = main_df[
-        (main_df["suite"] == rep_sim) & (main_df["method"] == "WebWorkers")
-    ][["agentCount", "workerCount"]].drop_duplicates()
-
-    if not ww_best.empty:
-        frames_cpu = frames_cpu.merge(
-            ww_best.rename(columns={"workerCount": "best_wc"}),
-            on="agentCount", how="left",
-        )
-        ww_mask = frames_cpu["method"] == "WebWorkers"
-        frames_cpu = frames_cpu[~ww_mask | (frames_cpu["workerCount"] == frames_cpu["best_wc"])]
-        frames_cpu.drop(columns=["best_wc"], inplace=True, errors="ignore")
-
-    violin_agents = [100, 1000, 5000, 10000]
-    methods_present = [m for m in METHOD_ORDER if m in frames_cpu["method"].unique()]
-
-    fig, axes = plt.subplots(1, len(violin_agents), figsize=(5 * len(violin_agents), 5))
-    if len(violin_agents) == 1:
-        axes = [axes]
-
-    for ax, n in zip(axes, violin_agents):
-        data_for_violin = []
-        labels = []
-        colors = []
-
-        for method in methods_present:
-            subset = frames_cpu[
-                (frames_cpu["agentCount"] == n) & (frames_cpu["method"] == method)
-            ]["computeTime"].dropna()
-            if len(subset) > 5:
-                data_for_violin.append(subset.values)
-                labels.append(METHOD_LABELS.get(method, method))
-                colors.append(get_method_color(method))
-
-        if data_for_violin:
-            parts = ax.violinplot(data_for_violin, showmedians=True, showextrema=True)
-            for i, pc in enumerate(parts["bodies"]):
-                pc.set_facecolor(colors[i])
-                pc.set_alpha(0.6)
-            for key in ["cmins", "cmaxes", "cmedians", "cbars"]:
-                if key in parts:
-                    parts[key].set_color("black")
-            ax.set_xticks(range(1, len(labels) + 1))
-            ax.set_xticklabels(labels, rotation=30, ha="right", fontsize=8)
-
-        ax.set_ylabel("Compute Time (ms)")
-        ax.set_title(f"N = {n:,}", fontweight="bold")
-
-    fig.suptitle(f"Compute Time Distribution — {rep_sim.capitalize()} (CPU Render)",
-                 fontsize=14, fontweight="bold")
-    plt.tight_layout()
-    save_figure(fig, "01_violin_compute")
-    plt.show()
-else:
-    print("⚠ Raw boids data not found — skipping violin plots")
-
-# %% [markdown]
-# ## 6. Crossover point analysis
-#
-# At what agent count does WebGPU become faster than JavaScript?
+# At what interpolated agent count does WebGPU become faster than other methods?
+# We compare WebGPU against JavaScript, WebWorkers, and WebAssembly.
 
 # %%
 crossovers = []
+compare_methods_list = [m for m in METHOD_ORDER if m != "WebGPU"]
+
 for sim in sweep_sims:
     sim_df = main_df[main_df["suite"] == sim]
-    xp = crossover_point(sim_df, "JavaScript", "WebGPU", metric="avgComputeTime")
-    crossovers.append({"simulation": sim, "JS→WebGPU crossover": xp})
+    crossover_data = {"simulation": sim}
+    
+    for method in compare_methods_list:
+        xp = interpolated_crossover_point(sim_df, method, "WebGPU", metric="avgComputeTime")
+        crossover_data[f"WebGPU vs {METHOD_LABELS.get(method, method)}"] = xp
+        
+    crossovers.append(crossover_data)
 
-xp_df = pd.DataFrame(crossovers)
-print("Crossover points (agent count where WebGPU < JavaScript):")
-print(xp_df.to_string(index=False))
+xp_df = pd.DataFrame(crossovers).set_index("simulation")
 
-# %% [markdown]
-# ## 7. Aggregated scaling across all simulations
-#
-# Normalize each simulation's compute time to its value at the lowest
-# meaningful agent count, then average across simulations.
+fig, ax = plt.subplots(figsize=(10, 6))
 
-# %%
-fig, ax = plt.subplots(figsize=(9, 6))
+# Plot a grouped bar chart
+methods_to_plot = [col for col in xp_df.columns if "WebGPU vs" in col]
+x = np.arange(len(xp_df.index))
+width = 0.8 / len(methods_to_plot)
 
-for method in METHOD_ORDER:
-    all_norm = []
-    for sim in sweep_sims:
-        sim_df = main_df[
-            (main_df["suite"] == sim) &
-            (main_df["method"] == method)
-        ].sort_values("agentCount")
+for i, col in enumerate(methods_to_plot):
+    # Extract the target method for color
+    target_method = None
+    for m in METHOD_ORDER:
+        if METHOD_LABELS.get(m, m) in col:
+            target_method = m
+            break
+    color = get_method_color(target_method) if target_method else "gray"
+    
+    values = xp_df[col].fillna(0)  # Use 0 for missing (no crossover)
+    bars = ax.bar(x + i*width - width*(len(methods_to_plot)-1)/2, values, 
+                  width, label=col, color=color, alpha=0.9)
+    
+    # Add labels
+    for bar in bars:
+        h = bar.get_height()
+        if h > 0:
+            ax.text(bar.get_x() + bar.get_width()/2., h * 1.05,
+                    f'{int(h):,}', ha='center', va='bottom', 
+                    rotation=0, fontsize=8, fontweight="bold")
 
-        # Use a meaningful baseline — skip agent counts where
-        # compute time is sub-microsecond
-        meaningful = sim_df[sim_df["avgComputeTime"] > 0.01].sort_values("agentCount")
-        if len(meaningful) < 2:
-            continue
-        base = meaningful["avgComputeTime"].iloc[0]
-        normed = meaningful[["agentCount"]].copy()
-        normed["normalized"] = meaningful["avgComputeTime"].values / base
-        all_norm.append(normed)
-
-    if not all_norm:
-        continue
-    combined = pd.concat(all_norm)
-    avg = combined.groupby("agentCount")["normalized"].agg(["mean", "std"]).reset_index()
-
-    ax.plot(
-        avg["agentCount"], avg["mean"],
-        label=METHOD_LABELS.get(method, method),
-        color=get_method_color(method),
-        marker="o", markersize=5,
-    )
-    ax.fill_between(
-        avg["agentCount"],
-        avg["mean"] - avg["std"],
-        avg["mean"] + avg["std"],
-        alpha=0.15, color=get_method_color(method),
-    )
-
-ax.set_xscale("log")
+ax.set_ylabel("Agent Count (Exact Crossover Point)")
+ax.set_title("WebGPU Crossover Point vs All Methods", fontweight="bold")
+ax.set_xticks(x)
+ax.set_xticklabels([s.capitalize() for s in xp_df.index], rotation=45, ha='right')
 ax.set_yscale("log")
-ax.set_xlabel("Agent Count")
-ax.set_ylabel("Normalized Compute Time (×baseline)")
-ax.set_title("Aggregated Scaling Across All 8 Simulations (mean ± 1σ)")
-ax.legend()
-save_figure(fig, "01_aggregated_scaling")
+ax.grid(axis='y', linestyle='--', alpha=0.4)
+ax.legend(fontsize=9, loc="upper right")
+# Extend y limits slightly to make room for text
+ax.set_ylim(bottom=0, top=xp_df.max().max() * 5)
+
+plt.tight_layout()
+save_figure(fig, "01_crossover_points")
 plt.show()
 
 # %% [markdown]
-# ## 8. P95/P50 ratio — tail latency scaling
+# ## 6. P95/P50 ratio — tail latency consistency
 #
-# How much worse is the worst-case vs typical frame?
+# A boxplot showing the distribution of P95/P50 ratios across all basic sweeps
+# for each method. A ratio closer to 1.0 means highly consistent frame times,
+# whereas a higher ratio indicates significant jitter and outliers.
 
 # %%
-fig, axes = plt.subplots(2, 4, figsize=(18, 9))
-axes = axes.flatten()
+ratio_data = []
 
-for ax, sim in zip(axes, sweep_sims):
-    sim_df = main_df[main_df["suite"] == sim]
-
-    for method in METHOD_ORDER:
-        subset = sim_df[sim_df["method"] == method].sort_values("agentCount")
+for method in METHOD_ORDER:
+    method_ratios = []
+    for sim in sweep_sims:
+        sim_df = main_df[main_df["suite"] == sim]
+        subset = sim_df[sim_df["method"] == method]
         if subset.empty or "frameTime_p95" not in subset.columns:
             continue
         ratio = subset["frameTime_p95"] / subset["frameTime_p50"]
         ratio = ratio.replace([np.inf, -np.inf], np.nan).dropna()
-        if ratio.empty:
-            continue
-        ax.plot(
-            subset.loc[ratio.index, "agentCount"], ratio,
-            label=METHOD_LABELS.get(method, method),
-            color=get_method_color(method),
-            marker="o", markersize=3,
-        )
+        method_ratios.extend(ratio.values)
+    
+    if method_ratios:
+        ratio_data.append(pd.DataFrame({"Method": METHOD_LABELS.get(method, method), "Ratio": method_ratios}))
 
-    ax.set_xscale("log")
-    ax.axhline(1.0, ls="--", color="gray", alpha=0.4)
-    ax.set_title(sim.capitalize(), fontsize=11, fontweight="bold")
-    ax.set_xlabel("Agent Count")
+if ratio_data:
+    jitter_df = pd.concat(ratio_data)
+    
+    fig, ax = plt.subplots(figsize=(8, 6))
+    
+    labels = []
+    methods_present = []
+    for m in METHOD_ORDER:
+        lbl = METHOD_LABELS.get(m, m)
+        if lbl in jitter_df["Method"].values:
+            labels.append(lbl)
+            methods_present.append(m)
+            
+    data_to_plot = [jitter_df[jitter_df["Method"] == label]["Ratio"] for label in labels]
+    
+    bplot = ax.boxplot(data_to_plot, patch_artist=True, tick_labels=labels)
+    
+    for patch, method in zip(bplot['boxes'], methods_present):
+        patch.set_facecolor(get_method_color(method))
+        patch.set_alpha(0.7)
+        
+    ax.axhline(1.0, ls="--", color="gray", alpha=0.6)
     ax.set_ylabel("P95 / P50 Ratio")
+    ax.set_title("Frame Time Consistency (Jitter) by Method", fontweight="bold")
+    
+    # # Cap y-axis to focus on the main distribution rather than extreme outliers
+    # if not jitter_df["Ratio"].empty:
+    #     ax.set_ylim(0.95, 20)
 
-axes[0].legend(fontsize=7, loc="upper left")
-fig.suptitle("Tail Latency: P95/P50 Ratio vs Agent Count",
-             fontsize=14, fontweight="bold")
-plt.tight_layout()
-save_figure(fig, "01_tail_latency")
-plt.show()
+    # Set a log Y scale
+    ax.set_yscale("log")
+    
+    plt.tight_layout()
+    save_figure(fig, "01_tail_latency")
+    plt.show()
+else:
+    print("No P95/P50 data available for boxplot.")
 
 # %% [markdown]
-# ## 9. High-agent extension (50k–1M)
+# ## High-agent extension (50k–1M)
 
 # %%
 hi_main = best_per_method(hi_df)
@@ -382,7 +323,19 @@ for ax, sim in zip(axes, hi_sims):
     ax.set_xlabel("Agent Count")
     ax.set_ylabel("Avg Compute Time (ms)")
     ax.set_title(f"{sim.capitalize()} — High Agent Counts")
-    ax.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: f"{x/1000:.0f}k"))
+
+    ax.set_yscale("log")
+
+    def format_km(x, pos):
+        if x >= 1e6:
+            return f'{x*1e-6:.0f}M'
+        elif x >= 1e3:
+            return f'{x*1e-3:.0f}k'
+        else:
+            return f'{x:.0f}'
+
+    ax.xaxis.set_major_formatter(ticker.FuncFormatter(format_km))
+
 
 axes[0].legend()
 fig.suptitle("High-Agent Scaling (50k–1M)", fontsize=14, fontweight="bold")
@@ -391,7 +344,62 @@ save_figure(fig, "01_high_agent_scaling")
 plt.show()
 
 # %% [markdown]
-# ## 10. Method comparison table
+# ## Continuous High-Agent Scaling (Rain)
+#
+# Combining basic sweeps and high-agent dataset to produce one continuous unbroken
+# graph from very small scales (1 agent) out to massive scales (1M agents).
+
+# %%
+if "rain" in sweep_sims and "rain" in hi_sims:
+    rain_base = main_df[main_df["suite"] == "rain"].copy()
+    rain_hi = hi_main[hi_main["suite"] == "rain"].copy()
+    
+    # Combine the data
+    rain_continuous = pd.concat([rain_base, rain_hi], ignore_index=True)
+    
+    fig, ax = plt.subplots(figsize=(10, 6))
+    for method in METHOD_ORDER:
+        subset = rain_continuous[rain_continuous["method"] == method].sort_values("agentCount")
+        if subset.empty:
+            continue
+        ax.plot(
+            subset["agentCount"], subset["avgComputeTime"],
+            label=METHOD_LABELS.get(method, method),
+            color=get_method_color(method),
+            marker="o", linewidth=2.5, markersize=5
+        )
+        
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_title("Continuous Compute Time: Rain Simulation (1 to 1M Agents)", fontsize=14, fontweight="bold")
+    ax.set_xlabel("Agent Count")
+    ax.set_ylabel("Avg Compute Time (ms)")
+    
+    def format_km(x, pos):
+        if x >= 1e6:
+            return f'{x*1e-6:.0f}M'
+        elif x >= 1e3:
+            return f'{x*1e-3:.0f}k'
+        else:
+            return f'{x:.0f}'
+
+    ax.xaxis.set_major_formatter(ticker.FuncFormatter(format_km))
+    ax.legend(fontsize=10, loc="upper left")
+    
+    # Add a subtle vertical line where the dataset switches (10,000 or 20,000)
+    max_base = rain_base["agentCount"].max()
+    ax.axvline(max_base, color="gray", linestyle=":", alpha=0.5, zorder=0)
+    ax.text(max_base * 1.1, ax.get_ylim()[1] * 0.8, "High-Agents\nDataset\nBegins", color="gray", fontsize=8)
+
+    plt.tight_layout()
+    save_figure(fig, "01_rain_continuous")
+    plt.show()
+else:
+    print("Rain simulation not found in data for continuous high-agent scaling.")
+
+
+# %% [markdown]
+# ## Method comparison table
 
 # %%
 print("=== All sims combined — CPU render, best config ===")

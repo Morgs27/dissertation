@@ -23,6 +23,7 @@ from .data_loader import (
 from .analysis import (
     compare_methods,
     crossover_point,
+    interpolated_crossover_point,
     positional_divergence,
     rolling_frame_stats,
     scaling_summary,
@@ -45,6 +46,8 @@ __all__ = [
     "load_runs_df",
     # analysis
     "compare_methods",
+    "crossover_point",
+    "interpolated_crossover_point",
     "scaling_summary",
     "timing_breakdown",
     # plot

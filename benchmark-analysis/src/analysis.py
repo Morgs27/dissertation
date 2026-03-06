@@ -169,6 +169,45 @@ def crossover_point(
     return int(faster.index.min())
 
 
+def interpolated_crossover_point(
+    df: pd.DataFrame,
+    method_a: str,
+    method_b: str,
+    metric: str = "avgComputeTime",
+    render_mode: str | None = None,
+) -> float | None:
+    """
+    Find the exact interpolated agent count where *method_b* becomes faster than
+    *method_a* (diff crosses zero). Uses log-linear interpolation.
+    """
+    import numpy as np
+    pivot = compare_methods(df, metric, render_mode=render_mode)
+    if method_a not in pivot.columns or method_b not in pivot.columns:
+        return None
+        
+    pivot = pivot.dropna(subset=[method_a, method_b]).sort_index()
+    if pivot.empty:
+        return None
+    
+    diff = pivot[method_a] - pivot[method_b]
+    
+    for i in range(len(diff) - 1):
+        if diff.iloc[i] <= 0 and diff.iloc[i+1] > 0:
+            x0, y0 = diff.index[i], diff.iloc[i]
+            x1, y1 = diff.index[i+1], diff.iloc[i+1]
+            
+            # log-linear interpolation on X axis
+            log_x0, log_x1 = np.log10(x0), np.log10(x1)
+            fraction = (0 - y0) / (y1 - y0)
+            log_xc = log_x0 + fraction * (log_x1 - log_x0)
+            return 10**log_xc
+            
+    if (diff > 0).all():
+        return float(diff.index[0])
+
+    return None
+
+
 # ── Speedup ratios ────────────────────────────────────────────────────────
 
 def speedup_vs_baseline(
