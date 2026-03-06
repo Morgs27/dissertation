@@ -1,0 +1,4 @@
+Boids — Benchmark complete — 2 runs
+
+JavaScript (cpu) @ 10,000 agents — avg 276.71ms/frame (3258 frames)
+WebGPU (cpu) @ 10,000 agents — avg 10.36ms/frame (45614 frames)

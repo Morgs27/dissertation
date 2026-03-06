@@ -1,0 +1,4 @@
+Trig — Benchmark complete — 2 runs
+
+JavaScript (cpu) @ 100 agents — avg 0.09ms/frame (1000 frames)
+WebGPU (cpu) @ 100 agents — avg 1.57ms/frame (1000 frames)

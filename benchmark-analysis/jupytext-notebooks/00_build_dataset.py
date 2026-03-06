@@ -46,7 +46,8 @@ print(f"✓ basic_sweeps.parquet — {len(sweep_df)} runs, {(OUT / 'basic_sweeps
 # %%
 hi_dfs = []
 for path in sorted(Path("../raw-data/high-agents").rglob("*.json")):
-    df = load_runs_df(path)
+    sim = path.parent.name
+    df = load_runs_df(path, suite_name=sim)
     df["category"] = "high-agents"
     hi_dfs.append(df)
 
@@ -60,7 +61,8 @@ print(f"✓ high_agents.parquet — {len(hi_df)} runs")
 # %%
 mob_dfs = []
 for path in sorted(Path("../raw-data/mobile").rglob("*.json")):
-    df = load_runs_df(path)
+    sim = path.parent.name
+    df = load_runs_df(path, suite_name=sim)
     df["category"] = "mobile"
     mob_dfs.append(df)
 

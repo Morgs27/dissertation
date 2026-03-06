@@ -32,7 +32,7 @@ from src import (
 apply_style()
 
 # %% [markdown]
-# ## 1. Load pre-processed data
+# ## Load pre-processed data
 
 # %%
 sweep_df = pd.read_parquet("../processed/basic_sweeps.parquet")
@@ -56,7 +56,7 @@ def best_per_method(df):
 main_df = best_per_method(sweep_df)
 
 # %% [markdown]
-# ## 2. Stacked timing breakdown at selected agent counts
+# ## Stacked timing breakdown at selected agent counts
 
 # %%
 agent_counts = [100, 1000, 5000, 20000]
@@ -80,19 +80,16 @@ for ax, n in zip(axes, agent_counts):
     ax.set_title(f"N = {n:,}", fontweight="bold")
     ax.set_xlabel("Time (ms)")
     ax.set_ylabel("")
-    if ax != axes[0]:
-        ax.get_legend().remove()
-    else:
-        ax.legend(fontsize=8, loc="lower right")
+    ax.legend(fontsize=8, loc="upper right")
 
-fig.suptitle(f"Timing Breakdown — {rep_sim.capitalize()} (CPU Render)",
+fig.suptitle(f"Timing Breakdown — {rep_sim.capitalize()}",
              fontsize=14, fontweight="bold")
 plt.tight_layout()
 save_figure(fig, "02_timing_breakdown_boids")
 plt.show()
 
 # %% [markdown]
-# ## 3. Timing breakdown across all simulations at N=5000
+# ## Timing breakdown across all simulations at N=5000
 
 # %%
 sweep_sims = sorted(main_df["suite"].unique())
@@ -109,17 +106,16 @@ for ax, sim in zip(axes, sweep_sims):
     ax.set_title(sim.capitalize(), fontweight="bold")
     ax.set_xlabel("Time (ms)")
     ax.set_ylabel("")
-    ax.get_legend().remove()
+    ax.legend(fontsize=7, loc="upper right")
 
-axes[0].legend(fontsize=7, loc="lower right")
-fig.suptitle("Timing Breakdown at N=5,000 — All Simulations (CPU Render)",
+fig.suptitle("Timing Breakdown at N=5,000 — All Simulations)",
              fontsize=14, fontweight="bold")
 plt.tight_layout()
 save_figure(fig, "02_timing_breakdown_all_sims")
 plt.show()
 
 # %% [markdown]
-# ## 4. WebGPU bridge timing analysis
+# ## WebGPU bridge timing analysis
 #
 # How does host→GPU and GPU→host transfer time scale with agent count?
 
@@ -131,8 +127,8 @@ gpu_df = sweep_df[
 
 bridge = gpu_df.groupby("agentCount").agg({
     "avgHostToGpuTime": "mean",
-    "avgGpuToHostTime": "mean",
     "avgComputeTime": "mean",
+    "avgGpuToHostTime": "mean",
     "avgExecutionMs": "mean",
 }).reset_index()
 
@@ -140,10 +136,10 @@ fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
 
 ax1.plot(bridge["agentCount"], bridge["avgHostToGpuTime"],
          "o-", label="Host → GPU", color="#4477AA")
-ax1.plot(bridge["agentCount"], bridge["avgGpuToHostTime"],
-         "s-", label="GPU → Host", color="#EE6677")
 ax1.plot(bridge["agentCount"], bridge["avgComputeTime"],
          "D-", label="GPU Compute", color="#228833")
+ax1.plot(bridge["agentCount"], bridge["avgGpuToHostTime"],
+         "s-", label="GPU → Host", color="#EE6677")
 ax1.set_xscale("log")
 ax1.set_yscale("log")
 ax1.set_xlabel("Agent Count")
@@ -187,10 +183,11 @@ for method in METHOD_ORDER:
             color=get_method_color(method), marker="o")
 
 ax.set_xscale("log")
-ax.set_yscale("log")
 ax.set_xlabel("Agent Count")
 ax.set_ylabel("Memory Footprint (MB)")
 ax.set_title("Method Memory Footprint vs Agent Count")
 ax.legend()
 save_figure(fig, "02_memory_footprint")
 plt.show()
+
+# %%

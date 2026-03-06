@@ -33,7 +33,7 @@ from src import (
 apply_style()
 
 # %% [markdown]
-# ## 1. Load pre-processed data
+# ## Load pre-processed data
 
 # %%
 sweep_df = pd.read_parquet("../processed/basic_sweeps.parquet")
@@ -48,7 +48,7 @@ for df in [sweep_df, hi_df]:
 print(f"Basic sweeps: {len(sweep_df)} runs | High agents: {len(hi_df)} runs")
 
 # %% [markdown]
-# ## 2. Prepare main comparison DataFrame
+# ## Prepare main comparison DataFrame
 #
 # For the main scaling comparisons we:
 # - Use CPU render mode only (isolates compute from rendering)
@@ -78,7 +78,7 @@ main_df = best_per_method(sweep_df)
 print(f"Main comparison: {len(main_df)} rows (best config per method)")
 
 # %% [markdown]
-# ## 3. Mean compute time — all 8 simulations
+# ## Mean compute time — all 8 simulations
 #
 # Log-log plots of average compute time vs agent count.
 
@@ -116,7 +116,7 @@ save_figure(fig, "01_scaling_mean")
 plt.show()
 
 # %% [markdown]
-# ## 4. Min / Max / Percentile compute spread
+# ## Min / Max / Percentile compute spread
 #
 # The summary-level `frameTime_*` stats capture total frame time.
 # Here we show min, p50, p95, and max to visualise the spread
@@ -172,7 +172,7 @@ save_figure(fig, "01_scaling_spread")
 plt.show()
 
 # %% [markdown]
-# ## 5. Crossover point analysis (Exact Interpolated)
+# ## Crossover point analysis (Exact Interpolated)
 #
 # At what interpolated agent count does WebGPU become faster than other methods?
 # We compare WebGPU against JavaScript, WebWorkers, and WebAssembly.
@@ -229,14 +229,14 @@ ax.set_yscale("log")
 ax.grid(axis='y', linestyle='--', alpha=0.4)
 ax.legend(fontsize=9, loc="upper right")
 # Extend y limits slightly to make room for text
-ax.set_ylim(bottom=0, top=xp_df.max().max() * 5)
+ax.set_ylim(bottom=1, top=xp_df.max().max() * 5)
 
 plt.tight_layout()
 save_figure(fig, "01_crossover_points")
 plt.show()
 
 # %% [markdown]
-# ## 6. P95/P50 ratio — tail latency consistency
+# ## P95/P50 ratio — tail latency consistency
 #
 # A boxplot showing the distribution of P95/P50 ratios across all basic sweeps
 # for each method. A ratio closer to 1.0 means highly consistent frame times,
@@ -284,10 +284,6 @@ if ratio_data:
     ax.set_ylabel("P95 / P50 Ratio")
     ax.set_title("Frame Time Consistency (Jitter) by Method", fontweight="bold")
     
-    # # Cap y-axis to focus on the main distribution rather than extreme outliers
-    # if not jitter_df["Ratio"].empty:
-    #     ax.set_ylim(0.95, 20)
-
     # Set a log Y scale
     ax.set_yscale("log")
     
@@ -335,67 +331,70 @@ for ax, sim in zip(axes, hi_sims):
             return f'{x:.0f}'
 
     ax.xaxis.set_major_formatter(ticker.FuncFormatter(format_km))
+    ax.legend(loc="lower right", bbox_to_anchor=(1, 0.2))
 
-
-axes[0].legend()
 fig.suptitle("High-Agent Scaling (50k–1M)", fontsize=14, fontweight="bold")
 plt.tight_layout()
 save_figure(fig, "01_high_agent_scaling")
 plt.show()
 
 # %% [markdown]
-# ## Continuous High-Agent Scaling (Rain)
+# ## 8. Continuous High-Agent Scaling (Overlapping Sims)
 #
-# Combining basic sweeps and high-agent dataset to produce one continuous unbroken
-# graph from very small scales (1 agent) out to massive scales (1M agents).
+# Combining basic sweeps and high-agent datasets to produce continuous unbroken
+# graphs from very small scales (1 agent) out to massive scales (1M agents)
+# for all simulations present in both sets.
 
 # %%
-if "rain" in sweep_sims and "rain" in hi_sims:
-    rain_base = main_df[main_df["suite"] == "rain"].copy()
-    rain_hi = hi_main[hi_main["suite"] == "rain"].copy()
-    
-    # Combine the data
-    rain_continuous = pd.concat([rain_base, rain_hi], ignore_index=True)
-    
-    fig, ax = plt.subplots(figsize=(10, 6))
-    for method in METHOD_ORDER:
-        subset = rain_continuous[rain_continuous["method"] == method].sort_values("agentCount")
-        if subset.empty:
-            continue
-        ax.plot(
-            subset["agentCount"], subset["avgComputeTime"],
-            label=METHOD_LABELS.get(method, method),
-            color=get_method_color(method),
-            marker="o", linewidth=2.5, markersize=5
-        )
+overlapping_sims = [sim for sim in sweep_sims if sim in hi_sims]
+
+if overlapping_sims:
+    for sim in overlapping_sims:
+        sim_base = main_df[main_df["suite"] == sim].copy()
+        sim_hi = hi_main[hi_main["suite"] == sim].copy()
         
-    ax.set_xscale("log")
-    ax.set_yscale("log")
-    ax.set_title("Continuous Compute Time: Rain Simulation (1 to 1M Agents)", fontsize=14, fontweight="bold")
-    ax.set_xlabel("Agent Count")
-    ax.set_ylabel("Avg Compute Time (ms)")
-    
-    def format_km(x, pos):
-        if x >= 1e6:
-            return f'{x*1e-6:.0f}M'
-        elif x >= 1e3:
-            return f'{x*1e-3:.0f}k'
-        else:
-            return f'{x:.0f}'
+        # Combine the data
+        sim_continuous = pd.concat([sim_base, sim_hi], ignore_index=True)
+        
+        fig, ax = plt.subplots(figsize=(10, 6))
+        for method in METHOD_ORDER:
+            subset = sim_continuous[sim_continuous["method"] == method].sort_values("agentCount")
+            if subset.empty:
+                continue
+            ax.plot(
+                subset["agentCount"], subset["avgComputeTime"],
+                label=METHOD_LABELS.get(method, method),
+                color=get_method_color(method),
+                marker="o", linewidth=2.5, markersize=5
+            )
+            
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        ax.set_title(f"Continuous Compute Time: {sim.capitalize()} Simulation (1 to 1M Agents)", fontsize=14, fontweight="bold")
+        ax.set_xlabel("Agent Count")
+        ax.set_ylabel("Avg Compute Time (ms)")
+        
+        def format_km(x, pos):
+            if x >= 1e6:
+                return f'{x*1e-6:.0f}M'
+            elif x >= 1e3:
+                return f'{x*1e-3:.0f}k'
+            else:
+                return f'{x:.0f}'
 
-    ax.xaxis.set_major_formatter(ticker.FuncFormatter(format_km))
-    ax.legend(fontsize=10, loc="upper left")
-    
-    # Add a subtle vertical line where the dataset switches (10,000 or 20,000)
-    max_base = rain_base["agentCount"].max()
-    ax.axvline(max_base, color="gray", linestyle=":", alpha=0.5, zorder=0)
-    ax.text(max_base * 1.1, ax.get_ylim()[1] * 0.8, "High-Agents\nDataset\nBegins", color="gray", fontsize=8)
+        ax.xaxis.set_major_formatter(ticker.FuncFormatter(format_km))
+        ax.legend(fontsize=10, loc="upper left")
+        
+        # Add a subtle vertical line where the dataset switches
+        max_base = sim_base["agentCount"].max()
+        if pd.notna(max_base):
+            ax.axvline(max_base, color="gray", linestyle=":", alpha=0.5, zorder=0)
 
-    plt.tight_layout()
-    save_figure(fig, "01_rain_continuous")
-    plt.show()
+        plt.tight_layout()
+        save_figure(fig, f"01_continuous_{sim}")
+        plt.show()
 else:
-    print("Rain simulation not found in data for continuous high-agent scaling.")
+    print("No simulations found in both datasets for continuous high-agent scaling.")
 
 
 # %% [markdown]
