@@ -70,3 +70,22 @@ Ran accross 3 devices.
 
 Ran with 100 agents for 1000 frames on JS vs WebGPU to test errors in agent positions accross the methods & different devices. 
 
+## GPU Tests
+
+NVIDIA GeForce RTX 4060
+CUDA Version: 12.8
+Driver Version 570,211,01
+
+Intel Core i5-14500
+14 cores - 6 performance, 8 efficient
+
+RAM: 32GB
+
+Google Chrome verstion 145.0.7632.159 (Official Build) (64-bit)
+
+
+Note: Sometimes the browser can stuggle to bridge the gap between the browser and the GPU drivers. Make sure i.e. in chrom the chrom://flags "Unsafe WebGPU" is enabled. 
+
+## Chromebook
+
+Pixelbook Go - More information to come

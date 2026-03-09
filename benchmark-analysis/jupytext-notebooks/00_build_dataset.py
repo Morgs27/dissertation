@@ -159,6 +159,38 @@ for sim in sweep_sims_pos:
     print(f"  ✓ {out_path.name} — {len(adf)} rows, {out_path.stat().st_size / 1e6:.1f} MB")
 
 # %% [markdown]
+# ## 7. Chromebook — run-level summaries
+
+# %%
+cb_dfs = []
+for path in sorted(Path("../raw-data/chromebook").rglob("*.json")):
+    sim = path.parent.name
+    print(f"Streaming chromebook/{sim} ({path.stat().st_size / 1e9:.1f} GB)...")
+    df = load_runs_df(path, suite_name=sim)
+    df["category"] = "chromebook"
+    cb_dfs.append(df)
+
+cb_df = pd.concat(cb_dfs, ignore_index=True)
+cb_df.to_parquet(OUT / "chromebook.parquet", index=False)
+print(f"✓ chromebook.parquet — {len(cb_df)} runs")
+
+# %% [markdown]
+# ## 8. GPU Machine — run-level summaries
+
+# %%
+gpu_dfs = []
+for path in sorted(Path("../raw-data/gpu-machine").rglob("*.json")):
+    sim = path.parent.name
+    print(f"Streaming gpu-machine/{sim} ({path.stat().st_size / 1e9:.1f} GB)...")
+    df = load_runs_df(path, suite_name=sim)
+    df["category"] = "gpu-machine"
+    gpu_dfs.append(df)
+
+gpu_df = pd.concat(gpu_dfs, ignore_index=True)
+gpu_df.to_parquet(OUT / "gpu_machine.parquet", index=False)
+print(f"✓ gpu_machine.parquet — {len(gpu_df)} runs")
+
+# %% [markdown]
 # ## Summary
 
 # %%
