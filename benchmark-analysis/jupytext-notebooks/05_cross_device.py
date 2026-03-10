@@ -30,8 +30,11 @@ sys.path.insert(0, os.path.abspath(".."))
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 import numpy as np
 import pandas as pd
+import io
+import cairosvg
 
 from src import (
     compare_methods,
@@ -39,6 +42,10 @@ from src import (
     apply_style, get_method_color, save_figure,
     METHOD_ORDER, METHOD_LABELS, METHOD_COLORS,
 )
+
+from matplotlib.legend_handler import HandlerBase
+from matplotlib.image import BboxImage
+from matplotlib.transforms import Bbox, TransformedBbox
 
 apply_style()
 
@@ -69,18 +76,19 @@ for df in [sweep_df, mob_df, cb_df, gpu_df]:
 # ── Device metadata ───────────────────────────────────────────────────────
 DEVICES = {
     "MacBook (M4 Pro)":   {"source": sweep_df, "cls": "Desktop",      "short": "MacBook"},
-    "GPU Machine (RTX 4060)": {"source": gpu_df,   "cls": "Desktop (dGPU)", "short": "GPU PC"},
-    "Chromebook":         {"source": cb_df,    "cls": "Low-end",      "short": "Chromebook"},
-    "Pixel 9 Pro":        {"source": mob_df,   "cls": "Mobile",       "short": "Pixel"},
+    "Linux Desktop (RTX 4060)": {"source": gpu_df,   "cls": "Desktop (dGPU)", "short": "Linux Desktop"},
+    "Chromebook (Pixelbook Go)":         {"source": cb_df,    "cls": "Low-end",      "short": "Chromebook"},
+    "Mobile (Pixel 9 Pro)":        {"source": mob_df,   "cls": "Mobile",       "short": "Pixel Phone"},
 }
+
 
 DEVICE_ORDER = list(DEVICES.keys())
 DEVICE_SHORT = {k: v["short"] for k, v in DEVICES.items()}
 DEVICE_COLORS = {
     "MacBook (M4 Pro)":        "#4477AA",
-    "GPU Machine (RTX 4060)":  "#228833",
-    "Chromebook":              "#EE6677",
-    "Pixel 9 Pro":             "#AA3377",
+    "Linux Desktop (RTX 4060)":  "#228833",
+    "Chromebook (Pixelbook Go)":              "#EE6677",
+    "Mobile (Pixel 9 Pro)":             "#AA3377",
 }
 
 # %%
@@ -175,6 +183,8 @@ for dev in other_devices:
         how="inner",
     )
     merged["slowdown"] = merged["avgComputeTime_dev"] / merged["avgComputeTime_base"]
+    # Replace inf with NaN (happens when MacBook compute time is exactly 0.0 at low agent counts)
+    merged["slowdown"] = merged["slowdown"].replace(np.inf, np.nan)
     merged["device"] = dev
     ratio_parts.append(merged)
 
@@ -235,7 +245,7 @@ for i in range(len(heat_data.index)):
     for j in range(len(heat_data.columns)):
         val = heat_data.values[i, j]
         if not np.isnan(val):
-            color = "white" if val > 5 else "black"
+            color = "white" if val > 14 else "black"
             ax.text(j, i, f"{val:.1f}×", ha="center", va="center", fontsize=11, fontweight="bold", color=color)
 
 cbar = fig.colorbar(im, ax=ax, label="Slowdown vs MacBook (×)")
@@ -293,12 +303,30 @@ timing_cols = ["avgSetupTime", "avgComputeTime", "avgReadbackTime", "avgRenderTi
 timing_labels = ["Setup", "Compute", "Readback", "Render"]
 timing_colors = ["#66c2a5", "#fc8d62", "#8da0cb", "#e78ac3"]
 
+# Load downloaded icons, converting SVG to PNG data if necessary
+def _load_icon(filename):
+    path = os.path.join("..", "assets", "icons", filename)
+    if os.path.exists(path):
+        if filename.endswith(".svg"):
+            png_data = cairosvg.svg2png(url=path)
+            # Imread accepts a file-like object
+            return plt.imread(io.BytesIO(png_data), format='png')
+        return plt.imread(path)
+    return None
+
+DEVICE_ICONS = {
+    "MacBook (M4 Pro)": _load_icon("apple.svg"),
+    "Linux Desktop (RTX 4060)": _load_icon("linux.svg"),
+    "Chromebook (Pixelbook Go)": _load_icon("chrome.svg"),
+    "Mobile (Pixel 9 Pro)": _load_icon("mobile.svg"),
+}
+
 for sim in sims_to_compare:
-    fig, ax = plt.subplots(figsize=(12, 5))
+    fig, ax = plt.subplots(figsize=(12, 6))
     x_labels = []
     x_pos = []
-    pos = 0
-
+    
+    bar_data = []
     for device in DEVICE_ORDER:
         dev_data = combined[
             (combined["device"] == device)
@@ -311,30 +339,289 @@ for sim in sims_to_compare:
             row = dev_data[dev_data["method"] == method]
             if row.empty:
                 continue
-            bottom = 0
-            for col, label, color in zip(timing_cols, timing_labels, timing_colors):
-                if col in row.columns:
-                    val = row[col].values[0]
-                    if pd.notna(val) and val > 0:
-                        ax.bar(pos, val, bottom=bottom, color=color,
-                               label=label if pos == 0 else "", edgecolor="white", width=0.7)
-                        bottom += val
-            x_labels.append(f"{DEVICE_SHORT[device]}\n{METHOD_LABELS.get(method, method)}")
-            x_pos.append(pos)
-            pos += 1
-        pos += 0.5  # Gap between devices
+            
+            total = 0
+            components = []
+            for col in timing_cols:
+                val = row[col].values[0] if col in row.columns else 0
+                if pd.isna(val) or val <= 0:
+                    val = 0
+                components.append(val)
+                total += val
+                
+            if total > 0:
+                bar_data.append({
+                    "device": device,
+                    "method": method,
+                    "total": total,
+                    "components": components
+                })
+                
+    # Sort bars by total execution time (fastest first)
+    bar_data.sort(key=lambda x: x["total"])
+
+    for i, item in enumerate(bar_data):
+        bottom = 0
+        for j, val in enumerate(item["components"]):
+            if val > 0:
+                ax.bar(i, val, bottom=bottom, color=timing_colors[j],
+                       label=timing_labels[j], edgecolor="white", width=0.7)
+                bottom += val
+                
+        # Add device icon at the top of the bar using AnnotationBbox
+        icon_img = DEVICE_ICONS.get(item["device"])
+        if icon_img is not None:
+            # SVGs might have a larger native resolution, adjust zoom as needed
+            imagebox = OffsetImage(icon_img, zoom=0.04)
+            ab = AnnotationBbox(imagebox, (i, item["total"]), frameon=False, pad=0,
+                                box_alignment=(0.5, -0.3))
+            ax.add_artist(ab)
+        
+        x_labels.append(METHOD_LABELS.get(item["method"], item["method"]))
+        x_pos.append(i)
+
+    if bar_data:
+        max_total = max(b["total"] for b in bar_data)
+        ax.set_ylim(0, max_total * 1.35)  # Add ample 35% headroom for icons
 
     ax.set_xticks(x_pos)
-    ax.set_xticklabels(x_labels, fontsize=7, rotation=45, ha="right")
-    ax.set_ylabel("Time (ms)")
+    ax.set_xticklabels(x_labels, fontsize=10, rotation=45, ha="right")
+    ax.set_ylabel("Frame Time (ms)")
     ax.set_title(f"{sim.capitalize()} — Timing Breakdown at {representative_count} Agents", fontweight="bold")
+    
     # De-duplicate legend
     handles, labels = ax.get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
-    ax.legend(by_label.values(), by_label.keys(), fontsize=8)
+    
+    # Ensure standard order for the legend
+    ordered_handles = [by_label[lbl] for lbl in timing_labels if lbl in by_label]
+    ordered_labels = [lbl for lbl in timing_labels if lbl in by_label]
+    
+    ax.legend(ordered_handles, ordered_labels, fontsize=9, loc="upper left")
     plt.tight_layout()
     save_figure(fig, f"05_timing_breakdown_{sim}")
     plt.show()
+
+# %%
+# Define the agent counts we want to visualize
+representative_counts = [20000, 1000, 1]
+
+# Setup for the single metric
+timing_col = "avgComputeTime"
+timing_color = "#fc8d62"
+
+def _load_icon(filename):
+    path = os.path.join("..", "assets", "icons", filename)
+    if os.path.exists(path):
+        if filename.endswith(".svg"):
+            png_data = cairosvg.svg2png(url=path)
+            return plt.imread(io.BytesIO(png_data), format='png')
+        return plt.imread(path)
+    return None
+
+DEVICE_ICONS = {
+    "MacBook (M4 Pro)": _load_icon("apple.svg"),
+    "Linux Desktop (RTX 4060)": _load_icon("linux.svg"),
+    "Chromebook (Pixelbook Go)": _load_icon("chrome.svg"),
+    "Mobile (Pixel 9 Pro)": _load_icon("mobile.svg"),
+}
+
+# The fix: A HandlerBase using BboxImage to reliably render images inside the legend
+class ImageHandler(HandlerBase):
+    def __init__(self, image):
+        self.image = image
+        super().__init__()
+
+    def create_artists(self, legend, orig_handle,
+                       xdescent, ydescent, width, height, fontsize, trans):
+        
+        # Make the image slightly larger than the text height for readability
+        img_size = height * 1.5 
+        
+        # Create a bounding box centered on the legend key area
+        bbox = Bbox.from_bounds(xdescent, ydescent - (img_size - height) / 2, img_size, img_size)
+        tbb = TransformedBbox(bbox, trans)
+        
+        # Bind the image to the box
+        image_box = BboxImage(tbb)
+        image_box.set_data(self.image)
+        return [image_box]
+
+for count in representative_counts:
+    for sim in sims_to_compare:
+        fig, ax = plt.subplots(figsize=(12, 6))
+        
+        bar_data = []
+        for device in DEVICE_ORDER:
+            dev_data = combined[
+                (combined["device"] == device)
+                & (combined["suite"] == sim)
+                & (combined["agentCount"] == count)
+            ]
+            methods_here = [m for m in METHOD_ORDER if m in dev_data["method"].unique()]
+
+            for method in methods_here:
+                row = dev_data[dev_data["method"] == method]
+                if row.empty:
+                    continue
+                
+                val = row[timing_col].values[0] if timing_col in row.columns else 0
+                if pd.isna(val) or val < 0:
+                    val = 0
+                    
+                bar_data.append({
+                    "device": device,
+                    "method": method,
+                    "compute_time": val
+                })
+                    
+        # Sort bars by compute time (fastest first)
+        bar_data.sort(key=lambda x: x["compute_time"])
+
+        x_labels = []
+        x_pos = []
+        
+        # Track which devices are actually in this specific plot
+        devices_in_plot = set()
+
+        for i, item in enumerate(bar_data):
+            val = item["compute_time"]
+            ax.bar(i, val, color=timing_color, edgecolor="white", width=0.7)
+            devices_in_plot.add(item["device"])
+                    
+            icon_img = DEVICE_ICONS.get(item["device"])
+            if icon_img is not None:
+                imagebox = OffsetImage(icon_img, zoom=0.035)
+                ab = AnnotationBbox(imagebox, (i, val), frameon=False, pad=0,
+                                    box_alignment=(0.5, -0.2))
+                ax.add_artist(ab)
+            
+            x_labels.append(METHOD_LABELS.get(item["method"], item["method"]))
+            x_pos.append(i)
+
+        # Create the legend with ACTUAL icons
+        legend_handles = []
+        legend_labels = []
+        handler_map = {}
+
+        for dev_name in DEVICE_ORDER:
+            if dev_name in devices_in_plot and DEVICE_ICONS.get(dev_name) is not None:
+                # Create a proxy patch to anchor the legend entry
+                patch = plt.Rectangle((0, 0), 1, 1, facecolor="none", edgecolor="none")
+                legend_handles.append(patch)
+                legend_labels.append(dev_name)
+                # Map the proxy patch to our new BboxImage handler
+                handler_map[patch] = ImageHandler(DEVICE_ICONS[dev_name])
+
+        if bar_data:
+            max_val = max(b["compute_time"] for b in bar_data)
+            ax.set_ylim(0, max(max_val * 1.4, 0.05))
+
+        ax.set_xticks(x_pos)
+        ax.set_xticklabels(x_labels, fontsize=10, rotation=45, ha="right")
+        ax.set_ylabel("Compute Time (ms)")
+        ax.set_title(f"{sim.capitalize()} — Avg Compute Time Across Devices ({count} Agents)", fontweight="bold")
+        
+        ax.yaxis.grid(True, linestyle='--', alpha=0.4)
+        ax.set_axisbelow(True)
+
+       # Add the icon-based legend
+        if legend_handles:
+            ax.legend(legend_handles, legend_labels, 
+                      handler_map=handler_map,
+                      loc="upper left", 
+                      fontsize=11,
+                      handlelength=1.0,    # Shrinks the invisible box reserved for the icon
+                      handletextpad=0.5,   # Reduces the padding between the box and the text
+                      labelspacing=0.8)
+
+        plt.tight_layout()
+        save_figure(fig, f"05_compute_time_{sim}_count_{count}")
+        plt.show()
+
+# %%
+
+# Define the agent counts we want to visualize
+representative_counts = [20000, 1000, 1]
+
+# Define a color palette for your devices
+DEVICE_COLORS = {
+    "MacBook (M4 Pro)": "#66c2a5",
+    "Linux Desktop (RTX 4060)": "#8da0cb",
+    "Chromebook (Pixelbook Go)": "#e78ac3",
+    "Mobile (Pixel 9 Pro)": "#a6d854",
+}
+
+for count in representative_counts:
+    for sim in sims_to_compare:
+        fig, ax = plt.subplots(figsize=(12, 6))
+        
+        bar_data = []
+        for device in DEVICE_ORDER:
+            dev_data = combined[
+                (combined["device"] == device)
+                & (combined["suite"] == sim)
+                & (combined["agentCount"] == count)
+            ]
+            methods_here = [m for m in METHOD_ORDER if m in dev_data["method"].unique()]
+
+            for method in methods_here:
+                row = dev_data[dev_data["method"] == method]
+                if row.empty:
+                    continue
+                
+                val = row[timing_col].values[0] if timing_col in row.columns else 0
+                if pd.isna(val) or val < 0:
+                    val = 0
+                    
+                bar_data.append({
+                    "device": device,
+                    "method": method,
+                    "compute_time": val
+                })
+
+        bar_data.sort(key=lambda x: x["compute_time"])
+
+        # Track devices for the legend
+        seen_devices = {}
+
+        for i, item in enumerate(bar_data):
+            device_name = item["device"]
+            val = item["compute_time"]
+            color = DEVICE_COLORS.get(device_name, "#cccccc")
+            
+            # 1. Color the bars by device
+            ax.bar(i, val, color=color, edgecolor="white", width=0.7)
+            
+            # 2. Keep icons on top of bars
+            icon_img = DEVICE_ICONS.get(device_name)
+            if icon_img is not None:
+                imagebox = OffsetImage(icon_img, zoom=0.035)
+                ab = AnnotationBbox(imagebox, (i, val), frameon=False, 
+                                    box_alignment=(0.5, -0.2))
+                ax.add_artist(ab)
+            
+            # Store color for the legend
+            if device_name not in seen_devices:
+                seen_devices[device_name] = color
+
+        # 3. Simple Legend (No icons, just colored squares)
+        legend_handles = [plt.Rectangle((0,0),1,1, color=c) for c in seen_devices.values()]
+        ax.legend(legend_handles, seen_devices.keys(), loc="upper left", frameon=True)
+
+        # Formatting
+        ax.set_xticks(range(len(bar_data)))
+        ax.set_xticklabels([METHOD_LABELS.get(x["method"], x["method"]) for x in bar_data], 
+                           rotation=45, ha="right")
+        ax.set_ylabel("Compute Time (ms)")
+        ax.set_title(f"{sim.capitalize()} — Compute Time ({count} Agents)", fontweight="bold")
+        
+        if bar_data:
+            ax.set_ylim(0, max(b["compute_time"] for b in bar_data) * 1.4)
+
+        plt.tight_layout()
+        save_figure(fig, f"05_compute_time_{sim}_count_{count}")
+        plt.show()
 
 # %% [markdown]
 # ## 7. Method Ranking by Device
@@ -442,15 +729,97 @@ save_figure(fig, "05_cross_device_overlay")
 plt.show()
 
 # %% [markdown]
+# ## 9b. Alternate Overlay: Device Performance by Method
+# 
+# Averaging over all simulations to clearly show how each device scales for a specific compute method.
+# This isolates hardware capability when running a given tech stack.
+
+# %%
+fig, axes = plt.subplots(1, len(METHOD_ORDER), figsize=(16, 4), sharey=True)
+if len(METHOD_ORDER) == 1:
+    axes = [axes]
+
+for ax, method in zip(axes, METHOD_ORDER):
+    subset = combined[combined["method"] == method]
+    if subset.empty:
+        continue
+    
+    # Average across all simulations
+    agg_df = subset.groupby(["device", "agentCount"])["avgComputeTime"].mean().reset_index()
+    
+    for dev in DEVICE_ORDER:
+        dev_data = agg_df[agg_df["device"] == dev].sort_values("agentCount")
+        if not dev_data.empty:
+            ax.plot(
+                dev_data["agentCount"], dev_data["avgComputeTime"],
+                label=DEVICE_SHORT.get(dev, dev), color=DEVICE_COLORS[dev],
+                marker="o", markersize=4, linewidth=2, alpha=0.8
+            )
+            
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_title(METHOD_LABELS.get(method, method), fontweight="bold")
+    ax.set_xlabel("Agent Count")
+    if ax == axes[0]:
+        ax.set_ylabel("Avg Compute Time (ms)")
+        ax.legend(fontsize=9, title="Device")
+
+fig.suptitle("Alternate 1: Device Scaling Averaged Across Simulations (by Method)", fontsize=14, fontweight="bold", y=1.05)
+plt.tight_layout()
+save_figure(fig, "05_alternate_overlay_1")
+plt.show()
+
+# %% [markdown]
+# ## 9c. Alternate Overlay: Method Performance by Device
+#
+# Averaging over all simulations to clearly show the relative performance of methods on each specific device.
+# This reveals the optimal tech stack for a given hardware tier.
+
+# %%
+fig, axes = plt.subplots(1, len(DEVICE_ORDER), figsize=(16, 4), sharey=True)
+if len(DEVICE_ORDER) == 1:
+    axes = [axes]
+
+for ax, dev in zip(axes, DEVICE_ORDER):
+    subset = combined[combined["device"] == dev]
+    if subset.empty:
+        continue
+        
+    # Average across all simulations
+    agg_df = subset.groupby(["method", "agentCount"])["avgComputeTime"].mean().reset_index()
+    
+    for method in METHOD_ORDER:
+        method_data = agg_df[agg_df["method"] == method].sort_values("agentCount")
+        if not method_data.empty:
+            ax.plot(
+                method_data["agentCount"], method_data["avgComputeTime"],
+                label=METHOD_LABELS.get(method, method), color=get_method_color(method),
+                marker="s", markersize=4, linewidth=2, alpha=0.8
+            )
+            
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_title(DEVICE_SHORT.get(dev, dev), fontweight="bold")
+    ax.set_xlabel("Agent Count")
+    if ax == axes[0]:
+        ax.set_ylabel("Avg Compute Time (ms)")
+        ax.legend(fontsize=9, title="Method")
+
+fig.suptitle("Alternate 2: Method Scaling Averaged Across Simulations (by Device)", fontsize=14, fontweight="bold", y=1.05)
+plt.tight_layout()
+save_figure(fig, "05_alternate_overlay_2")
+plt.show()
+
+# %% [markdown]
 # ## 10. GPU Render Mode: CPU vs GPU Render Path
 #
 # Where available, compare CPU vs GPU render modes for WebGPU on each device.
 
 # %%
 render_devices = {
-    "Pixel 9 Pro": mob_df,
-    "Chromebook": cb_df,
-    "GPU Machine (RTX 4060)": gpu_df,
+    "Mobile (Pixel 9 Pro)": mob_df,
+    "Chromebook (Pixelbook Go)": cb_df,
+    "Linux Desktop (RTX 4060)": gpu_df,
     "MacBook (M4 Pro)": sweep_df,
 }
 

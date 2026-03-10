@@ -6,7 +6,7 @@
 # ---
 
 # %% [markdown]
-# # 03 — Web Worker Parallelism
+# # 03 — Web Worker Parallelism 
 #
 # **Research question:** How does the number of Web Workers affect performance?
 # Does it follow Amdahl's Law? What is the optimal worker count?

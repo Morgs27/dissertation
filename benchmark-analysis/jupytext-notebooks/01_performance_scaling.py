@@ -209,13 +209,13 @@ for ax, method in zip(axes, METHOD_ORDER):
 
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_title(METHOD_LABELS.get(method, method), fontsize=12, fontweight="bold")
+    ax.set_title(METHOD_LABELS.get(method, method))
     ax.set_xlabel("Agent Count")
     
 axes[0].set_ylabel("Avg Compute Time (ms)")
 axes[0].legend(fontsize=9, loc="upper left")
 fig.suptitle("Compute Time Spread Across 8 Simulations per Method (CPU Render)",
-             fontsize=14, fontweight="bold", y=1.05)
+             fontsize=14, fontweight="bold")
 plt.tight_layout()
 save_figure(fig, "01_scaling_compute_spread")
 plt.show()
@@ -445,6 +445,206 @@ if overlapping_sims:
 else:
     print("No simulations found in both datasets for continuous high-agent scaling.")
 
+
+# %%
+
+# %%
+overlapping_sims = [sim for sim in sweep_sims if sim in hi_sims]
+
+if overlapping_sims:
+    fig, ax = plt.subplots(figsize=(12, 8))
+    
+    # Use a line style cycle to differentiate simulations if methods reuse colors
+    line_styles = ["-", "--", "-.", ":"]
+    
+    for i, sim in enumerate(overlapping_sims):
+        sim_base = main_df[main_df["suite"] == sim].copy()
+        sim_hi = hi_main[hi_main["suite"] == sim].copy()
+        
+        # Combine the data
+        sim_continuous = pd.concat([sim_base, sim_hi], ignore_index=True)
+        
+        for method in METHOD_ORDER:
+            subset = sim_continuous[sim_continuous["method"] == method].sort_values("agentCount")
+            if subset.empty:
+                continue
+                
+            # Create a combined label for the legend
+            label = f"{sim.capitalize()} - {METHOD_LABELS.get(method, method)}"
+            
+            ax.plot(
+                subset["agentCount"], subset["avgComputeTime"],
+                label=label,
+                color=get_method_color(method),
+                linestyle=line_styles[i % len(line_styles)],
+                marker="o", linewidth=2, markersize=4, alpha=0.8
+            )
+            
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    
+    # Formatting
+    ax.set_title("Unified Continuous Scaling: All Simulations (1 to 1M Agents)", fontsize=15, fontweight="bold")
+    ax.set_xlabel("Agent Count (Log Scale)", fontsize=12)
+    ax.set_ylabel("Avg Compute Time (ms) (Log Scale)", fontsize=12)
+    
+    def format_km(x, pos):
+        if x >= 1e6: return f'{x*1e-6:.0f}M'
+        if x >= 1e3: return f'{x*1e-3:.0f}k'
+        return f'{x:.0f}'
+
+    ax.xaxis.set_major_formatter(ticker.FuncFormatter(format_km))
+    
+    # Move legend outside if it gets too crowded
+    ax.legend(fontsize=9, loc='center left', bbox_to_anchor=(1, 0.5), ncol=1)
+    
+    ax.grid(True, which="both", ls="-", alpha=0.2)
+    plt.tight_layout()
+    
+    save_figure(fig, "01_continuous_unified_scaling")
+    plt.show()
+else:
+    print("No simulations found in both datasets.")
+
+
+# %%
+
+# %%
+overlapping_sims = [sim for sim in sweep_sims if sim in hi_sims]
+
+if overlapping_sims:
+    num_sims = len(overlapping_sims)
+    # Create a figure with 1 row and N columns
+    fig, axes = plt.subplots(1, num_sims, figsize=(6 * num_sims, 6), sharey=True)
+    
+    # Ensure axes is an array even if there is only 1 simulation
+    if num_sims == 1:
+        axes = [axes]
+
+    for i, sim in enumerate(overlapping_sims):
+        ax = axes[i]
+        sim_base = main_df[main_df["suite"] == sim].copy()
+        sim_hi = hi_main[hi_main["suite"] == sim].copy()
+        
+        # Combine the data
+        sim_continuous = pd.concat([sim_base, sim_hi], ignore_index=True)
+        
+        for method in METHOD_ORDER:
+            subset = sim_continuous[sim_continuous["method"] == method].sort_values("agentCount")
+            if subset.empty:
+                continue
+            
+            ax.plot(
+                subset["agentCount"], subset["avgComputeTime"],
+                label=METHOD_LABELS.get(method, method),
+                color=get_method_color(method),
+                marker="o", linewidth=2.5, markersize=4
+            )
+            
+        # Scaling and Formatting
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        ax.set_title(f"{sim.capitalize()} Simulation", fontsize=13, fontweight="bold")
+        ax.set_xlabel("Agent Count")
+        
+        # Only label the Y axis on the leftmost plot to save space
+        if i == 0:
+            ax.set_ylabel("Avg Compute Time (ms)")
+        
+        def format_km(x, pos):
+            if x >= 1e6: return f'{x*1e-6:.0f}M'
+            if x >= 1e3: return f'{x*1e-3:.0f}k'
+            return f'{x:.0f}'
+
+        ax.xaxis.set_major_formatter(ticker.FuncFormatter(format_km))
+        ax.grid(True, which="both", ls="-", alpha=0.15)
+        
+        # Dataset transition line
+        max_base = sim_base["agentCount"].max()
+        if pd.notna(max_base):
+            ax.axvline(max_base, color="gray", linestyle=":", alpha=0.5)
+
+    # Single legend for the whole figure
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 1.05), ncol=len(METHOD_ORDER))
+    
+    plt.tight_layout()
+    save_figure(fig, "01_continuous_side_by_side")
+    plt.show()
+else:
+    print("No simulations found in both datasets.")
+
+# %%
+# %%
+overlapping_sims = [sim for sim in sweep_sims if sim in hi_sims]
+
+if overlapping_sims:
+    num_sims = len(overlapping_sims)
+    # Create a 1xN grid of plots
+    fig, axes = plt.subplots(1, num_sims, figsize=(6 * num_sims, 6), sharey=True)
+    
+    # Add an overarching main title for the entire figure
+    fig.suptitle("Continuous Compute Performance Across Simulation Suites (1 to 1M Agents)", 
+                 fontsize=14, fontweight="bold")
+
+    # Ensure axes is iterable even if only 1 sim exists
+    if num_sims == 1:
+        axes = [axes]
+
+    for i, sim in enumerate(overlapping_sims):
+        ax = axes[i]
+        sim_base = main_df[main_df["suite"] == sim].copy()
+        sim_hi = hi_main[hi_main["suite"] == sim].copy()
+        
+        # Combine the data
+        sim_continuous = pd.concat([sim_base, sim_hi], ignore_index=True)
+        
+        for method in METHOD_ORDER:
+            subset = sim_continuous[sim_continuous["method"] == method].sort_values("agentCount")
+            if subset.empty:
+                continue
+            
+            ax.plot(
+                subset["agentCount"], subset["avgComputeTime"],
+                label=METHOD_LABELS.get(method, method),
+                color=get_method_color(method),
+                marker="o", linewidth=2.5, markersize=4
+            )
+            
+        # Log scales for both axes
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        
+        # Individual plot titles
+        ax.set_title(f"{sim.capitalize()} Simulation")
+        ax.set_xlabel("Agent Count")
+        
+        # Only label Y-axis on the first plot to keep it clean
+        if i == 0:
+            ax.set_ylabel("Avg Compute Time (ms)")
+        
+        # Formatting X-axis (1k, 1M etc)
+        def format_km(x, pos):
+            if x >= 1e6: return f'{x*1e-6:.0f}M'
+            if x >= 1e3: return f'{x*1e-3:.0f}k'
+            return f'{x:.0f}'
+
+        ax.xaxis.set_major_formatter(ticker.FuncFormatter(format_km))
+        ax.grid(True, which="both", ls="-", alpha=0.15)
+        
+        # Add legend to EACH individual graph
+        ax.legend(fontsize=9, loc="upper left", frameon=True)
+        
+        # Dataset transition line (visual aid for where data source switches)
+        max_base = sim_base["agentCount"].max()
+        if pd.notna(max_base):
+            ax.axvline(max_base, color="gray", linestyle=":", alpha=0.4)
+
+    plt.tight_layout()
+    save_figure(fig, "01_continuous_side_by_side_comparison")
+    plt.show()
+else:
+    print("No simulations found in both datasets.")
 
 # %% [markdown]
 # ## Method comparison table

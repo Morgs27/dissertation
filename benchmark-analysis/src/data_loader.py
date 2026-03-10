@@ -273,17 +273,20 @@ def load_runs_df(
             fh.seek(0)
 
         # Stream each run object
-        for run in ijson.items(fh, "runs.item"):
-            # Only keep summary-level keys, discard the heavy trackingReport
-            light_run = {
-                k: v for k, v in run.items()
-                if k != "trackingReport"
-            }
-            # But we need the summary from the trackingReport if not at top level
-            tr = run.get("trackingReport", {})
-            if "summary" not in light_run and "summary" in tr:
-                light_run["summary"] = tr["summary"]
-            rows.append(_extract_run_row(light_run, name))
+        try:
+            for run in ijson.items(fh, "runs.item"):
+                # Only keep summary-level keys, discard the heavy trackingReport
+                light_run = {
+                    k: v for k, v in run.items()
+                    if k != "trackingReport"
+                }
+                # But we need the summary from the trackingReport if not at top level
+                tr = run.get("trackingReport", {})
+                if "summary" not in light_run and "summary" in tr:
+                    light_run["summary"] = tr["summary"]
+                rows.append(_extract_run_row(light_run, name))
+        except ijson.IncompleteJSONError:
+            print(f"  ⚠ Warning: {path.name} truncated (premature EOF). Recovered {len(rows)} runs.")
 
     return _coerce_numeric(pd.DataFrame(rows))
 
@@ -339,100 +342,103 @@ def load_frames_df(
                     break
             fh.seek(0)
 
-        for run in ijson.items(fh, "runs.item"):
-            run_method = run.get("method")
-            run_agents = run.get("agentCount")
+        try:
+            for run in ijson.items(fh, "runs.item"):
+                run_method = run.get("method")
+                run_agents = run.get("agentCount")
 
-            # Apply filters
-            if methods and run_method not in methods:
-                continue
-            if agent_counts and run_agents not in agent_counts:
-                continue
+                # Apply filters
+                if methods and run_method not in methods:
+                    continue
+                if agent_counts and run_agents not in agent_counts:
+                    continue
 
-            base = {
-                "suite": name,
-                "method": run_method,
-                "renderMode": run.get("renderMode"),
-                "agentCount": run_agents,
-                "workerCount": run.get("workerCount"),
-                "wasmExecutionMode": run.get("wasmExecutionMode"),
-            }
-
-            tr = run.get("trackingReport", {})
-            frames = tr.get("frames", [])
-            if max_frames is not None:
-                frames = frames[:max_frames]
-
-            for frame in frames:
-                perf = frame.get("performance", {})
-                row = {
-                    **base,
-                    "frameNumber": frame.get("frameNumber"),
-                    "timestamp": frame.get("timestamp"),
-                    "inputKeyCount": frame.get("inputKeyCount"),
-                    "totalExecutionTime": perf.get("totalExecutionTime"),
-                    "setupTime": perf.get("setupTime"),
-                    "computeTime": perf.get("computeTime"),
-                    "renderTime": perf.get("renderTime"),
-                    "readbackTime": perf.get("readbackTime"),
-                    "compileTime": perf.get("compileTime"),
+                base = {
+                    "suite": name,
+                    "method": run_method,
+                    "renderMode": run.get("renderMode"),
+                    "agentCount": run_agents,
+                    "workerCount": run.get("workerCount"),
+                    "wasmExecutionMode": run.get("wasmExecutionMode"),
                 }
-                # ── specificStats (method-dependent keys) ─────────────
-                for raw_key, val in perf.get("specificStats", {}).items():
-                    col = "ss_" + _snake_case(raw_key)
-                    row[col] = val
-                # ── bridgeTimings — all 12 sub-keys ───────────────────
-                bridge = perf.get("bridgeTimings", {})
-                if bridge:
-                    row["hostToGpuTime"] = bridge.get("hostToGpuTime")
-                    row["hostToGpuAgentUploadTime"] = bridge.get(
-                        "hostToGpuAgentUploadTime"
-                    )
-                    row["hostToGpuInputUploadTime"] = bridge.get(
-                        "hostToGpuInputUploadTime"
-                    )
-                    row["hostToGpuUniformUploadTime"] = bridge.get(
-                        "hostToGpuUniformUploadTime"
-                    )
-                    row["hostToGpuTrailUploadTime"] = bridge.get(
-                        "hostToGpuTrailUploadTime"
-                    )
-                    row["hostToGpuRandomUploadTime"] = bridge.get(
-                        "hostToGpuRandomUploadTime"
-                    )
-                    row["hostToGpuObstacleUploadTime"] = bridge.get(
-                        "hostToGpuObstacleUploadTime"
-                    )
-                    row["gpuToHostTime"] = bridge.get("gpuToHostTime")
-                    row["gpuToHostAgentReadbackTime"] = bridge.get(
-                        "gpuToHostAgentReadbackTime"
-                    )
-                    row["gpuToHostTrailReadbackTime"] = bridge.get(
-                        "gpuToHostTrailReadbackTime"
-                    )
-                    row["gpuToHostLogReadbackTime"] = bridge.get(
-                        "gpuToHostLogReadbackTime"
-                    )
-                    row["queueSubmitTime"] = bridge.get("queueSubmitTime")
-                # ── memoryStats — full ────────────────────────────────
-                mem = perf.get("memoryStats", {})
-                if mem:
-                    row["methodMemoryFootprintBytes"] = mem.get(
-                        "methodMemoryFootprintBytes"
-                    )
-                    row["methodMemoryFootprintType"] = mem.get(
-                        "methodMemoryFootprintType"
-                    )
-                    row["jsHeapSizeLimitBytes"] = mem.get(
-                        "jsHeapSizeLimitBytes"
-                    )
-                    row["totalJsHeapSizeBytes"] = mem.get(
-                        "totalJsHeapSizeBytes"
-                    )
-                    row["usedJsHeapSizeBytes"] = mem.get(
-                        "usedJsHeapSizeBytes"
-                    )
-                rows.append(row)
+
+                tr = run.get("trackingReport", {})
+                frames = tr.get("frames", [])
+                if max_frames is not None:
+                    frames = frames[:max_frames]
+
+                for frame in frames:
+                    perf = frame.get("performance", {})
+                    row = {
+                        **base,
+                        "frameNumber": frame.get("frameNumber"),
+                        "timestamp": frame.get("timestamp"),
+                        "inputKeyCount": frame.get("inputKeyCount"),
+                        "totalExecutionTime": perf.get("totalExecutionTime"),
+                        "setupTime": perf.get("setupTime"),
+                        "computeTime": perf.get("computeTime"),
+                        "renderTime": perf.get("renderTime"),
+                        "readbackTime": perf.get("readbackTime"),
+                        "compileTime": perf.get("compileTime"),
+                    }
+                    # ── specificStats (method-dependent keys) ─────────────
+                    for raw_key, val in perf.get("specificStats", {}).items():
+                        col = "ss_" + _snake_case(raw_key)
+                        row[col] = val
+                    # ── bridgeTimings — all 12 sub-keys ───────────────────
+                    bridge = perf.get("bridgeTimings", {})
+                    if bridge:
+                        row["hostToGpuTime"] = bridge.get("hostToGpuTime")
+                        row["hostToGpuAgentUploadTime"] = bridge.get(
+                            "hostToGpuAgentUploadTime"
+                        )
+                        row["hostToGpuInputUploadTime"] = bridge.get(
+                            "hostToGpuInputUploadTime"
+                        )
+                        row["hostToGpuUniformUploadTime"] = bridge.get(
+                            "hostToGpuUniformUploadTime"
+                        )
+                        row["hostToGpuTrailUploadTime"] = bridge.get(
+                            "hostToGpuTrailUploadTime"
+                        )
+                        row["hostToGpuRandomUploadTime"] = bridge.get(
+                            "hostToGpuRandomUploadTime"
+                        )
+                        row["hostToGpuObstacleUploadTime"] = bridge.get(
+                            "hostToGpuObstacleUploadTime"
+                        )
+                        row["gpuToHostTime"] = bridge.get("gpuToHostTime")
+                        row["gpuToHostAgentReadbackTime"] = bridge.get(
+                            "gpuToHostAgentReadbackTime"
+                        )
+                        row["gpuToHostTrailReadbackTime"] = bridge.get(
+                            "gpuToHostTrailReadbackTime"
+                        )
+                        row["gpuToHostLogReadbackTime"] = bridge.get(
+                            "gpuToHostLogReadbackTime"
+                        )
+                        row["queueSubmitTime"] = bridge.get("queueSubmitTime")
+                    # ── memoryStats — full ────────────────────────────────
+                    mem = perf.get("memoryStats", {})
+                    if mem:
+                        row["methodMemoryFootprintBytes"] = mem.get(
+                            "methodMemoryFootprintBytes"
+                        )
+                        row["methodMemoryFootprintType"] = mem.get(
+                            "methodMemoryFootprintType"
+                        )
+                        row["jsHeapSizeLimitBytes"] = mem.get(
+                            "jsHeapSizeLimitBytes"
+                        )
+                        row["totalJsHeapSizeBytes"] = mem.get(
+                            "totalJsHeapSizeBytes"
+                        )
+                        row["usedJsHeapSizeBytes"] = mem.get(
+                            "usedJsHeapSizeBytes"
+                        )
+                    rows.append(row)
+        except ijson.IncompleteJSONError:
+            print(f"  ⚠ Warning: {path.name} truncated. Recovered {len(rows)} frame rows.")
 
     return _coerce_numeric(pd.DataFrame(rows))
 
@@ -487,48 +493,51 @@ def load_runtime_samples_df(
                     break
             fh.seek(0)
 
-        for run in ijson.items(fh, "runs.item"):
-            run_method = run.get("method")
-            run_agents = run.get("agentCount")
+        try:
+            for run in ijson.items(fh, "runs.item"):
+                run_method = run.get("method")
+                run_agents = run.get("agentCount")
 
-            if methods and run_method not in methods:
-                continue
-            if agent_counts and run_agents not in agent_counts:
-                continue
+                if methods and run_method not in methods:
+                    continue
+                if agent_counts and run_agents not in agent_counts:
+                    continue
 
-            base = {
-                "suite": name,
-                "method": run_method,
-                "renderMode": run.get("renderMode"),
-                "agentCount": run_agents,
-                "workerCount": run.get("workerCount"),
-                "wasmExecutionMode": run.get("wasmExecutionMode"),
-            }
+                base = {
+                    "suite": name,
+                    "method": run_method,
+                    "renderMode": run.get("renderMode"),
+                    "agentCount": run_agents,
+                    "workerCount": run.get("workerCount"),
+                    "wasmExecutionMode": run.get("wasmExecutionMode"),
+                }
 
-            tr = run.get("trackingReport", {})
-            for sample in tr.get("runtimeSamples", []):
-                heap = sample.get("jsHeap", {})
-                batt = sample.get("battery", {})
-                canary = sample.get("thermalCanary", {})
-                rows.append({
-                    **base,
-                    "timestamp": sample.get("timestamp"),
-                    "elapsedMs": sample.get("elapsedMs"),
-                    "frameNumber": sample.get("frameNumber"),
-                    # JS heap
-                    "jsHeap_limit": heap.get("jsHeapSizeLimit"),
-                    "jsHeap_total": heap.get("totalJSHeapSize"),
-                    "jsHeap_used": heap.get("usedJSHeapSize"),
-                    # Battery
-                    "battery_supported": batt.get("supported"),
-                    "battery_level": batt.get("level"),
-                    "battery_charging": batt.get("charging"),
-                    "battery_chargingTime": batt.get("chargingTime"),
-                    "battery_dischargingTime": batt.get("dischargingTime"),
-                    # Thermal canary
-                    "thermal_intervalMs": canary.get("intervalMs"),
-                    "thermal_driftMs": canary.get("driftMs"),
-                })
+                tr = run.get("trackingReport", {})
+                for sample in tr.get("runtimeSamples", []):
+                    heap = sample.get("jsHeap", {})
+                    batt = sample.get("battery", {})
+                    canary = sample.get("thermalCanary", {})
+                    rows.append({
+                        **base,
+                        "timestamp": sample.get("timestamp"),
+                        "elapsedMs": sample.get("elapsedMs"),
+                        "frameNumber": sample.get("frameNumber"),
+                        # JS heap
+                        "jsHeap_limit": heap.get("jsHeapSizeLimit"),
+                        "jsHeap_total": heap.get("totalJSHeapSize"),
+                        "jsHeap_used": heap.get("usedJSHeapSize"),
+                        # Battery
+                        "battery_supported": batt.get("supported"),
+                        "battery_level": batt.get("level"),
+                        "battery_charging": batt.get("charging"),
+                        "battery_chargingTime": batt.get("chargingTime"),
+                        "battery_dischargingTime": batt.get("dischargingTime"),
+                        # Thermal canary
+                        "thermal_intervalMs": canary.get("intervalMs"),
+                        "thermal_driftMs": canary.get("driftMs"),
+                    })
+        except ijson.IncompleteJSONError:
+            print(f"  ⚠ Warning: {path.name} truncated. Recovered {len(rows)} runtime samples.")
 
     return _coerce_numeric(pd.DataFrame(rows))
 
@@ -605,36 +614,39 @@ def stream_agent_positions_df(
                 name = path.parent.name
             fh.seek(0)
 
-        for run in ijson.items(fh, "runs.item"):
-            run_method = run.get("method")
-            run_agents = run.get("agentCount")
-            run_render = run.get("renderMode")
+        try:
+            for run in ijson.items(fh, "runs.item"):
+                run_method = run.get("method")
+                run_agents = run.get("agentCount")
+                run_render = run.get("renderMode")
 
-            if run_method not in methods:
-                continue
-            if run_agents not in agent_counts:
-                continue
-            if run_render != render_mode:
-                continue
-
-            tr = run.get("trackingReport", {})
-            for frame in tr.get("frames", []):
-                frame_num = frame.get("frameNumber")
-                agents = frame.get("agentPositions", [])
-                if not agents:
+                if run_method not in methods:
                     continue
-                for agent in agents:
-                    rows.append({
-                        "suite": name,
-                        "method": run_method,
-                        "agentCount": run_agents,
-                        "frameNumber": frame_num,
-                        "id": agent.get("id"),
-                        "x": agent.get("x"),
-                        "y": agent.get("y"),
-                        "vx": agent.get("vx"),
-                        "vy": agent.get("vy"),
-                    })
+                if run_agents not in agent_counts:
+                    continue
+                if run_render != render_mode:
+                    continue
+
+                tr = run.get("trackingReport", {})
+                for frame in tr.get("frames", []):
+                    frame_num = frame.get("frameNumber")
+                    agents = frame.get("agentPositions", [])
+                    if not agents:
+                        continue
+                    for agent in agents:
+                        rows.append({
+                            "suite": name,
+                            "method": run_method,
+                            "agentCount": run_agents,
+                            "frameNumber": frame_num,
+                            "id": agent.get("id"),
+                            "x": agent.get("x"),
+                            "y": agent.get("y"),
+                            "vx": agent.get("vx"),
+                            "vy": agent.get("vy"),
+                        })
+        except ijson.IncompleteJSONError:
+            print(f"  ⚠ Warning: {path.name} truncated. Recovered {len(rows)} agent positions.")
 
     return _coerce_numeric(pd.DataFrame(rows))
 

@@ -28,9 +28,11 @@ OUT.mkdir(exist_ok=True)
 
 # %%
 sweep_sims = ["boids", "cosmic", "fire", "fluid", "predator", "rain", "slime", "traffic"]
+sweep_paths = {}  # reused by Section 6 to avoid re-scanning
 dfs = []
 for sim in sweep_sims:
     path = next(p for p in sorted(Path("../raw-data/basic-sweeps").rglob("*.json")) if sim in p.parent.name)
+    sweep_paths[sim] = path
     print(f"Streaming {sim} ({path.stat().st_size / 1e9:.1f} GB)...")
     df = load_runs_df(path, suite_name=sim)
     df["category"] = "basic-sweep"
@@ -77,12 +79,41 @@ print(f"✓ mobile.parquet — {len(mob_df)} runs")
 end_summaries = []
 end_frames = []
 for path in sorted(Path("../raw-data/endurance").rglob("*.json")):
+    if "old" in path.parts:
+        continue
     sim = path.parent.name
     print(f"Loading endurance/{sim}...")
     rdf = load_runs_df(path, suite_name=sim)
     rdf["category"] = "endurance"
-    end_summaries.append(rdf)
+    
+    # Some JSONs have duplicate interrupted runs; just keep the last full run per method & render mode
+    rdf = rdf.drop_duplicates(subset=["method", "renderMode"], keep="last")
+    
     fdf = load_frames_df(path, suite_name=sim)
+    
+    def get_last_run_indices_fdf(group):
+        resets = group["frameNumber"].diff() <= 0
+        if resets.any():
+             return group.index[group.index >= resets[resets].index[-1]]
+        return group.index
+    
+    if not fdf.empty:
+        idx_to_keep_fdf = []
+        for _, group in fdf.groupby(["method", "renderMode"]):
+             idx_to_keep_fdf.extend(get_last_run_indices_fdf(group))
+        fdf = fdf.loc[idx_to_keep_fdf]
+    
+    # Truncate runs that went over 1000 seconds
+    for idx, row in rdf.iterrows():
+        method = row["method"]
+        render_mode = row["renderMode"]
+        if row["durationMs"] > 1e6:
+            max_frame = int(row["executedFrames"] * (1e6 / row["durationMs"]))
+            fdf = fdf[~((fdf["method"] == method) & (fdf["renderMode"] == render_mode) & (fdf["frameNumber"] > max_frame))]
+            rdf.at[idx, "executedFrames"] = max_frame
+            rdf.at[idx, "durationMs"] = 1e6
+            
+    end_summaries.append(rdf)
     end_frames.append(fdf)
 
 end_sum_df = pd.concat(end_summaries, ignore_index=True)
@@ -98,9 +129,26 @@ print(f"✓ endurance_frames.parquet — {len(end_frm_df)} frames")
 # %%
 end_samples = []
 for path in sorted(Path("../raw-data/endurance").rglob("*.json")):
+    if "old" in path.parts:
+        continue
     sim = path.parent.name
     print(f"Loading runtime samples for endurance/{sim}...")
     sdf = load_runtime_samples_df(path, suite_name=sim)
+    
+    def get_last_run_indices_sdf(group):
+        resets = group["elapsedMs"].diff() < 0
+        if resets.any():
+            return group.index[group.index >= resets[resets].index[-1]]
+        return group.index
+
+    if not sdf.empty and "elapsedMs" in sdf.columns:
+        idx_to_keep_sdf = []
+        for _, group in sdf.groupby(["method", "renderMode"]):
+             idx_to_keep_sdf.extend(get_last_run_indices_sdf(group))
+        sdf = sdf.loc[idx_to_keep_sdf]
+        # Truncate to 1000 seconds
+        sdf = sdf[sdf["elapsedMs"] <= 1e6]
+        
     end_samples.append(sdf)
 
 end_samp_df = pd.concat(end_samples, ignore_index=True)
@@ -143,9 +191,8 @@ print(f"✓ trig_runs.parquet — {len(trig_df)} runs")
 # %%
 from src import stream_agent_positions_df
 
-sweep_sims_pos = ["boids", "cosmic", "fire", "fluid", "predator", "rain", "slime", "traffic"]
-for sim in sweep_sims_pos:
-    path = next(p for p in sorted(Path("../raw-data/basic-sweeps").rglob("*.json")) if sim in p.parent.name)
+for sim in sweep_sims:
+    path = sweep_paths[sim]  # reuse paths from Section 1
     out_path = OUT / f"agent_positions_{sim}.parquet"
     print(f"Streaming agent positions for {sim} ({path.stat().st_size / 1e9:.1f} GB)...")
     adf = stream_agent_positions_df(

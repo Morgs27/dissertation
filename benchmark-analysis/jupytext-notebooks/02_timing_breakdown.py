@@ -6,7 +6,7 @@
 # ---
 
 # %% [markdown]
-# # 02 — Timing Breakdown & WebGPU Bridge Analysis
+# # 02 — Timing Breakdown & WebGPU Bridge Analysis 
 #
 # **Research question:** Where is time actually spent per method?
 # What are the PCIe transfer overheads for WebGPU?
@@ -108,11 +108,61 @@ for ax, sim in zip(axes, sweep_sims):
     ax.set_ylabel("")
     ax.legend(fontsize=7, loc="upper right")
 
-fig.suptitle("Timing Breakdown at N=5,000 — All Simulations)",
+fig.suptitle("Timing Breakdown at N=5,000 — All Simulations",
              fontsize=14, fontweight="bold")
 plt.tight_layout()
 save_figure(fig, "02_timing_breakdown_all_sims")
 plt.show()
+
+
+
+# %%
+sweep_sims = sorted(main_df["suite"].unique())
+
+fig, axes = plt.subplots(2, 4, figsize=(18, 9))
+axes = axes.flatten()
+
+for ax, sim in zip(axes, sweep_sims):
+    sim_df = main_df[main_df["suite"] == sim]
+    bd = timing_breakdown(sim_df, agent_count=20000, render_mode="cpu")
+    bd = bd.rename(columns=timing_labels)
+    colors = ["#A8D8EA", "#6DA49D", "#EE6677", "#BBBBBB"]
+    bd.plot.barh(stacked=True, ax=ax, color=colors, edgecolor="white", linewidth=0.5)
+    ax.set_title(sim.capitalize(), fontweight="bold")
+    ax.set_xlabel("Time (ms)")
+    ax.set_ylabel("")
+    ax.legend(fontsize=7, loc="upper right")
+
+fig.suptitle("Timing Breakdown at N=20,000 — All Simulations",
+             fontsize=14, fontweight="bold")
+plt.tight_layout()
+save_figure(fig, "02_timing_breakdown_all_sims_20k")
+plt.show()
+
+# %%
+
+sweep_sims = sorted(main_df["suite"].unique())
+
+fig, axes = plt.subplots(2, 4, figsize=(18, 9))
+axes = axes.flatten()
+
+for ax, sim in zip(axes, sweep_sims):
+    sim_df = main_df[main_df["suite"] == sim]
+    bd = timing_breakdown(sim_df, agent_count=1, render_mode="cpu")
+    bd = bd.rename(columns=timing_labels)
+    colors = ["#A8D8EA", "#6DA49D", "#EE6677", "#BBBBBB"]
+    bd.plot.barh(stacked=True, ax=ax, color=colors, edgecolor="white", linewidth=0.5)
+    ax.set_title(sim.capitalize(), fontweight="bold")
+    ax.set_xlabel("Time (ms)")
+    ax.set_ylabel("")
+    ax.legend(fontsize=7, loc="upper right")
+
+fig.suptitle("Timing Breakdown at N=1 — All Simulations",
+             fontsize=14, fontweight="bold")
+plt.tight_layout()
+save_figure(fig, "02_timing_breakdown_all_sims_1")
+plt.show()
+
 
 # %% [markdown]
 # ## WebGPU bridge timing analysis

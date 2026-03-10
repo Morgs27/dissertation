@@ -16,7 +16,7 @@
 # **Data sources:**
 # * `processed/agent_positions_{sim}.parquet` — 8 basic-sweep sims
 #   (100 agents × 100 frames × 2 methods)
-# * `raw-data/trig/` — 3 devices × 2 methods × 100 agents × 1000 frames
+# * `raw-data/trig/` — 4 devices × 2 methods × 100 agents × 1000 frames
 
 # %%
 import sys, os
@@ -73,13 +73,15 @@ for sim in SWEEP_SIMS:
 # %%
 devices = {
     "macbook": "MacBook (M4 Pro)",
-    "chromebook": "Chromebook",
-    "mobile": "Pixel 9 Pro",
+    "chromebook": "Chromebook (Pixelbook Go)",
+    "mobile": "Mobile (Pixel 9 Pro)",
+    "gpu-device": "Linux Desktop (RTX 4060)",
 }
 DEVICE_COLORS = {
     "MacBook (M4 Pro)": "#4477AA",
-    "Chromebook": "#228833",
-    "Pixel 9 Pro": "#EE6677",
+    "Chromebook (Pixelbook Go)": "#228833",
+    "Mobile (Pixel 9 Pro)": "#EE6677",
+    "Linux Desktop (RTX 4060)": "#AA3377",
 }
 
 trig_data = {}
@@ -117,18 +119,17 @@ for folder, label in devices.items():
 # representative "bad" agent, not the extreme outlier).
 
 # %%
-def find_median_worst_agent(merged_df):
-    """Return the agent ID whose final-frame divergence is nearest the median."""
+def find_worst_agent(merged_df):
+    """Return the agent ID whose final-frame divergence is the maximum."""
     last_frame = merged_df["frameNumber"].max()
     final = merged_df[merged_df["frameNumber"] == last_frame]
     if final.empty:
         return None
-    median_dist = final["distance"].median()
-    closest_idx = (final["distance"] - median_dist).abs().idxmin()
-    return final.loc[closest_idx, "id"]
+    worst_idx = final["distance"].idxmax()
+    return final.loc[worst_idx, "id"]
 
 
-def plot_trajectory(ax, merged_df, agent_id, title):
+def plot_trajectory(ax, merged_df, agent_id, title, aspect="equal"):
     """Plot JS vs WebGPU trajectory for a single agent."""
     agt = merged_df[merged_df["id"] == agent_id].sort_values("frameNumber")
     ax.plot(agt["x_a"], agt["y_a"], "-", color=get_method_color("JavaScript"),
@@ -143,21 +144,24 @@ def plot_trajectory(ax, merged_df, agent_id, title):
     ax.set_xlabel("X (px)")
     ax.set_ylabel("Y (px)")
     ax.set_title(title, fontsize=11)
-    ax.set_aspect("equal")
+    ax.set_aspect(aspect)
 
 # %% [markdown]
-# ### 2a. Trig, Boids, Slime — side by side
+# ### 2a. Trig, Slime — side by side
+
 
 # %%
-highlight_sims = ["trig", "boids", "slime"]
 
-fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+from matplotlib.lines import Line2D
+highlight_sims = ["trig", "slime"]
+
+fig, axes = plt.subplots(1, 2, figsize=(12, 6))
 
 for ax, sim_name in zip(axes, highlight_sims):
     if sim_name == "trig":
-        label = list(trig_divergence.keys())[0]
+        label = list(trig_divergence.keys())[3]
         merged_df, _ = trig_divergence[label]
-        title_suffix = f"(trig — {label})"
+        title_suffix = f"(trig)"
     else:
         if sim_name not in sweep_divergence:
             ax.set_title(f"{sim_name} — no data")
@@ -165,7 +169,7 @@ for ax, sim_name in zip(axes, highlight_sims):
         merged_df, _ = sweep_divergence[sim_name]
         title_suffix = f"({sim_name})"
 
-    agent_id = find_median_worst_agent(merged_df)
+    agent_id = find_worst_agent(merged_df)
     if agent_id is None:
         ax.set_title(f"{sim_name} — no divergence data")
         continue
@@ -173,12 +177,36 @@ for ax, sim_name in zip(axes, highlight_sims):
     last_frame = merged_df["frameNumber"].max()
     final = merged_df[merged_df["frameNumber"] == last_frame]
     dist = final[final["id"] == agent_id]["distance"].values[0]
+    
+    # Plotting the lines (this likely populates the standard legend handles)
     plot_trajectory(ax, merged_df, agent_id,
                     f"Agent {int(agent_id)} {title_suffix}\nfinal Δ = {dist:.2f} px")
 
-axes[0].legend(fontsize=8)
-fig.suptitle("Median-Worst Agent Trajectory: JS vs WebGPU",
+# --- CUSTOM LEGEND LOGIC ---
+
+# 1. Define the icons manually as Proxy Artists
+# Note: 'w' color with a marker prevents a line from being drawn through the icon
+custom_lines = [
+    Line2D([0], [0], marker='o', color='w', label='Start',
+           markerfacecolor='black', markersize=8),
+    Line2D([0], [0], marker='^', color='w', label='JS End',
+           markerfacecolor='tab:blue', markersize=8),
+    Line2D([0], [0], marker='s', color='w', label='WebGPU End',
+           markerfacecolor='palevioletred', markersize=8)
+]
+
+# 2. Grab existing handles (the JS and WebGPU trajectory lines)
+handles, labels = axes[0].get_legend_handles_labels()
+
+# 3. Combine and apply to the first axis (or both if you prefer)
+axes[0].legend(handles=handles + custom_lines, loc='best', fontsize=8, framealpha=0.9)
+axes[1].legend(handles=handles + custom_lines, loc='upper left', fontsize=8, framealpha=0.9)
+
+# ---------------------------
+
+fig.suptitle("Worst-Case Agent Trajectories",
              fontsize=14, fontweight="bold")
+
 save_figure(fig, "08_trajectory_highlight")
 plt.show()
 
@@ -193,7 +221,7 @@ fig, axes = plt.subplots(rows, cols, figsize=(5 * cols, 5 * rows))
 axes = axes.flatten()
 
 for i, (sim, (merged_df, _)) in enumerate(sorted(sweep_divergence.items())):
-    agent_id = find_median_worst_agent(merged_df)
+    agent_id = find_worst_agent(merged_df)
     if agent_id is None:
         axes[i].set_title(f"{sim.capitalize()} — no data")
         continue
@@ -201,15 +229,16 @@ for i, (sim, (merged_df, _)) in enumerate(sorted(sweep_divergence.items())):
     final = merged_df[merged_df["frameNumber"] == last_frame]
     dist = final[final["id"] == agent_id]["distance"].values[0]
     plot_trajectory(axes[i], merged_df, agent_id,
-                    f"{sim.capitalize()} — Agent {int(agent_id)}\nΔ = {dist:.2f} px")
+                    f"{sim.capitalize()} — Agent {int(agent_id)}\nΔ = {dist:.2f} px", aspect="auto")
 
 # Hide unused axes
 for j in range(i + 1, len(axes)):
     axes[j].set_visible(False)
 
 axes[0].legend(fontsize=7)
-fig.suptitle("Median-Worst Agent Trajectories — All Simulations",
+fig.suptitle("Worst-Case Agent Trajectories — All Simulations",
              fontsize=14, fontweight="bold")
+fig.tight_layout(rect=[0, 0, 1, 0.96]) # Leave room for suptitle
 save_figure(fig, "08_trajectory_all_sims")
 plt.show()
 
@@ -228,10 +257,10 @@ def scatter_positions(axes_row, merged_df, frames, title_prefix):
         if fd.empty:
             ax.set_title(f"Frame {fn}\n(no data)")
             continue
-        ax.scatter(fd["x_a"], fd["y_a"], s=12, alpha=0.6,
-                   color=get_method_color("JavaScript"), label="JS", marker="o")
-        ax.scatter(fd["x_b"], fd["y_b"], s=12, alpha=0.6,
-                   color=get_method_color("WebGPU"), label="GPU", marker="x")
+        ax.scatter(fd["x_a"], fd["y_a"], s=20, alpha=0.8,
+                   color="#FF3333", label="JS", marker="o")
+        ax.scatter(fd["x_b"], fd["y_b"], s=20, alpha=0.8,
+                   color="#33AADD", label="GPU", marker="x")
         mean_d = fd["distance"].mean()
         ax.set_title(f"Frame {fn}\nμ err = {mean_d:.3f} px", fontsize=10)
         ax.set_xlabel("X")
@@ -291,6 +320,49 @@ for sim_name in remaining:
     plt.show()
 
 # %% [markdown]
+# ### 3d. Trig simulation scatter with velocity annotations
+
+# %%
+trig_label = list(trig_divergence.keys())[0]
+js_df = trig_agent_dfs[(trig_label, "JavaScript")]
+gpu_df = trig_agent_dfs[(trig_label, "WebGPU")]
+vel_merged = js_df.merge(
+    gpu_df, on=["frameNumber", "id"], suffixes=("_js", "_gpu"), how="inner"
+)
+
+fig, axes = plt.subplots(2, 3, figsize=(18, 10))
+axes_flat = axes.flatten()
+
+for ax, fn in zip(axes_flat, trig_frames):
+    fd = vel_merged[vel_merged["frameNumber"] == fn]
+    if fd.empty:
+        ax.set_title(f"Frame {fn}\n(no data)")
+        continue
+    # Plot JS
+    ax.scatter(fd["x_js"], fd["y_js"], s=20, alpha=0.6,
+               color="#FF3333", label="JS (Pos)", marker="o")
+    ax.quiver(fd["x_js"], fd["y_js"], fd["vx_js"], fd["vy_js"], 
+              color="#FF3333", alpha=0.5, scale=60, width=0.003)
+              
+    # Plot GPU
+    ax.scatter(fd["x_gpu"], fd["y_gpu"], s=20, alpha=0.6,
+               color="#33AADD", label="GPU (Pos)", marker="x")
+    ax.quiver(fd["x_gpu"], fd["y_gpu"], fd["vx_gpu"], fd["vy_gpu"], 
+              color="#33AADD", alpha=0.5, scale=60, width=0.003)
+              
+    ax.set_title(f"Frame {fn}", fontsize=10)
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_aspect("equal")
+
+axes_flat[0].legend(fontsize=8)
+fig.suptitle(f"Trig Simulation — Positions & Velocities ({trig_label})",
+             fontsize=14, fontweight="bold")
+fig.tight_layout(rect=[0, 0, 1, 0.96])
+save_figure(fig, "08_scatter_trig_velocity")
+plt.show()
+
+# %% [markdown]
 # ---
 # ## 4. Average Error Over Time — All Simulations
 #
@@ -312,6 +384,7 @@ ax.set_ylabel("Mean Position Error (px)")
 ax.set_title("Average JS → WebGPU Agent Position Error Over Time",
              fontweight="bold")
 ax.legend(ncol=2, fontsize=9)
+ax.set_yscale("log")
 save_figure(fig, "08_avg_error_all_sims")
 plt.show()
 
@@ -331,6 +404,7 @@ ax.set_ylabel("Max Position Error (px)")
 ax.set_title("Maximum JS → WebGPU Agent Position Error Over Time",
              fontweight="bold")
 ax.legend(ncol=2, fontsize=9)
+ax.set_yscale("log")
 save_figure(fig, "08_max_error_all_sims")
 plt.show()
 
@@ -354,6 +428,7 @@ for i, sim in enumerate(SWEEP_SIMS):
     ax.set_title(sim.capitalize(), fontweight="bold")
     ax.set_xlabel("Frame")
     ax.set_ylabel("Error (px)")
+    # ax.set_yscale("log")
 
 axes[0].legend(fontsize=8)
 fig.suptitle("Per-Simulation Error Growth: Mean and Max",
@@ -404,7 +479,8 @@ colors = [SIM_COLORS.get(s.lower(), "gray") for s in error_df["Simulation"]]
 ax.barh(error_df["Simulation"], error_df["Mean Error (px)"],
         color=colors, edgecolor="white")
 ax.set_xlabel("Mean Position Error at Final Frame (px)")
-ax.set_title("Simulation Ranking by Final-Frame Divergence", fontweight="bold")
+ax.set_title("Simulation Ranking by Divergence - frame 100", fontweight="bold")
+ax.set_xscale("log")
 save_figure(fig, "08_error_ranking")
 plt.show()
 
@@ -516,7 +592,7 @@ ax2.set_ylabel("Speed Error (px/frame)")
 ax2.set_title("Speed Magnitude Error")
 ax2.legend(fontsize=8)
 
-fig.suptitle(f"Trig Velocity Error: JS vs WebGPU — {first_label}",
+fig.suptitle(f"Trig Simulation - Velocity Error of JS vs WebGPU — {first_label}",
              fontsize=14, fontweight="bold")
 save_figure(fig, "08_trig_velocity_error")
 plt.show()
@@ -540,8 +616,9 @@ angle_stats = vel_merged.groupby("theta_bin", observed=True).agg({
 
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
 
-ax1.bar(range(len(angle_stats)), angle_stats["speed_err"],
-        color="#AA3377", alpha=0.7, edgecolor="white")
+ax1.plot(range(len(angle_stats)), angle_stats["speed_err"],
+         color="#AA3377", linewidth=2, marker="o", markersize=4)
+ax1.grid(True, alpha=0.3)
 ax1.set_ylabel("Mean Speed Error (px/frame)")
 ax1.set_title("Speed Error vs Agent Angle (θ)")
 
@@ -558,6 +635,82 @@ fig.suptitle("Trig Error Correlation: Does Error Align with sin/cos Gradients?",
 save_figure(fig, "08_trig_angle_correlation")
 plt.show()
 
+
+# %% [markdown]
+# ### 5d. Error by agent angle — Tiled Overlay with Proper Phase & Labels
+
+# %%
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.signal import savgol_filter
+
+# 1. Prep Data (1x cycle)
+vel_merged["theta_js"] = np.arctan2(vel_merged["vy_js"], vel_merged["vx_js"])
+n_bins = 50
+vel_merged["theta_bin"] = pd.cut(vel_merged["theta_js"], bins=n_bins)
+
+angle_stats = vel_merged.groupby("theta_bin", observed=True).agg({
+    "speed_err": "mean",
+    "theta_js": "mean",
+}).dropna().reset_index(drop=True)
+
+# 2. Smooth the trend
+smooth_trend = savgol_filter(angle_stats["speed_err"], window_length=15, polyorder=3)
+
+# 3. Find and Flip the best trig match
+trig_options = {
+    "sin(θ)": np.sin(angle_stats["theta_js"]),
+    "cos(θ)": np.cos(angle_stats["theta_js"]),
+    "sin(-θ)": np.sin(-angle_stats["theta_js"]),
+    "cos(-θ)": np.cos(-angle_stats["theta_js"])
+}
+
+corrs = {name: np.corrcoef(angle_stats["speed_err"], val)[0, 1] for name, val in trig_options.items()}
+best_name = max(corrs, key=lambda k: abs(corrs[k]))
+best_corr_val = corrs[best_name]
+
+final_trig_raw = trig_options[best_name]
+display_name = best_name
+if best_corr_val < 0:
+    final_trig_raw = -final_trig_raw
+    display_name = f"-{best_name}"
+
+# 4. Rescale
+err_min, err_max = smooth_trend.min(), smooth_trend.max()
+trig_scaled = ((final_trig_raw - final_trig_raw.min()) / (final_trig_raw.max() - final_trig_raw.min())) * (err_max - err_min) + err_min
+
+# 5. Tile
+error_2x = np.tile(angle_stats["speed_err"], 2)
+trend_2x = np.tile(smooth_trend, 2)
+trig_2x = np.tile(trig_scaled, 2)
+x_axis = np.arange(len(error_2x))
+
+# 6. Plotting with Axis Labels
+fig, ax = plt.subplots(figsize=(12, 6))
+
+ax.plot(x_axis, error_2x, color="#AA3377", alpha=0.3, label="Mean Error", marker="o", markersize=3)
+ax.plot(x_axis, trend_2x, color="black", linestyle="--", linewidth=2, label="Smooth Trend")
+ax.plot(x_axis, trig_2x, color="#4477AA", linewidth=1, label=f"Aligned Match: {display_name}")
+
+# --- AXIS LABELING LOGIC ---
+# Define positions for -pi, 0, pi for two cycles
+# Cycle 1: 0, 25, 50 | Cycle 2: 50, 75, 100
+tick_pos = [0, 12.5, 25, 37.5, 50, 62.5, 75, 87.5, 100]
+tick_labels = [r"$-\pi$", r"$-\pi/2$", "0", r"$\pi/2$", r"$\pi | -\pi$", r"$-\pi/2$", "0", r"$\pi/2$", r"$\pi$"]
+
+ax.set_xticks(tick_pos)
+ax.set_xticklabels(tick_labels)
+
+ax.set_title("Speed Error vs Phase-Aligned Trig Match", fontsize=14, fontweight="bold")
+ax.set_ylabel("Mean Speed Error (px/frame)")
+ax.set_xlabel("Agent Angle (θ)")
+ax.grid(True, alpha=0.2, linestyle=':')
+ax.axvline(50, color='gray', linestyle='--', alpha=0.5) # Wrap point
+
+ax.legend(loc="upper right")
+plt.tight_layout()
+plt.show()
 # %% [markdown]
 # ### 5e. Cross-device trig error growth rate comparison
 
@@ -571,8 +724,9 @@ for label, (merged, per_frame) in trig_divergence.items():
 
 ax.set_xlabel("Frame Number")
 ax.set_ylabel("Divergence Growth Rate (px/frame)")
-ax.set_title("Trig Divergence Growth Rate Across Devices", fontweight="bold")
-ax.legend(fontsize=9)
+ax.set_title("Trig Simulation - Divergence Growth Rate Across Devices", fontweight="bold")
+ax.legend(fontsize=9, loc="upper left")
+# ax.set_yscale("log")
 save_figure(fig, "08_trig_growth_rate_devices")
 plt.show()
 
@@ -595,26 +749,18 @@ for label, (merged, per_frame) in trig_divergence.items():
 
 comp_df = pd.DataFrame(comparison)
 
-fig, axes = plt.subplots(1, 3, figsize=(16, 5))
+fig, ax = plt.subplots(figsize=(8, 6))
 bar_colors = [DEVICE_COLORS.get(d, "gray") for d in comp_df["Device"]]
 
-axes[0].bar(comp_df["Device"], comp_df["Mean Divergence (px)"],
-            color=bar_colors, edgecolor="white")
-axes[0].set_ylabel("Mean Divergence (px)")
-axes[0].set_title("Average")
-
-axes[1].bar(comp_df["Device"], comp_df["Max Divergence (px)"],
-            color=bar_colors, edgecolor="white")
-axes[1].set_ylabel("Max Divergence (px)")
-axes[1].set_title("Maximum")
-
-axes[2].bar(comp_df["Device"], comp_df["Final Frame Mean (px)"],
-            color=bar_colors, edgecolor="white")
-axes[2].set_ylabel("Divergence (px)")
-axes[2].set_title("Final Frame (mean)")
-
-fig.suptitle("Trig JS vs WebGPU Accuracy — Summary by Device",
+ax.bar(comp_df["Device"], comp_df["Final Frame Mean (px)"],
+       color=bar_colors, edgecolor="white")
+ax.set_ylabel("Final Frame Divergence (px)")
+ax.set_title("Trig Simulation - JS vs WebGPU Accuracy — Summary by Device",
              fontsize=14, fontweight="bold")
+
+# log y
+ax.set_yscale("log")
+
 save_figure(fig, "08_trig_device_summary")
 plt.show()
 
@@ -641,7 +787,7 @@ for ax, fn in zip(axes, trig_hist_frames):
     ax.set_title(f"Frame {fn}\nμ = {frame_data['distance'].mean():.4f}, "
                  f"max = {frame_data['distance'].max():.4f}")
 
-fig.suptitle(f"Trig Agent-Level Divergence Distribution — {first_label}",
+fig.suptitle(f"Trig Simulation - Agent-Level Divergence Distribution",
              fontsize=13, fontweight="bold")
 save_figure(fig, "08_trig_error_distribution")
 plt.show()

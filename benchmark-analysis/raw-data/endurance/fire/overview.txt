@@ -1,4 +1,0 @@
-Fire — Benchmark complete — 2 runs
-
-JavaScript (cpu) @ 10,000 agents — avg 4.64ms/frame (38199 frames)
-WebGPU (cpu) @ 10,000 agents — avg 5.57ms/frame (85092 frames)
