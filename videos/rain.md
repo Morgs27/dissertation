@@ -1,7 +1,7 @@
 # Rain Simulation
 
-[![Rain Simulation](rain.jpg)](https://github.com/Morgs27/dissertation/raw/master/videos/rain.mp4)
+Ensure that the video is playing inline below:
 
-*(Click the image to stream the video natively in your browser)*
+![Rain Simulation](rain.mp4)
 
 [← Back to Video Index](README.md)

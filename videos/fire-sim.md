@@ -1,7 +1,7 @@
 # Fire Simulation
 
-[![Fire Simulation](fire-sim.jpg)](https://github.com/Morgs27/dissertation/raw/master/videos/fire-sim.mp4)
+Ensure that the video is playing inline below:
 
-*(Click the image to stream the video natively in your browser)*
+![Fire Simulation](fire-sim.mp4)
 
 [← Back to Video Index](README.md)

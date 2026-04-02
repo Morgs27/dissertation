@@ -1,7 +1,7 @@
 # Slime Mold
 
-[![Slime Mold](slime.jpg)](https://github.com/Morgs27/dissertation/raw/master/videos/slime.mp4)
+Ensure that the video is playing inline below:
 
-*(Click the image to stream the video natively in your browser)*
+![Slime Mold](slime.mp4)
 
 [← Back to Video Index](README.md)

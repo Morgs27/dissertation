@@ -1,7 +1,7 @@
 # Multi-Species Boids
 
-[![Multi-Species Boids](multi-species%20boids.jpg)](https://github.com/Morgs27/dissertation/raw/master/videos/multi-species%20boids.mp4)
+Ensure that the video is playing inline below:
 
-*(Click the image to stream the video natively in your browser)*
+![Multi-Species Boids](multi-species%20boids.mp4)
 
 [← Back to Video Index](README.md)
