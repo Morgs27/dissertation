@@ -1,5 +1,7 @@
 # Fluid Dynamics
 
-<video src="fluid.mp4" controls style="max-width: 100%;"></video>
+[![Fluid Dynamics](fluid.jpg)](https://github.com/Morgs27/dissertation/raw/master/videos/fluid.mp4)
+
+*(Click the image to stream the video natively in your browser)*
 
 [← Back to Video Index](README.md)
