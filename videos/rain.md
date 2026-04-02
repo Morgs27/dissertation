@@ -1,7 +1,9 @@
 # Rain Simulation
 
-Ensure that the video is playing inline below:
+<div align="center">
+  <img src="rain.webp" alt="Rain Simulation" width="800" />
+</div>
 
-![Rain Simulation](rain.mp4)
+<br>
 
 [← Back to Video Index](README.md)

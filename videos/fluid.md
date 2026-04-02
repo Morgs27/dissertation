@@ -1,7 +1,9 @@
 # Fluid Dynamics
 
-Ensure that the video is playing inline below:
+<div align="center">
+  <img src="fluid.webp" alt="Fluid Dynamics" width="800" />
+</div>
 
-![Fluid Dynamics](fluid.mp4)
+<br>
 
 [← Back to Video Index](README.md)

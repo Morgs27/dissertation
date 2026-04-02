@@ -1,7 +1,9 @@
 # Multi-Species Boids
 
-Ensure that the video is playing inline below:
+<div align="center">
+  <img src="multi-species%20boids.webp" alt="Multi-Species Boids" width="800" />
+</div>
 
-![Multi-Species Boids](multi-species%20boids.mp4)
+<br>
 
 [← Back to Video Index](README.md)

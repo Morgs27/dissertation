@@ -1,7 +1,9 @@
 # Fire Simulation
 
-Ensure that the video is playing inline below:
+<div align="center">
+  <img src="fire-sim.webp" alt="Fire Simulation" width="800" />
+</div>
 
-![Fire Simulation](fire-sim.mp4)
+<br>
 
 [← Back to Video Index](README.md)
