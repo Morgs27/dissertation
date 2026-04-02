@@ -1,5 +1,0 @@
-Rain — Benchmark complete — 3 runs
-
-JavaScript (cpu) @ 50,000 agents — avg 14.46ms/frame (13026 frames)
-WebWorkers (cpu) @ 50,000 agents — avg 143.85ms/frame (5098 frames)
-WebAssembly (cpu) [auto] @ 50,000 agents — avg 13.68ms/frame (13144 frames)

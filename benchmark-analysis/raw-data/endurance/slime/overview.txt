@@ -1,5 +1,0 @@
-Slime Mold — Benchmark complete — 3 runs
-
-JavaScript (cpu) @ 50,000 agents — avg 21.45ms/frame (11331 frames)
-WebWorkers (cpu) @ 50,000 agents — avg 138.41ms/frame (5045 frames)
-WebAssembly (cpu) [auto] @ 50,000 agents — avg 24.63ms/frame (8906 frames)
