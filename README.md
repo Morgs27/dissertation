@@ -1,11 +1,15 @@
-# Dissertation Repository
+# WebSimBench Evaluation & Testing
 
-This repository contains the software implementation, evaluation datasets, research materials, and writing drafts corresponding to the dissertation.
+This repository contains the evaluation data, benchmarking infrastructure, and prototyping iterations for the [WebSimBench](https://websimbench.dev) dissertation project. 
 
-## Directory Structure
+The core framework implementation for the project is hosted in its own dedicated repository:
+👉 [**github.com/Morgs27/websimbench**](https://github.com/Morgs27/websimbench)
 
-- **`evaluation/`**: Scripts and data for performance analysis and benchmarking tests.
-- **`r&d/`**: Initial research, prototype implementations, and core simulation algorithms.
-- **`research/`**: Referenced academic papers, literature, and project documentation.
-- **`videos/`**: High-quality video recordings of the simulations (Slime Mold, Boids, Fluid Dynamics, etc.). See the directory index for playback links.
-- **`writing/`**: Source files and drafts for the dissertation text.
+## Repository Overview
+
+Since this repository serves primarily for evaluation and testing, the main structures include:
+
+- **`evaluation/`**: Scripts and data for performance analysis and automated benchmarking tests.
+- **`r&d/`**: Initial research, prototype implementations, and the core simulation algorithms developed before the framework was complete.
+- **`videos/`**: High-quality embedded browser recordings of the tested simulations (Slime Mold, Boids, Fluid Dynamics, etc.). Go here for visual playback.
+- **`research/`**: Referenced academic literature and project documentation.
